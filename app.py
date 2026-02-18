@@ -4,7 +4,7 @@ from config import WINDOW_WIDTH, WINDOW_HEIGHT, ASSETS_PATH, ICON_FILE # importa
 from views.login_view import LoginView 
 from views.main_view import MainView 
 
-
+#67 prueba de cambio 
 
 class SentinelApp:
     """Clase principal que maneja la aplicación y navegación entre vistas"""
