@@ -5,7 +5,7 @@ from views.login_view import LoginView
 from views.main_view import MainView 
 
 #67 prueba de cambio 
-
+# prueba nannncy 
 class SentinelApp:
     """Clase principal que maneja la aplicación y navegación entre vistas"""
     
