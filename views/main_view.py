@@ -121,7 +121,7 @@ class MainView:
     def create_content_area(self):
         """Crea el área donde se muestran las diferentes vistas"""
         self.content_frame = tk.Frame(self.body_frame, bg=COLORS['background'])
-        self.content_frame.pack(fill="both", expand=True, side="right")
+        self.content_frame.pack(fill="both", expand=True, side="left")
     
     def toggle_menu(self):
         """Abre o cierra el menú lateral"""
@@ -129,7 +129,10 @@ class MainView:
             self.sidebar.pack_forget()
             self.menu_expanded = False
         else:
+            # Reempaquetar en orden correcto: sidebar primero, content después
+            self.content_frame.pack_forget()
             self.sidebar.pack(fill="y", side="left")
+            self.content_frame.pack(fill="both", expand=True, side="left")
             self.menu_expanded = True
     
     def clear_content(self):
@@ -182,7 +185,9 @@ class MainView:
     def show_informacion_escolar(self):
         """Carga la vista de información escolar"""
         self.clear_content()
-        InformacionEscolarView(self.content_frame)
+        vista = InformacionEscolarView(self.content_frame)
+        self.content_frame.update()  # forzar render antes de cargar datos
+        vista.cargar_datos()
     
     def logout(self):
         """Cierra sesión y vuelve al login"""

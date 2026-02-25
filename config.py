@@ -19,7 +19,8 @@ COLORS = {
     'text_dark': '#2c3e50',        # Texto oscuro
     'text_gray': '#7f8c8d',        # Texto gris
     'text_light': '#95a5a6',       # Texto claro
-    'content_bg': '#ecf0f1'        # Fondo de contenido
+    'content_bg': '#ecf0f1',       # Fondo de contenido
+    'info': '#17A2B8'
 }
 
 # Dimensiones de ventana
