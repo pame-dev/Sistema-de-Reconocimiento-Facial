@@ -12,10 +12,9 @@ from config import COLORS, get_db
 
 # ── Configuración de roles ───────────────────────────────────────────────────
 ROL_CONFIG = {
-    "alumno":   {"icono": "🎓", "titulo": "Alumno",         "desc": "Estudiante inscrito",       "color": "#4A90D9"},
-    "maestro":  {"icono": "📚", "titulo": "Maestro",         "desc": "Docente del plantel",       "color": "#27AE60"},
-    "personal": {"icono": "🏢", "titulo": "Personal",        "desc": "Personal administrativo",   "color": "#E67E22"},
-    "admin":    {"icono": "🔑", "titulo": "Administrador",   "desc": "Acceso total al sistema",   "color": "#8E44AD"},
+    "alumno":   {"icono": "🎓", "titulo": "Alumno",   "desc": "Estudiante inscrito",     "color": "#4A90D9"},
+    "maestro":  {"icono": "📚", "titulo": "Maestro",  "desc": "Docente del plantel",     "color": "#27AE60"},
+    "personal": {"icono": "🏢", "titulo": "Personal", "desc": "Personal administrativo", "color": "#E67E22"},
 }
 
 CAMPOS_POR_ROL = {
@@ -24,7 +23,6 @@ CAMPOS_POR_ROL = {
     "maestro":  [("Grado que imparte:", "gradoImpartidoMaestro", True),
                  ("Materia:",           "materiaImpartidaMaestro", True)],
     "personal": [("Puesto:", "puestoPersonalEscolar", True), ("Área:", "areaPersonalEscolar", True)],
-    "admin":    [],
 }
 
 CAMPOS_COMUNES = [
@@ -118,41 +116,49 @@ class NuevoRegistroView:
     def _mostrar_seleccion_rol(self):
         self._limpiar_container()
 
-        tk.Label(self.container, text="📝 Nuevo Registro de Usuario",
-                 font=("Arial", 22, "bold"), bg=COLORS['white'],
-                 fg=COLORS['text_dark']).pack(pady=(0, 6))
+        # Frame centrador que ocupa toda la pantalla
+        centro = tk.Frame(self.container, bg=COLORS['white'])
+        centro.pack(fill="both", expand=True)
 
-        tk.Label(self.container, text="Selecciona el tipo de usuario que deseas registrar",
-                 font=("Arial", 12), bg=COLORS['white'],
-                 fg=COLORS['text_gray']).pack(pady=(0, 30))
+        # Centrar contenido vertical y horizontalmente
+        inner = tk.Frame(centro, bg=COLORS['white'])
+        inner.place(relx=0.5, rely=0.5, anchor="center")
 
-        grid = tk.Frame(self.container, bg=COLORS['white'])
+        tk.Label(inner, text="📝 Nuevo Registro de Usuario",
+                 font=("Arial", 24, "bold"), bg=COLORS['white'],
+                 fg=COLORS['text_dark']).pack(pady=(0, 8))
+
+        tk.Label(inner, text="Selecciona el tipo de usuario que deseas registrar",
+                 font=("Arial", 13), bg=COLORS['white'],
+                 fg=COLORS['text_gray']).pack(pady=(0, 35))
+
+        grid = tk.Frame(inner, bg=COLORS['white'])
         grid.pack()
 
         for idx, (rol_key, cfg) in enumerate(ROL_CONFIG.items()):
-            row, col = divmod(idx, 2)
-            self._crear_tarjeta(grid, rol_key, cfg, row, col)
+            self._crear_tarjeta(grid, rol_key, cfg, 0, idx)
 
     def _crear_tarjeta(self, parent, rol_key, cfg, row, col):
         color = cfg["color"]
         outer = tk.Frame(parent, bg=color)
-        outer.grid(row=row, column=col, padx=18, pady=18)
+        outer.grid(row=row, column=col, padx=30, pady=18)
         card  = tk.Frame(outer, bg=COLORS['white'], cursor="hand2")
         card.pack(padx=3, pady=3)
 
-        tk.Label(card, text=cfg["icono"], font=("Arial", 44), bg=COLORS['white']).pack(padx=55, pady=(24, 4))
-        tk.Label(card, text=cfg["titulo"], font=("Arial", 15, "bold"), bg=COLORS['white'], fg=color).pack()
-        tk.Label(card, text=cfg["desc"],   font=("Arial", 10),         bg=COLORS['white'], fg=COLORS['text_gray']).pack(pady=(2, 16))
+        tk.Label(card, text=cfg["icono"], font=("Arial", 72), bg=COLORS['white']).pack(padx=90, pady=(40, 8))
+        tk.Label(card, text=cfg["titulo"], font=("Arial", 20, "bold"), bg=COLORS['white'], fg=color).pack()
+        tk.Label(card, text=cfg["desc"],   font=("Arial", 12),         bg=COLORS['white'], fg=COLORS['text_gray']).pack(pady=(6, 24))
 
         tk.Button(card, text="Seleccionar", bg=color, fg=COLORS['white'],
-                  font=("Arial", 10, "bold"), relief="flat", padx=22, pady=6,
+                  font=("Arial", 12, "bold"), relief="flat", padx=36, pady=12,
                   cursor="hand2", command=lambda r=rol_key: self._seleccionar_rol(r)
-                  ).pack(pady=(0, 20))
+                  ).pack(pady=(0, 36))
 
         for w in (outer, card):
             w.bind("<Button-1>", lambda e, r=rol_key: self._seleccionar_rol(r))
             w.bind("<Enter>",    lambda e, o=outer, c=color: o.config(bg=self._darken(c)))
             w.bind("<Leave>",    lambda e, o=outer, c=color: o.config(bg=c))
+
 
     @staticmethod
     def _darken(hex_color, amount=30):
