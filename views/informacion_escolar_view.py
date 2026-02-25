@@ -17,10 +17,10 @@ class InformacionEscolarView:
 
         self.usuario_seleccionado = None
         self.datos = []
-        self._placeholder_activo = True  # ← controla si el placeholder está visible
+        self._placeholder_activo = True
 
         self.crear_interfaz()
-        
+
     def crear_interfaz(self):
         # === CABECERA ===
         header_frame = tk.Frame(self.container, bg=COLORS['white'])
@@ -34,70 +34,85 @@ class InformacionEscolarView:
             fg=COLORS['text_dark']
         ).pack(side="left")
 
-        self.btn_actualizar = tk.Button(
+        tk.Button(
             header_frame,
             text="🔄 Actualizar",
-            bg=COLORS['primary'],
-            fg=COLORS['white'],
-            font=("Arial", 10),
-            relief="flat",
-            padx=15,
-            pady=5,
+            bg=COLORS['primary'], fg=COLORS['white'],
+            font=("Arial", 10), relief="flat", padx=15, pady=5,
             command=self.cargar_datos
-        )
-        self.btn_actualizar.pack(side="right")
+        ).pack(side="right")
 
         # === FILTROS ===
         filtros_frame = tk.Frame(self.container, bg=COLORS['white'])
         filtros_frame.pack(fill="x", pady=(0, 15))
 
-        tk.Label(
-            filtros_frame,
-            text="Buscar:",
-            bg=COLORS['white'],
-            fg=COLORS['text_dark'],
-            font=("Arial", 11)
-        ).pack(side="left", padx=(0, 5))
+        tk.Label(filtros_frame, text="Buscar:", bg=COLORS['white'],
+                 fg=COLORS['text_dark'], font=("Arial", 11)).pack(side="left", padx=(0, 5))
 
         self.busqueda_var = tk.StringVar()
-        # IMPORTANTE: NO usar trace aquí, usamos KeyRelease en el widget
         self.entrada_busqueda = tk.Entry(
-            filtros_frame,
-            textvariable=self.busqueda_var,
-            font=("Arial", 11),
-            width=30,
-            relief="solid",
-            borderwidth=1,
+            filtros_frame, textvariable=self.busqueda_var,
+            font=("Arial", 11), width=30, relief="solid", borderwidth=1,
             fg=COLORS['text_gray']
         )
         self.entrada_busqueda.pack(side="left", padx=(0, 15))
         self.entrada_busqueda.insert(0, "Nombre, matrícula o carrera...")
-        self.entrada_busqueda.bind("<FocusIn>",   self.limpiar_placeholder)
-        self.entrada_busqueda.bind("<FocusOut>",  self.restaurar_placeholder)
-        self.entrada_busqueda.bind("<KeyRelease>", lambda e: self.filtrar_tabla())
+        self.entrada_busqueda.bind("<FocusIn>",    self.limpiar_placeholder)
+        self.entrada_busqueda.bind("<FocusOut>",   self.restaurar_placeholder)
+        self.entrada_busqueda.bind("<KeyRelease>",  lambda e: self.filtrar_tabla())
 
-        tk.Label(
-            filtros_frame,
-            text="Rol:",
-            bg=COLORS['white'],
-            fg=COLORS['text_dark'],
-            font=("Arial", 11)
-        ).pack(side="left", padx=(0, 5))
+        tk.Label(filtros_frame, text="Rol:", bg=COLORS['white'],
+                 fg=COLORS['text_dark'], font=("Arial", 11)).pack(side="left", padx=(0, 5))
 
         self.filtro_rol = ttk.Combobox(
-            filtros_frame,
-            values=["Todos", "alumno", "maestro", "personal"],
-            state="readonly",
-            width=15,
-            font=("Arial", 11)
+            filtros_frame, values=["Todos", "alumno", "maestro", "personal"],
+            state="readonly", width=15, font=("Arial", 11)
         )
         self.filtro_rol.set("Todos")
         self.filtro_rol.pack(side="left")
         self.filtro_rol.bind('<<ComboboxSelected>>', lambda e: self.filtrar_tabla())
 
-        # === TABLA ===
+        # === PANEL DETALLES (empaquetado desde abajo) ===
+        self.detalles_frame = tk.Frame(self.container, bg=COLORS['content_bg'],
+                                       relief="solid", borderwidth=1)
+        self.detalles_frame.pack(fill="x", pady=(10, 0), side="bottom")
+        self.crear_panel_detalles()
+
+        # === BOTONES ACCIÓN (empaquetados desde abajo, sobre detalles) ===
+        # Empieza oculta — se muestra cuando se selecciona un usuario
+        self.acciones_frame = tk.Frame(self.container, bg=COLORS['white'])
+        # .pack() se llama en on_select
+
+        izq = tk.Frame(self.acciones_frame, bg=COLORS['white'])
+        izq.pack(side="left")
+
+        self.btn_editar = tk.Button(
+            izq, text="✏️ Editar Información",
+            bg=COLORS['header'], fg=COLORS['white'],
+            font=("Arial", 11), relief="flat", padx=20, pady=8,
+            command=self.editar_usuario
+        )
+        self.btn_editar.pack(side="left", padx=(0, 8))
+
+        self.btn_eliminar = tk.Button(
+            izq, text="🗑️ Eliminar Usuario",
+            bg=COLORS['danger'], fg=COLORS['white'],
+            font=("Arial", 11), relief="flat", padx=20, pady=8,
+            command=self.eliminar_usuario
+        )
+        self.btn_eliminar.pack(side="left")
+
+        self.btn_papelera = tk.Button(
+            self.acciones_frame, text="🗑",
+            bg=COLORS['white'], fg=COLORS['text_gray'],
+            font=("Arial", 20), relief="flat", padx=8, pady=4,
+            cursor="hand2", command=self._papelera
+        )
+        self.btn_papelera.pack(side="right", padx=5)
+
+        # === TABLA (toma el espacio restante del centro) ===
         tabla_frame = tk.Frame(self.container, bg=COLORS['white'])
-        tabla_frame.pack(fill="both", expand=True, pady=(0, 15))
+        tabla_frame.pack(fill="both", expand=True, pady=(0, 10))
 
         scroll_y = tk.Scrollbar(tabla_frame)
         scroll_y.pack(side="right", fill="y")
@@ -111,9 +126,8 @@ class InformacionEscolarView:
             show="headings",
             yscrollcommand=scroll_y.set,
             xscrollcommand=scroll_x.set,
-            height=15
+            height=12
         )
-
         scroll_y.config(command=self.tabla.yview)
         scroll_x.config(command=self.tabla.xview)
 
@@ -138,39 +152,6 @@ class InformacionEscolarView:
         self.tabla.pack(fill="both", expand=True)
         self.tabla.bind('<<TreeviewSelect>>', self.on_select)
 
-        # === PANEL DETALLES ===
-        self.detalles_frame = tk.Frame(self.container, bg=COLORS['content_bg'], relief="solid", borderwidth=1)
-        self.detalles_frame.pack(fill="x", pady=(0, 15))
-        self.crear_panel_detalles()
-
-        # === BOTONES ACCIÓN ===
-        acciones_frame = tk.Frame(self.container, bg=COLORS['white'])
-        acciones_frame.pack(fill="x")
-
-        self.btn_editar = tk.Button(
-            acciones_frame, text="✏️ Editar Información",
-            bg=COLORS['header'], fg=COLORS['white'],
-            font=("Arial", 11), relief="flat", padx=20, pady=8,
-            state="disabled", command=self.editar_usuario
-        )
-        self.btn_editar.pack(side="left", padx=5)
-
-        self.btn_ver_fotos = tk.Button(
-            acciones_frame, text="📸 Ver Fotos",
-            bg=COLORS['primary'], fg=COLORS['white'],
-            font=("Arial", 11), relief="flat", padx=20, pady=8,
-            state="disabled", command=self.ver_fotos
-        )
-        self.btn_ver_fotos.pack(side="left", padx=5)
-
-        self.btn_historial = tk.Button(
-            acciones_frame, text="📊 Historial de Accesos",
-            bg=COLORS['info'], fg=COLORS['white'],
-            font=("Arial", 11), relief="flat", padx=20, pady=8,
-            state="disabled", command=self.ver_historial
-        )
-        self.btn_historial.pack(side="left", padx=5)
-
     # ── Panel de detalles ────────────────────────────────────────────────────
 
     def crear_panel_detalles(self):
@@ -181,8 +162,7 @@ class InformacionEscolarView:
             self.detalles_frame,
             text="📋 Detalles del Usuario",
             font=("Arial", 12, "bold"),
-            bg=COLORS['content_bg'],
-            fg=COLORS['text_dark']
+            bg=COLORS['content_bg'], fg=COLORS['text_dark']
         ).pack(anchor="w", padx=15, pady=(10, 5))
 
         info_frame = tk.Frame(self.detalles_frame, bg=COLORS['content_bg'])
@@ -194,8 +174,7 @@ class InformacionEscolarView:
             tk.Label(
                 info_frame,
                 text="Selecciona un usuario para ver sus detalles",
-                bg=COLORS['content_bg'],
-                fg=COLORS['text_gray'],
+                bg=COLORS['content_bg'], fg=COLORS['text_gray'],
                 font=("Arial", 11, "italic")
             ).pack(pady=15)
 
@@ -203,15 +182,15 @@ class InformacionEscolarView:
         if not self.usuario_seleccionado:
             return
         u = self.usuario_seleccionado
-        self.crear_fila_detalle(parent, "Nombre:",    u.get('nombre', ''),              0)
-        self.crear_fila_detalle(parent, "Matrícula:", u.get('matricula', ''),           1)
-        self.crear_fila_detalle(parent, "Rol:",       u.get('rol', ''),                 2)
-        self.crear_fila_detalle(parent, "Teléfono:",  u.get('telefono', 'N/A'),         3)
+        self.crear_fila_detalle(parent, "Nombre:",    u.get('nombre', ''),     0)
+        self.crear_fila_detalle(parent, "Matrícula:", u.get('matricula', ''),  1)
+        self.crear_fila_detalle(parent, "Rol:",       u.get('rol', ''),        2)
+        self.crear_fila_detalle(parent, "Teléfono:",  u.get('telefono', 'N/A'),3)
 
         if u.get('rol') == 'alumno':
-            self.crear_fila_detalle(parent, "Carrera:",    u.get('carrera', 'N/A'),     4)
+            self.crear_fila_detalle(parent, "Carrera:",     u.get('carrera', 'N/A'),  4)
             self.crear_fila_detalle(parent, "Grado/Grupo:", f"{u.get('grado','')}° {u.get('grupo','')}", 5)
-            self.crear_fila_detalle(parent, "Facultad:",   u.get('facultad', 'N/A'),    6)
+            self.crear_fila_detalle(parent, "Facultad:",    u.get('facultad', 'N/A'), 6)
 
         stats = tk.Frame(parent, bg=COLORS['content_bg'])
         stats.grid(row=7, column=0, columnspan=2, pady=(10, 0), sticky="w")
@@ -310,7 +289,6 @@ class InformacionEscolarView:
     def actualizar_tabla(self, datos_filtrados=None):
         for item in self.tabla.get_children():
             self.tabla.delete(item)
-
         for u in (datos_filtrados if datos_filtrados is not None else self.datos):
             self.tabla.insert("", "end", values=(
                 u['id'], u['nombre'], u['matricula'], u['rol'],
@@ -318,15 +296,12 @@ class InformacionEscolarView:
             ))
 
     def filtrar_tabla(self):
-        # Si el placeholder está activo, no hay texto real → mostrar todo
         if self._placeholder_activo:
             self.actualizar_tabla()
             return
-
-        texto = self.busqueda_var.get().lower().strip()
+        texto      = self.busqueda_var.get().lower().strip()
         rol_filtro = self.filtro_rol.get()
-
-        resultado = [
+        resultado  = [
             u for u in self.datos
             if (rol_filtro == "Todos" or u['rol'] == rol_filtro)
             and (not texto or
@@ -361,9 +336,12 @@ class InformacionEscolarView:
             if u['id'] == user_id:
                 self.usuario_seleccionado = u
                 break
-        self.btn_editar.config(state="normal")
-        self.btn_ver_fotos.config(state="normal")
-        self.btn_historial.config(state="normal")
+
+        # Mostrar barra de acciones (solo la primera vez)
+        if not self.acciones_frame.winfo_ismapped():
+            self.acciones_frame.pack(fill="x", pady=(0, 8), side="bottom",
+                                     before=self.detalles_frame)
+
         self.crear_panel_detalles()
 
     # ── Acciones ─────────────────────────────────────────────────────────────
@@ -373,12 +351,10 @@ class InformacionEscolarView:
             messagebox.showinfo("Editar Usuario",
                 f"Editar: {self.usuario_seleccionado['nombre']}\n(En desarrollo)")
 
-    def ver_fotos(self):
+    def eliminar_usuario(self):
         if self.usuario_seleccionado:
-            messagebox.showinfo("Fotos del Usuario",
-                f"📸 {self.usuario_seleccionado['nombre']} — {self.usuario_seleccionado['fotos']} fotos\n(En desarrollo)")
+            messagebox.showinfo("Eliminar Usuario",
+                f"Eliminar: {self.usuario_seleccionado['nombre']}\n(En desarrollo)")
 
-    def ver_historial(self):
-        if self.usuario_seleccionado:
-            messagebox.showinfo("Historial de Accesos",
-                f"🔐 {self.usuario_seleccionado['nombre']} — {self.usuario_seleccionado['accesos']} accesos\n(En desarrollo)")
+    def _papelera(self):
+        pass  # Sin funcionalidad aún
