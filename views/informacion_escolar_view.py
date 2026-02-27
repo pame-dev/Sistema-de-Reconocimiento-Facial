@@ -347,9 +347,195 @@ class InformacionEscolarView:
     # ── Acciones ─────────────────────────────────────────────────────────────
 
     def editar_usuario(self):
-        if self.usuario_seleccionado:
-            messagebox.showinfo("Editar Usuario",
-                f"Editar: {self.usuario_seleccionado['nombre']}\n(En desarrollo)")
+        if not self.usuario_seleccionado:
+            messagebox.showwarning("Atención", "Selecciona un usuario primero")
+            return
+
+        u = self.usuario_seleccionado
+
+        ventana = tk.Toplevel(self.parent)
+        ventana.title("Editar Usuario")
+        ventana.geometry("500x650")
+        ventana.configure(bg=COLORS['white'])
+        ventana.grab_set()
+
+        tk.Label(
+            ventana,
+            text="Editar Usuario",
+            font=("Arial", 16, "bold"),
+            bg=COLORS['white'],
+            fg=COLORS['text_dark']
+        ).pack(pady=15)
+
+        # ================= VARIABLES =================
+        nombre_var = tk.StringVar(value=u['nombre'])
+        matricula_var = tk.StringVar(value=u['matricula'])
+        telefono_var = tk.StringVar(value=u['telefono'])
+        rol_var = tk.StringVar(value=u['rol'])
+        carrera_var = tk.StringVar(value=u['carrera'])
+        grado_var = tk.StringVar(value=u['grado'])
+        grupo_var = tk.StringVar(value=u['grupo'])
+
+        valores_originales = {
+            "nombre": u['nombre'],
+            "matricula": u['matricula'],
+            "telefono": u['telefono'],
+            "rol": u['rol'],
+            "carrera": u['carrera'],
+            "grado": u['grado'],
+            "grupo": u['grupo'],
+        }
+
+        frame = tk.Frame(ventana, bg=COLORS['white'])
+        frame.pack(pady=10)
+
+        # ================= CAMPOS =================
+        def crear_campo(texto, variable):
+            tk.Label(frame, text=texto, bg=COLORS['white']).pack()
+            entry = tk.Entry(frame, textvariable=variable, width=45)
+            entry.pack(pady=5)
+            return entry
+
+        crear_campo("Nombre completo:", nombre_var)
+        crear_campo("Matrícula:", matricula_var)
+        crear_campo("Teléfono:", telefono_var)
+
+        tk.Label(frame, text="Rol:", bg=COLORS['white']).pack()
+        combo_rol = ttk.Combobox(
+            frame,
+            textvariable=rol_var,
+            values=["alumno", "maestro", "personal"],
+            state="readonly",
+            width=42
+        )
+        combo_rol.pack(pady=5)
+
+        crear_campo("Carrera:", carrera_var)
+        crear_campo("Grado:", grado_var)
+        crear_campo("Grupo:", grupo_var)
+
+        # ================= FOTO OPCIONAL =================
+        def volver_a_tomar_foto():
+            messagebox.showinfo(
+                "Captura de Foto",
+                "Aquí puedes llamar tu módulo de cámara\n(Integrar lógica de OpenCV aquí)"
+            )
+
+        tk.Button(
+            ventana,
+            text="📷 Volver a tomar foto (Opcional)",
+            bg=COLORS['header'],
+            fg=COLORS['white'],
+            relief="flat",
+            padx=15,
+            pady=6,
+            command=volver_a_tomar_foto
+        ).pack(pady=15)
+
+        # ================= BOTONES =================
+        botones_frame = tk.Frame(ventana, bg=COLORS['white'])
+        botones_frame.pack(pady=20)
+
+        btn_guardar = tk.Button(
+            botones_frame,
+            text="Guardar Cambios",
+            bg=COLORS['primary'],
+            fg=COLORS['white'],
+            state="disabled",
+            relief="flat",
+            padx=20,
+            pady=8
+        )
+        btn_guardar.pack(side="left", padx=10)
+
+        def cancelar():
+            ventana.destroy()
+
+        tk.Button(
+            botones_frame,
+            text="Cancelar",
+            bg=COLORS['danger'],
+            fg=COLORS['white'],
+            relief="flat",
+            padx=20,
+            pady=8,
+            command=cancelar
+        ).pack(side="left")
+
+        # ================= ACTIVAR BOTÓN SI HAY CAMBIOS =================
+        def verificar_cambios(*args):
+            cambios = (
+                nombre_var.get() != valores_originales["nombre"] or
+                matricula_var.get() != valores_originales["matricula"] or
+                telefono_var.get() != valores_originales["telefono"] or
+                rol_var.get() != valores_originales["rol"] or
+                carrera_var.get() != valores_originales["carrera"] or
+                grado_var.get() != valores_originales["grado"] or
+                grupo_var.get() != valores_originales["grupo"]
+            )
+
+            btn_guardar.config(state="normal" if cambios else "disabled")
+
+        for var in [nombre_var, matricula_var, telefono_var,
+                    rol_var, carrera_var, grado_var, grupo_var]:
+            var.trace_add("write", verificar_cambios)
+
+        # ================= GUARDAR =================
+        def guardar_cambios():
+            try:
+                conn = get_db()
+                cursor = conn.cursor()
+
+                nombre_completo = nombre_var.get().strip().split(" ")
+                nombre = nombre_completo[0]
+                apellido_p = nombre_completo[1] if len(nombre_completo) > 1 else ""
+                apellido_m = nombre_completo[2] if len(nombre_completo) > 2 else ""
+
+                cursor.execute("""
+                    UPDATE usuarios
+                    SET nombreUsuario=%s,
+                        apellidoPaternoUsuario=%s,
+                        apellidoMaternoUsuario=%s,
+                        matriculaUsuario=%s,
+                        telefonoUsuario=%s,
+                        rolUsuario=%s
+                    WHERE idUsuario=%s
+                """, (
+                    nombre,
+                    apellido_p,
+                    apellido_m,
+                    matricula_var.get(),
+                    telefono_var.get(),
+                    rol_var.get(),
+                    u['id']
+                ))
+
+                # Actualización según rol
+                if rol_var.get() == "alumno":
+                    cursor.execute("""
+                        UPDATE alumnos
+                        SET carreraAlumno=%s,
+                            gradoAlumno=%s,
+                            grupoAlumno=%s
+                        WHERE fkIdUsuario=%s
+                    """, (
+                        carrera_var.get(),
+                        grado_var.get(),
+                        grupo_var.get(),
+                        u['id']
+                    ))
+
+                conn.commit()
+                conn.close()
+
+                messagebox.showinfo("Éxito", "Usuario actualizado correctamente")
+                ventana.destroy()
+                self.cargar_datos()
+
+            except Exception as e:
+                messagebox.showerror("Error", f"No se pudo actualizar: {e}")
+
+        btn_guardar.config(command=guardar_cambios)
 
     def eliminar_usuario(self):
         if self.usuario_seleccionado:
