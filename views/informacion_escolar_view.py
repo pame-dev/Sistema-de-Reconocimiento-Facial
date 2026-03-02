@@ -389,7 +389,6 @@ class InformacionEscolarView:
         frame = tk.Frame(ventana, bg=COLORS['white'])
         frame.pack(pady=10)
 
-        # ================= CAMPOS =================
         def crear_campo(texto, variable):
             tk.Label(frame, text=texto, bg=COLORS['white']).pack()
             entry = tk.Entry(frame, textvariable=variable, width=45)
@@ -414,24 +413,6 @@ class InformacionEscolarView:
         crear_campo("Grado:", grado_var)
         crear_campo("Grupo:", grupo_var)
 
-        # ================= FOTO OPCIONAL =================
-        def volver_a_tomar_foto():
-            messagebox.showinfo(
-                "Captura de Foto",
-                "Aquí puedes llamar tu módulo de cámara\n(Integrar lógica de OpenCV aquí)"
-            )
-
-        tk.Button(
-            ventana,
-            text="📷 Volver a tomar foto (Opcional)",
-            bg=COLORS['header'],
-            fg=COLORS['white'],
-            relief="flat",
-            padx=15,
-            pady=6,
-            command=volver_a_tomar_foto
-        ).pack(pady=15)
-
         # ================= BOTONES =================
         botones_frame = tk.Frame(ventana, bg=COLORS['white'])
         botones_frame.pack(pady=20)
@@ -448,9 +429,6 @@ class InformacionEscolarView:
         )
         btn_guardar.pack(side="left", padx=10)
 
-        def cancelar():
-            ventana.destroy()
-
         tk.Button(
             botones_frame,
             text="Cancelar",
@@ -459,19 +437,19 @@ class InformacionEscolarView:
             relief="flat",
             padx=20,
             pady=8,
-            command=cancelar
+            command=ventana.destroy
         ).pack(side="left")
 
         # ================= ACTIVAR BOTÓN SI HAY CAMBIOS =================
         def verificar_cambios(*args):
             cambios = (
-                nombre_var.get() != valores_originales["nombre"] or
-                matricula_var.get() != valores_originales["matricula"] or
-                telefono_var.get() != valores_originales["telefono"] or
+                nombre_var.get().strip() != valores_originales["nombre"].strip() or
+                matricula_var.get().strip() != valores_originales["matricula"].strip() or
+                telefono_var.get().strip() != valores_originales["telefono"].strip() or
                 rol_var.get() != valores_originales["rol"] or
-                carrera_var.get() != valores_originales["carrera"] or
-                grado_var.get() != valores_originales["grado"] or
-                grupo_var.get() != valores_originales["grupo"]
+                carrera_var.get().strip() != valores_originales["carrera"].strip() or
+                grado_var.get().strip() != valores_originales["grado"].strip() or
+                grupo_var.get().strip() != valores_originales["grupo"].strip()
             )
 
             btn_guardar.config(state="normal" if cambios else "disabled")
@@ -493,35 +471,35 @@ class InformacionEscolarView:
 
                 cursor.execute("""
                     UPDATE usuarios
-                    SET nombreUsuario=%s,
-                        apellidoPaternoUsuario=%s,
-                        apellidoMaternoUsuario=%s,
-                        matriculaUsuario=%s,
-                        telefonoUsuario=%s,
-                        rolUsuario=%s
-                    WHERE idUsuario=%s
+                    SET nombreUsuario=?,
+                        apellidoPaternoUsuario=?,
+                        apellidoMaternoUsuario=?,
+                        matriculaUsuario=?,
+                        telefonoUsuario=?,
+                        rolUsuario=?,
+                        fechaHoraActualizacionUsuario=CURRENT_TIMESTAMP
+                    WHERE idUsuario=?
                 """, (
                     nombre,
                     apellido_p,
                     apellido_m,
-                    matricula_var.get(),
-                    telefono_var.get(),
+                    matricula_var.get().strip(),
+                    telefono_var.get().strip(),
                     rol_var.get(),
                     u['id']
                 ))
 
-                # Actualización según rol
                 if rol_var.get() == "alumno":
                     cursor.execute("""
                         UPDATE alumnos
-                        SET carreraAlumno=%s,
-                            gradoAlumno=%s,
-                            grupoAlumno=%s
-                        WHERE fkIdUsuario=%s
+                        SET carreraAlumno=?,
+                            gradoAlumno=?,
+                            grupoAlumno=?
+                        WHERE fkIdUsuario=?
                     """, (
-                        carrera_var.get(),
-                        grado_var.get(),
-                        grupo_var.get(),
+                        carrera_var.get().strip(),
+                        grado_var.get().strip(),
+                        grupo_var.get().strip(),
                         u['id']
                     ))
 
