@@ -16,7 +16,8 @@ env/
 *.sqlite
 *.sqlite3
 database/
-
+!database/queries.py
+!database/__init__.py
 # ── Modelo de reconocimiento facial (se genera al entrenar) ───────────────────
 modelo_entrenado.yml
 nombres.pkl
