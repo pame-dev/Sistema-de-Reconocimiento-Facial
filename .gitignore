@@ -1,20 +1,49 @@
-# Python
+# ── Python ───────────────────────────────────────────────────────────────────
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.pyw
 
-# Entornos virtuales
+# ── Entornos virtuales ────────────────────────────────────────────────────────
 venv/
 env/
 .venv/
+.env/
 
-# Base de datos
+# ── Base de datos ─────────────────────────────────────────────────────────────
 *.db
+*.sqlite
+*.sqlite3
+database/
 
-# Archivos del sistema
+# ── Modelo de reconocimiento facial (se genera al entrenar) ───────────────────
+modelo_entrenado.yml
+nombres.pkl
+
+# ── Imágenes temporales de captura ───────────────────────────────────────────
+*.jpg
+*.jpeg
+*.png
+*.bmp
+fotos_temp/
+capturas/
+
+# ── Variables de entorno ──────────────────────────────────────────────────────
+.env
+.env.local
+
+# ── Archivos del sistema ──────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
+desktop.ini
 
-# Variables de entorno
-.env
+# ── IDEs ─────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.suo
+*.user
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+logs/
