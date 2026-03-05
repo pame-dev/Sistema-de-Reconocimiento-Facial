@@ -9,6 +9,13 @@ import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import COLORS, get_db
+from database.queries import (
+    sp_insertar_usuario,
+    sp_insertar_alumno,
+    sp_insertar_maestro,
+    sp_insertar_personal,
+    sp_insertar_biometria,
+)
 
 # ── Configuración de roles ───────────────────────────────────────────────────
 ROL_CONFIG = {
@@ -636,50 +643,42 @@ class NuevoRegistroView:
             telefono  = val('telefonoUsuario',  upper=False)
             correo    = val('correoUsuario',    upper=False)
 
-            conn   = get_db()
-            cursor = conn.cursor()
+            conn    = get_db()
+            ahora   = datetime.now()
 
-            cursor.execute("""
-                INSERT INTO usuarios (
-                    nombreUsuario, apellidoPaternoUsuario, apellidoMaternoUsuario,
-                    matriculaUsuario, rolUsuario, estadoUsuario,
-                    telefonoUsuario, correoUsuario
-                ) VALUES (?, ?, ?, ?, ?, 'activo', ?, ?)
-            """, (nombre, paterno, materno, matricula, rol, telefono, correo))
-            user_id = cursor.lastrowid
+            # sp_insertar_usuario
+            user_id = sp_insertar_usuario(conn, {
+                'nombre':    nombre,
+                'paterno':   paterno,
+                'materno':   materno,
+                'matricula': matricula,
+                'rol':       rol,
+                'telefono':  telefono,
+                'correo':    correo,
+            })
 
+            # sp_insertar_<rol>
             if rol == "alumno":
-                cursor.execute("""
-                    INSERT INTO alumnos (fkIdUsuario, gradoAlumno, grupoAlumno, facultadAlumno, carreraAlumno)
-                    VALUES (?, ?, ?, ?, ?)
-                """, (user_id,
-                      val('gradoAlumno', upper=False),
-                      val('grupoAlumno', upper=False),
-                      val('facultadAlumno'),
-                      val('carreraAlumno')))
+                sp_insertar_alumno(conn, user_id, {
+                    'grado':    val('gradoAlumno', upper=False),
+                    'grupo':    val('grupoAlumno', upper=False),
+                    'facultad': val('facultadAlumno'),
+                    'carrera':  val('carreraAlumno'),
+                })
             elif rol == "maestro":
-                cursor.execute("""
-                    INSERT INTO maestros (fkIdUsuario, gradoImpartidoMaestro, materiaImpartidaMaestro)
-                    VALUES (?, ?, ?)
-                """, (user_id,
-                      val('gradoImpartidoMaestro', upper=False),
-                      val('materiaImpartidaMaestro')))
+                sp_insertar_maestro(conn, user_id, {
+                    'grado':   val('gradoImpartidoMaestro', upper=False),
+                    'materia': val('materiaImpartidaMaestro'),
+                })
             elif rol == "personal":
-                cursor.execute("""
-                    INSERT INTO personal_escolar (fkIdUsuario, puestoPersonalEscolar, areaPersonalEscolar)
-                    VALUES (?, ?, ?)
-                """, (user_id,
-                      val('puestoPersonalEscolar'),
-                      val('areaPersonalEscolar')))
+                sp_insertar_personal(conn, user_id, {
+                    'puesto': val('puestoPersonalEscolar'),
+                    'area':   val('areaPersonalEscolar'),
+                })
 
-            ahora = datetime.now()
+            # sp_insertar_biometria (una por foto)
             for foto_bytes in self.fotos_temp:
-                cursor.execute("""
-                    INSERT INTO biometria (
-                        fkIdUsuario, encodeBiometria,
-                        fechaHoraRegistroBiometria, fechaHoraActualizacionBiometria
-                    ) VALUES (?, ?, ?, ?)
-                """, (user_id, foto_bytes, ahora, ahora))
+                sp_insertar_biometria(conn, user_id, foto_bytes, ahora)
 
             conn.commit()
             conn.close()
