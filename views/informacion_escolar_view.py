@@ -4,6 +4,8 @@ from tkinter import ttk, messagebox
 import sys
 import os
 
+from views import nuevo_registro_view
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import COLORS, get_db
 from database.queries import (
@@ -289,8 +291,8 @@ class InformacionEscolarView:
             messagebox.showwarning("Atención", "Selecciona un usuario primero")
             return
 
-        u     = self.usuario_seleccionado
-        partes = u['nombre'].split()
+        u       = self.usuario_seleccionado
+        partes  = u['nombre'].split()
 
         win = tk.Toplevel(self.parent)
         win.title("Editar Usuario")
@@ -329,11 +331,11 @@ class InformacionEscolarView:
             e.grid(row=row, column=1, sticky="w", padx=(10, 0), pady=4)
             return e
 
-        campo(form, "Nombre:",         vars_['nombre'],    0)
-        campo(form, "Apellido P.:",     vars_['paterno'],   1)
-        campo(form, "Apellido M.:",     vars_['materno'],   2)
-        campo(form, "Matrícula:",       vars_['matricula'], 3)
-        campo(form, "Teléfono:",        vars_['telefono'],  4)
+        campo(form, "Nombre:",       vars_['nombre'],    0)
+        campo(form, "Apellido P.:",  vars_['paterno'],   1)
+        campo(form, "Apellido M.:",  vars_['materno'],   2)
+        campo(form, "Matrícula:",    vars_['matricula'], 3)
+        campo(form, "Teléfono:",     vars_['telefono'],  4)
 
         # Rol
         tk.Label(form, text="Rol:", bg=COLORS['white'], fg=COLORS['text_gray'],
@@ -345,13 +347,13 @@ class InformacionEscolarView:
 
         e_carrera = campo(form, "Carrera/Materia:", vars_['carrera'], 6)
         e_grado   = campo(form, "Grado:",           vars_['grado'],   7)
-        e_grupo   = campo(form, "Grupo/Área:",       vars_['grupo'],   8)
+        e_grupo   = campo(form, "Grupo/Área:",      vars_['grupo'],   8)
 
         def actualizar_campos(*_):
             rol = vars_['rol'].get()
-            e_carrera.config(state="normal"   if rol in ("alumno","maestro") else "disabled")
-            e_grado.config(  state="normal"   if rol in ("alumno","maestro") else "disabled")
-            e_grupo.config(  state="normal"   if rol == "alumno"             else "disabled")
+            e_carrera.config(state="normal" if rol in ("alumno","maestro") else "disabled")
+            e_grado.config(  state="normal" if rol in ("alumno","maestro") else "disabled")
+            e_grupo.config(  state="normal" if rol == "alumno"             else "disabled")
 
         combo_rol.bind("<<ComboboxSelected>>", actualizar_campos)
         actualizar_campos()
@@ -370,55 +372,61 @@ class InformacionEscolarView:
                   font=("Arial", 11), relief="flat", padx=20, pady=8,
                   command=win.destroy).pack(side="left")
 
-        def verificar_cambios(*_):
-            cambio = any(vars_[k].get() != originales[k] for k in vars_)
-            btn_guardar.config(state="normal" if cambio else "disabled")
+        tk.Button(btn_frame, text="🔁 Volver a tomar fotos", bg="#E67E22", fg=COLORS['white'],
+                  font=("Arial", 11), relief="flat", padx=20, pady=8,
+                  command=lambda: self._retomar_fotos(u, win)).pack(side="left", padx=8)
+        
+    # ── Método para re-tomar fotos ──
+    def _retomar_fotos(self, usuario, ventana_actual):
+        try:
+            import tkinter as tk
+            from tkinter import messagebox
+            from views.nuevo_registro_view import NuevoRegistroView
 
-        for v in vars_.values():
-            v.trace_add("write", verificar_cambios)
+            # Cerrar ventana actual
+            ventana_actual.destroy()
 
-        def guardar():
-            try:
-                conn = get_db()
-                rol  = vars_['rol'].get()
+            # Limpiar el contenedor principal
+            for widget in self.parent.winfo_children():
+                widget.destroy()
 
-                # sp_actualizar_usuario
-                sp_actualizar_usuario(conn, u['id'], {
-                    'nombre':    vars_['nombre'].get().strip().upper(),
-                    'paterno':   vars_['paterno'].get().strip().upper(),
-                    'materno':   vars_['materno'].get().strip().upper(),
-                    'matricula': vars_['matricula'].get().strip(),
-                    'telefono':  vars_['telefono'].get().strip(),
-                    'rol':       rol,
-                })
+            # Crear vista de nuevo registro
+            nuevo_reg = NuevoRegistroView(self.parent)
 
-                if rol == 'alumno':
-                    sp_actualizar_alumno(conn, u['id'], {
-                        'carrera': vars_['carrera'].get().strip().upper(),
-                        'grado':   vars_['grado'].get().strip(),
-                        'grupo':   vars_['grupo'].get().strip().upper(),
-                    })
-                elif rol == 'maestro':
-                    sp_actualizar_maestro(conn, u['id'], {
-                        'materia': vars_['carrera'].get().strip().upper(),
-                        'grado':   vars_['grado'].get().strip(),
-                    })
-                elif rol == 'personal':
-                    sp_actualizar_personal(conn, u['id'], {
-                        'puesto': vars_['carrera'].get().strip().upper(),
-                        'area':   vars_['grupo'].get().strip().upper(),
-                    })
+            # Asignar rol
+            nuevo_reg.rol_actual = usuario.get('rol', 'alumno')
 
-                conn.commit()
-                conn.close()
-                messagebox.showinfo("✅ Éxito", "Usuario actualizado correctamente")
-                win.destroy()
-                self.cargar_datos()
+            # Mostrar formulario
+            nuevo_reg._mostrar_formulario()
 
-            except Exception as e:
-                messagebox.showerror("Error", f"No se pudo actualizar: {e}")
+            # Mapear campos
+            campo_map = {
+                'nombreUsuario': 'nombre',
+                'apellidoPaternoUsuario': 'paterno',
+                'apellidoMaternoUsuario': 'materno',
+                'matriculaUsuario': 'matricula',
+                'telefonoUsuario': 'telefono',
+                'correoUsuario': 'correo',
+                'gradoAlumno': 'grado',
+                'grupoAlumno': 'grupo',
+                'carreraAlumno': 'carrera'
+            }
 
-        btn_guardar.config(command=guardar)
+            # Llenar formulario
+            for entry_key, user_key in campo_map.items():
+                valor = usuario.get(user_key, '')
+                if entry_key in nuevo_reg.entries and valor:
+                    nuevo_reg.entries[entry_key].delete(0, tk.END)
+                    nuevo_reg.entries[entry_key].insert(0, valor)
+
+            # Guardar valores para captura
+            nuevo_reg.valores_form = {k: e.get().strip() for k, e in nuevo_reg.entries.items()}
+
+            # Ir directo a captura
+            nuevo_reg.parent.after(200, nuevo_reg._mostrar_captura)
+
+        except Exception as e:
+            messagebox.showerror("Error", f"No se pudo iniciar la captura: {e}")
 
     # ── Eliminar — usa sp_eliminar_usuario ────────────────────────────────────
 
