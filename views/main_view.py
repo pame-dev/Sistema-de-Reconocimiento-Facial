@@ -6,6 +6,7 @@ import subprocess
 from config import COLORS, SIDEBAR_WIDTH, HEADER_HEIGHT
 from views.nuevo_registro_view import NuevoRegistroView
 from views.informacion_escolar_view import InformacionEscolarView
+from views.historial_accesos_view import HistorialAccesosView
 from PIL import Image, ImageTk
 
 
@@ -260,32 +261,9 @@ class MainView:
 
     def show_historial_accesos(self):
         self.clear_content()
-        # Sin funcionalidad aún — placeholder
-        frame = tk.Frame(self.content_frame, bg=COLORS['white'])
-        frame.place(relx=0.5, rely=0.5, anchor="center", width=400, height=200)
-
-        tk.Label(
-            frame,
-            text="📊",
-            font=("Arial", 48),
-            bg=COLORS['white']
-        ).pack(pady=(20, 5))
-
-        tk.Label(
-            frame,
-            text="Historial de Accesos",
-            font=("Arial", 18, "bold"),
-            bg=COLORS['white'],
-            fg=COLORS['text_dark']
-        ).pack()
-
-        tk.Label(
-            frame,
-            text="(En desarrollo)",
-            font=("Arial", 12),
-            bg=COLORS['white'],
-            fg=COLORS['text_gray']
-        ).pack(pady=5)
+        vista = HistorialAccesosView(self.content_frame)
+        self.content_frame.update()
+        vista.cargar_datos()
 
     def logout(self):
         self.app.show_login_view()
