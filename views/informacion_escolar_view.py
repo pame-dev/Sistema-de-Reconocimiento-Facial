@@ -321,6 +321,7 @@ class InformacionEscolarView:
             'grado':     tk.StringVar(value=u['grado']     if u['grado']     != '-'   else ''),
             'grupo':     tk.StringVar(value=u['grupo']     if u['grupo']     != '-'   else ''),
         }
+
         originales = {k: v.get() for k, v in vars_.items()}
 
         def campo(parent, label, var, row, state="normal"):
@@ -340,9 +341,15 @@ class InformacionEscolarView:
         # Rol
         tk.Label(form, text="Rol:", bg=COLORS['white'], fg=COLORS['text_gray'],
                  font=("Arial", 10), anchor="w").grid(row=5, column=0, sticky="w", pady=4)
-        combo_rol = ttk.Combobox(form, textvariable=vars_['rol'],
-                                 values=["alumno","maestro","personal"],
-                                 state="readonly", width=26, font=("Arial", 11))
+
+        combo_rol = ttk.Combobox(
+            form,
+            textvariable=vars_['rol'],
+            values=["alumno","maestro","personal"],
+            state="readonly",
+            width=26,
+            font=("Arial", 11)
+        )
         combo_rol.grid(row=5, column=1, sticky="w", padx=(10, 0), pady=4)
 
         e_carrera = campo(form, "Carrera/Materia:", vars_['carrera'], 6)
@@ -353,28 +360,194 @@ class InformacionEscolarView:
             rol = vars_['rol'].get()
             e_carrera.config(state="normal" if rol in ("alumno","maestro") else "disabled")
             e_grado.config(  state="normal" if rol in ("alumno","maestro") else "disabled")
-            e_grupo.config(  state="normal" if rol == "alumno"             else "disabled")
+            e_grupo.config(  state="normal" if rol == "alumno" else "disabled")
 
         combo_rol.bind("<<ComboboxSelected>>", actualizar_campos)
         actualizar_campos()
+
 
         # Botones
         btn_frame = tk.Frame(win, bg=COLORS['white'])
         btn_frame.pack(pady=20)
 
-        btn_guardar = tk.Button(btn_frame, text="💾 Guardar Cambios",
-                                bg=COLORS['primary'], fg=COLORS['white'],
-                                font=("Arial", 11), relief="flat", padx=20, pady=8,
-                                state="disabled")
+        btn_guardar = tk.Button(
+            btn_frame,
+            text="💾 Guardar Cambios",
+            bg=COLORS['primary'],
+            fg=COLORS['white'],
+            font=("Arial", 11),
+            relief="flat",
+            padx=20,
+            pady=8,
+            command=lambda: self._guardar_edicion(u['id'], vars_, win)
+        )
         btn_guardar.pack(side="left", padx=8)
+        btn_guardar.config(state="disabled")
 
-        tk.Button(btn_frame, text="Cancelar", bg=COLORS['danger'], fg=COLORS['white'],
-                  font=("Arial", 11), relief="flat", padx=20, pady=8,
-                  command=win.destroy).pack(side="left")
+        tk.Button(
+            btn_frame,
+            text="Cancelar",
+            bg=COLORS['danger'],
+            fg=COLORS['white'],
+            font=("Arial", 11),
+            relief="flat",
+            padx=20,
+            pady=8,
+            command=win.destroy
+        ).pack(side="left")
 
-        tk.Button(btn_frame, text="🔁 Volver a tomar fotos", bg="#E67E22", fg=COLORS['white'],
-                  font=("Arial", 11), relief="flat", padx=20, pady=8,
-                  command=lambda: self._retomar_fotos(u, win)).pack(side="left", padx=8)
+        tk.Button(
+            btn_frame,
+            text="🔁 Volver a tomar fotos",
+            bg="#E67E22",
+            fg=COLORS['white'],
+            font=("Arial", 11),
+            relief="flat",
+            padx=20,
+            pady=8,
+            command=lambda: self._retomar_fotos(u, win)
+        ).pack(side="left", padx=8)
+
+        # 🔧 DETECTOR DE CAMBIOS (esto habilita el botón)
+        def detectar_cambios(*args):
+
+            for k, v in vars_.items():
+                if v.get() != originales[k]:
+                    btn_guardar.config(state="normal")
+                    return
+
+            btn_guardar.config(state="disabled")
+
+        for v in vars_.values():
+            v.trace_add("write", detectar_cambios)
+
+
+
+    def _guardar_edicion(self, user_id, vars_, ventana):
+
+        import sqlite3
+        from tkinter import messagebox
+
+
+        nombre     = vars_['nombre'].get().strip()
+        paterno    = vars_['paterno'].get().strip()
+        materno    = vars_['materno'].get().strip()
+        matricula  = vars_['matricula'].get().strip()
+        telefono   = vars_['telefono'].get().strip()
+        rol        = vars_['rol'].get().strip()
+        carrera    = vars_['carrera'].get().strip()
+        grado      = vars_['grado'].get().strip()
+        grupo      = vars_['grupo'].get().strip()
+
+
+        if not nombre or not paterno:
+
+            messagebox.showwarning("Campos obligatorios", "Nombre y apellido paterno son obligatorios")
+            return
+
+
+        try:
+
+            conn = sqlite3.connect("database/sistema_biometrico.db")
+            cursor = conn.cursor()
+
+
+            cursor.execute("""
+
+                UPDATE usuarios
+                SET
+                    nombreUsuario = ?,
+                    apellidoPaternoUsuario = ?,
+                    apellidoMaternoUsuario = ?,
+                    matriculaUsuario = ?,
+                    telefonoUsuario = ?,
+                    rolUsuario = ?
+                WHERE idUsuario = ?
+
+            """, (
+
+                nombre,
+                paterno,
+                materno,
+                matricula,
+                telefono,
+                rol,
+                user_id
+
+            ))
+
+
+            cursor.execute("DELETE FROM alumnos WHERE fkIdUsuario = ?", (user_id,))
+            cursor.execute("DELETE FROM maestros WHERE fkIdUsuario = ?", (user_id,))
+            cursor.execute("DELETE FROM personal_escolar WHERE fkIdUsuario = ?", (user_id,))
+
+
+            if rol == "alumno":
+
+                cursor.execute("""
+
+                    INSERT INTO alumnos
+                    (fkIdUsuario, gradoAlumno, grupoAlumno, carreraAlumno)
+
+                    VALUES (?, ?, ?, ?)
+
+                """, (
+
+                    user_id,
+                    grado,
+                    grupo,
+                    carrera
+
+                ))
+
+
+            elif rol == "maestro":
+
+                cursor.execute("""
+
+                    INSERT INTO maestros
+                    (fkIdUsuario, gradoImpartidoMaestro, materiaImpartidaMaestro)
+
+                    VALUES (?, ?, ?)
+
+                """, (
+
+                    user_id,
+                    grado,
+                    carrera
+
+                ))
+
+
+            elif rol == "personal":
+
+                cursor.execute("""
+
+                    INSERT INTO personal_escolar
+                    (fkIdUsuario, areaPersonalEscolar)
+
+                    VALUES (?, ?)
+
+                """, (
+
+                    user_id,
+                    grupo
+
+                ))
+
+
+            conn.commit()
+            conn.close()
+
+
+            messagebox.showinfo("Éxito", "Usuario actualizado correctamente")
+
+            ventana.destroy()
+
+
+        except Exception as e:
+
+            messagebox.showerror("Error", f"No se pudo actualizar el usuario:\n{e}")
         
     # ── Método para re-tomar fotos ──
     def _retomar_fotos(self, usuario, ventana_actual):
@@ -392,6 +565,10 @@ class InformacionEscolarView:
 
             # Crear vista de nuevo registro
             nuevo_reg = NuevoRegistroView(self.parent)
+
+            # ── MODO RETOMAR FOTOS ──
+            nuevo_reg.modo_retomar_fotos = True
+            nuevo_reg.user_id_existente = usuario.get("id")
 
             # Asignar rol
             nuevo_reg.rol_actual = usuario.get('rol', 'alumno')
