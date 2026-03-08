@@ -8,10 +8,10 @@ import os
 COLORS = {
     'primary': '#4CAF50',          # Verde principal
     'primary_dark': '#45a049',     # Verde oscuro (hover)
-    'header': '#2c3e50',           # Azul oscuro header
+    'header': '#1071e5',           # Azul oscuro header
     'header_hover': '#34495e',     # Azul hover
-    'sidebar': '#34495e',          # Fondo menú lateral
-    'sidebar_hover': '#2c3e50',    # Hover menú lateral
+    'sidebar': '#1161c3',          # Fondo menú lateral
+    'sidebar_hover': '#0b4c9b',    # Hover menú lateral
     'danger': '#e74c3c',           # Rojo para acciones peligrosas
     'danger_dark': '#c0392b',      # Rojo oscuro (hover)
     'background': '#f5f5f5',       # Fondo general

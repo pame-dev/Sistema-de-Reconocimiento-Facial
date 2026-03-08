@@ -1,6 +1,8 @@
 # Vista Principal con Menú Lateral
 import tkinter as tk
 import os
+import sys
+import subprocess
 from config import COLORS, SIDEBAR_WIDTH, HEADER_HEIGHT
 from views.nuevo_registro_view import NuevoRegistroView
 from views.informacion_escolar_view import InformacionEscolarView
@@ -72,6 +74,7 @@ class MainView:
         self.create_menu_button("➕ Nuevo Registro",        self.show_nuevo_registro)
         self.create_menu_button("📚 Información Escolar",   self.show_informacion_escolar)
         self.create_menu_button("📊 Historial de Accesos",  self.show_historial_accesos)
+        self.create_menu_button("🔐 Pantalla de Accesos",   self.show_pantalla_accesos)
 
         tk.Frame(self.sidebar, bg=COLORS['header'], height=2).pack(fill="x", pady=10)
 
@@ -169,6 +172,91 @@ class MainView:
         vista = InformacionEscolarView(self.content_frame)
         self.content_frame.update()
         vista.cargar_datos()
+
+    def show_pantalla_accesos(self):
+        """Ejecuta el sistema de reconocimiento facial"""
+        try:
+            # Ruta al archivo reconocimiento.py
+            script_path = os.path.join(
+                os.path.dirname(__file__),
+                "..",
+                "admin",
+                "biometric_system",
+                "reconocimiento.py"
+            )
+            script_path = os.path.abspath(script_path)
+            
+            # Directorio raíz del proyecto
+            project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+            
+            # Verificar que el archivo existe
+            if not os.path.exists(script_path):
+                raise FileNotFoundError(f"No se encontró el archivo: {script_path}")
+            
+            # Ejecutar el script usando el mismo intérprete de Python y desde el directorio raíz
+            subprocess.Popen(
+                [sys.executable, script_path],
+                cwd=project_root,
+                creationflags=subprocess.CREATE_NEW_CONSOLE if os.name == 'nt' else 0
+            )
+            
+            # Mostrar confirmación en el contenido
+            self.clear_content()
+            frame = tk.Frame(self.content_frame, bg=COLORS['white'])
+            frame.place(relx=0.5, rely=0.5, anchor="center", width=400, height=200)
+
+            tk.Label(
+                frame,
+                text="📹",
+                font=("Arial", 48),
+                bg=COLORS['white']
+            ).pack(pady=(20, 5))
+
+            tk.Label(
+                frame,
+                text="Sistema de Reconocimiento",
+                font=("Arial", 18, "bold"),
+                bg=COLORS['white'],
+                fg=COLORS['text_dark']
+            ).pack()
+
+            tk.Label(
+                frame,
+                text="Se ha iniciado la cámara de reconocimiento facial",
+                font=("Arial", 11),
+                bg=COLORS['white'],
+                fg=COLORS['text_gray'],
+                wraplength=350
+            ).pack(pady=5)
+            
+        except Exception as e:
+            self.clear_content()
+            frame = tk.Frame(self.content_frame, bg=COLORS['white'])
+            frame.place(relx=0.5, rely=0.5, anchor="center", width=400, height=200)
+
+            tk.Label(
+                frame,
+                text="⚠️",
+                font=("Arial", 48),
+                bg=COLORS['white']
+            ).pack(pady=(20, 5))
+
+            tk.Label(
+                frame,
+                text="Error al iniciar",
+                font=("Arial", 18, "bold"),
+                bg=COLORS['white'],
+                fg=COLORS['danger']
+            ).pack()
+
+            tk.Label(
+                frame,
+                text=str(e),
+                font=("Arial", 10),
+                bg=COLORS['white'],
+                fg=COLORS['text_gray'],
+                wraplength=350
+            ).pack(pady=5)
 
     def show_historial_accesos(self):
         self.clear_content()
