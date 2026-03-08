@@ -645,6 +645,29 @@ class NuevoRegistroView:
 
             conn    = get_db()
             ahora   = datetime.now()
+            
+            # ── SI SOLO ESTAMOS RETOMANDO FOTOS ──
+            if getattr(self, "modo_retomar_fotos", False):
+
+                user_id = self.user_id_existente
+
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM biometria WHERE fkIdUsuario = ?", (user_id,))
+
+                for foto_bytes in self.fotos_temp:
+                    sp_insertar_biometria(conn, user_id, foto_bytes, ahora)
+
+                conn.commit()
+                conn.close()
+
+                messagebox.showinfo(
+                    "Fotos actualizadas",
+                    f"Se actualizaron {len(self.fotos_temp)} fotos del usuario."
+                )
+
+                self._detener_camara()
+                self._mostrar_seleccion_rol()
+                return
 
             # sp_insertar_usuario
             user_id = sp_insertar_usuario(conn, {
