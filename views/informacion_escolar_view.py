@@ -15,6 +15,8 @@ from database.queries import (
     sp_actualizar_maestro,
     sp_actualizar_personal,
     sp_eliminar_usuario,
+    sp_get_usuarios_inactivos,   
+    sp_restaurar_usuario   
 )
 
 class InformacionEscolarView:
@@ -43,6 +45,20 @@ class InformacionEscolarView:
                   bg=COLORS['primary'], fg=COLORS['white'],
                   font=("Arial", 10), relief="flat", padx=15, pady=5,
                   command=self.cargar_datos).pack(side="right")
+        
+        # Botón papelera 
+        tk.Button(
+            header_frame,
+            text="🗑 Papelera",
+            bg=COLORS['white'],
+            fg=COLORS['text_gray'],
+            font=("Arial", 11),
+            relief="flat",
+            padx=10,
+            pady=5,
+            cursor="hand2",
+            command=self._papelera
+        ).pack(side="right", padx=(0,10))
 
         # === FILTROS ===
         filtros_frame = tk.Frame(self.container, bg=COLORS['white'])
@@ -102,14 +118,6 @@ class InformacionEscolarView:
         )
         self.btn_eliminar.pack(side="left")
 
-        self.btn_papelera = tk.Button(
-            self.acciones_frame, text="🗑",
-            bg=COLORS['white'], fg=COLORS['text_gray'],
-            font=("Arial", 20), relief="flat", padx=8, pady=4,
-            cursor="hand2", command=self._papelera
-        )
-        self.btn_papelera.pack(side="right", padx=5)
-
         # === TABLA (centro, toma espacio restante) ===
         tabla_frame = tk.Frame(self.container, bg=COLORS['white'])
         tabla_frame.pack(fill="both", expand=True, pady=(0, 10))
@@ -160,6 +168,7 @@ class InformacionEscolarView:
             tk.Label(info_frame, text="Selecciona un usuario para ver sus detalles",
                      bg=COLORS['content_bg'], fg=COLORS['text_gray'],
                      font=("Arial", 11, "italic")).pack(pady=15)
+            
 
     def mostrar_detalles_usuario(self, parent):
         u = self.usuario_seleccionado
@@ -615,8 +624,6 @@ class InformacionEscolarView:
             "Confirmar eliminación",
             f"¿Estás seguro de eliminar a:\n\n"
             f"{u['nombre']} ({u['rol']})\n\n"
-            f"Se borrarán también sus fotos y registros de acceso.\n"
-            f"Esta acción no se puede deshacer."
         )
         if not confirmar:
             return
@@ -636,4 +643,81 @@ class InformacionEscolarView:
             messagebox.showerror("Error", f"No se pudo eliminar: {e}")
 
     def _papelera(self):
-        pass  # Sin funcionalidad aún
+        win = tk.Toplevel(self.parent)
+        win.title("Papelera de Usuarios")
+        win.geometry("900x500")
+        win.grab_set()
+
+        tk.Label(win, text="🗑 Usuarios Inactivos",
+                font=("Arial", 16, "bold")).pack(pady=10)
+
+        tabla = ttk.Treeview(
+            win,
+            columns=("id","nombre","rol","matricula"),
+            show="headings",
+            height=15
+        )
+        tabla.heading("id", text="ID")
+        tabla.heading("nombre", text="Nombre")
+        tabla.heading("rol", text="Rol")
+        tabla.heading("matricula", text="Matrícula")
+        tabla.column("id", width=60, anchor="center")
+        tabla.column("nombre", width=280)
+        tabla.column("rol", width=120, anchor="center")
+        tabla.column("matricula", width=150, anchor="center")
+        tabla.pack(fill="both", expand=True, padx=15, pady=10)
+
+        # ── Cargar usuarios inactivos (SP) ──
+        try:
+            conn = get_db()
+            rows = sp_get_usuarios_inactivos(conn)
+            conn.close()
+
+            for r in rows:
+                nombre = f"{r[1]} {r[2] or ''} {r[3] or ''}".strip()
+                tabla.insert("", "end", values=(r[0], nombre, r[5], r[4] or "N/A"))
+
+        except Exception as e:
+            messagebox.showerror("Error", f"No se pudo cargar la papelera:\n{e}")
+            return
+
+        # ── Restaurar usuario ──
+        def restaurar():
+            sel = tabla.selection()
+            if not sel:
+                messagebox.showwarning("Atención", "Selecciona un usuario")
+                return
+
+            user_id = tabla.item(sel[0])['values'][0]
+
+            confirmar = messagebox.askyesno(
+                "Confirmar restauración",
+                "¿Restaurar este usuario?"
+            )
+            if not confirmar:
+                return
+
+            try:
+                conn = get_db()
+                sp_restaurar_usuario(conn, user_id)
+                conn.commit()
+                conn.close()
+
+                messagebox.showinfo("Restaurado", "Usuario restaurado correctamente")
+                win.destroy()
+                self.cargar_datos()
+
+            except Exception as e:
+                messagebox.showerror("Error", f"No se pudo restaurar:\n{e}")
+
+        tk.Button(
+            win,
+            text="♻️ Restaurar Usuario",
+            bg=COLORS['primary'],
+            fg=COLORS['white'],
+            font=("Arial", 11),
+            relief="flat",
+            padx=20,
+            pady=8,
+            command=restaurar
+        ).pack(pady=10)
