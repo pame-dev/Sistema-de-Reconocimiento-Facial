@@ -10,6 +10,10 @@ from collections import Counter
 class ReconocerFacial:
     def __init__(self, db_path='database/sistema_biometrico.db'):
         self.db_path = db_path
+        self.project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        self.artifacts_dir = os.path.join(self.project_root, 'database')
+        self.model_path = os.path.join(self.artifacts_dir, 'modelo_entrenado.yml')
+        self.names_path = os.path.join(self.artifacts_dir, 'nombres.pkl')
 
         self.recognizer = cv2.face.LBPHFaceRecognizer_create(
             radius=1,
@@ -123,9 +127,10 @@ class ReconocerFacial:
 
         print(f"🔄 Entrenando con {len(faces)} imágenes de {len(set(labels))} usuarios...")
         self.recognizer.train(faces, np.array(labels))
-        self.recognizer.save('modelo_entrenado.yml')
+        os.makedirs(self.artifacts_dir, exist_ok=True)
+        self.recognizer.save(self.model_path)
 
-        with open('nombres.pkl', 'wb') as f:
+        with open(self.names_path, 'wb') as f:
             pickle.dump(self.nombres, f)
 
         print(f"✅ Modelo entrenado con {len(set(labels))} usuarios")
