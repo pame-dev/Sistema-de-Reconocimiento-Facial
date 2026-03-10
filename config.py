@@ -20,8 +20,12 @@ COLORS = {
     'text_gray': '#7f8c8d',        # Texto gris
     'text_light': '#95a5a6',       # Texto claro
     'content_bg': '#ecf0f1',       # Fondo de contenido
-    'info': '#17A2B8'
+    'info': '#17A2B8',
+    'card_bg': '#FCFDFE',
+    'border': '#D1D9E6',
+    'accent': '#F59E0B',
 }
+
 
 # Dimensiones de ventana
 WINDOW_WIDTH = 900

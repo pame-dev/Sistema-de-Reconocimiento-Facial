@@ -1,6 +1,7 @@
 # views/historial_accesos_view.py
 import tkinter as tk
 from tkinter import ttk, messagebox
+import customtkinter as ctk
 import sys
 import os
 from datetime import datetime
@@ -14,7 +15,7 @@ class HistorialAccesosView:
 
     def __init__(self, parent):
         self.parent = parent
-        self.container = tk.Frame(parent, bg=COLORS['white'])
+        self.container = ctk.CTkFrame(parent, fg_color=COLORS['background'])
         self.container.pack(fill="both", expand=True, padx=30, pady=30)
 
         self.datos = []
@@ -23,136 +24,153 @@ class HistorialAccesosView:
         self.crear_interfaz()
 
     def crear_interfaz(self):
+        self._configurar_estilo_tabla()
+
         # === CABECERA ===
-        header_frame = tk.Frame(self.container, bg=COLORS['white'])
+        header_frame = ctk.CTkFrame(self.container, fg_color="transparent")
         header_frame.pack(fill="x", pady=(0, 20))
 
-        tk.Label(
+        ctk.CTkLabel(
             header_frame,
             text="📊 Historial de Accesos",
-            font=("Arial", 20, "bold"),
-            bg=COLORS['white'],
-            fg=COLORS['text_dark']
+            font=("Segoe UI", 26, "bold"),
+            text_color=COLORS['text_dark']
         ).pack(side="left")
 
-        tk.Button(
+        ctk.CTkButton(
             header_frame,
             text="🔄 Actualizar",
-            bg=COLORS['primary'],
-            fg=COLORS['white'],
-            font=("Arial", 10),
-            relief="flat",
-            padx=15,
-            pady=5,
+            fg_color=COLORS['primary'],
+            hover_color=COLORS['primary_dark'],
+            text_color=COLORS['white'],
+            font=("Segoe UI", 12, "bold"),
+            corner_radius=10,
+            height=38,
             command=self.cargar_datos
         ).pack(side="right", padx=(5, 0))
 
         # Botón para limpiar historial
-        tk.Button(
+        ctk.CTkButton(
             header_frame,
             text="🗑️ Limpiar Todo",
-            bg=COLORS['danger'],
-            fg=COLORS['white'],
-            font=("Arial", 10),
-            relief="flat",
-            padx=15,
-            pady=5,
+            fg_color=COLORS['danger'],
+            hover_color=COLORS['danger_dark'],
+            text_color=COLORS['white'],
+            font=("Segoe UI", 12, "bold"),
+            corner_radius=10,
+            height=38,
             command=self.limpiar_historial
         ).pack(side="right")
 
         # === FILTROS ===
-        filtros_frame = tk.Frame(self.container, bg=COLORS['white'])
+        filtros_frame = ctk.CTkFrame(
+            self.container,
+            fg_color=COLORS['card_bg'],
+            corner_radius=14,
+            border_width=1,
+            border_color=COLORS['border']
+        )
         filtros_frame.pack(fill="x", pady=(0, 15))
+        filtros_frame.grid_columnconfigure((0, 1, 2, 3), weight=0)
 
-        tk.Label(
+        ctk.CTkLabel(
             filtros_frame,
             text="Buscar:",
-            bg=COLORS['white'],
-            fg=COLORS['text_dark'],
-            font=("Arial", 11)
-        ).pack(side="left", padx=(0, 5))
+            text_color=COLORS['text_dark'],
+            font=("Segoe UI", 12, "bold")
+        ).pack(side="left", padx=(14, 5), pady=12)
 
         self.busqueda_var = tk.StringVar()
-        self.entrada_busqueda = tk.Entry(
+        self.entrada_busqueda = ctk.CTkEntry(
             filtros_frame,
             textvariable=self.busqueda_var,
-            font=("Arial", 11),
-            width=30,
-            relief="solid",
-            borderwidth=1,
-            fg=COLORS['text_gray']
+            font=("Segoe UI", 12),
+            width=260,
+            height=36,
+            corner_radius=10,
+            fg_color=COLORS['white'],
+            border_color=COLORS['border'],
+            text_color=COLORS['text_gray']
         )
-        self.entrada_busqueda.pack(side="left", padx=(0, 15))
+        self.entrada_busqueda.pack(side="left", padx=(0, 15), pady=10)
         self.entrada_busqueda.insert(0, "Nombre de usuario...")
         self.entrada_busqueda.bind("<FocusIn>", self.limpiar_placeholder)
         self.entrada_busqueda.bind("<FocusOut>", self.restaurar_placeholder)
         self.entrada_busqueda.bind("<KeyRelease>", lambda e: self.filtrar_tabla())
 
-        tk.Label(
+        ctk.CTkLabel(
             filtros_frame,
             text="Estado:",
-            bg=COLORS['white'],
-            fg=COLORS['text_dark'],
-            font=("Arial", 11)
-        ).pack(side="left", padx=(0, 5))
+            text_color=COLORS['text_dark'],
+            font=("Segoe UI", 12, "bold")
+        ).pack(side="left", padx=(0, 5), pady=12)
 
         self.filtro_estado = ttk.Combobox(
             filtros_frame,
             values=["Todos", "aceptado", "denegado"],
             state="readonly",
             width=15,
-            font=("Arial", 11)
+            font=("Segoe UI", 11)
         )
         self.filtro_estado.set("Todos")
-        self.filtro_estado.pack(side="left")
+        self.filtro_estado.pack(side="left", pady=10)
         self.filtro_estado.bind('<<ComboboxSelected>>', lambda e: self.filtrar_tabla())
 
         # === ESTADÍSTICAS ===
-        stats_frame = tk.Frame(self.container, bg=COLORS['content_bg'], relief="solid", borderwidth=1)
+        stats_frame = ctk.CTkFrame(
+            self.container,
+            fg_color=COLORS['card_bg'],
+            corner_radius=14,
+            border_width=1,
+            border_color=COLORS['border']
+        )
         stats_frame.pack(fill="x", pady=(0, 15))
 
-        inner_stats = tk.Frame(stats_frame, bg=COLORS['content_bg'])
+        inner_stats = ctk.CTkFrame(stats_frame, fg_color="transparent")
         inner_stats.pack(fill="x", padx=15, pady=10)
 
         # Total de accesos
-        self.lbl_total = tk.Label(
+        self.lbl_total = ctk.CTkLabel(
             inner_stats,
             text="Total: 0",
-            font=("Arial", 11, "bold"),
-            bg=COLORS['content_bg'],
-            fg=COLORS['text_dark']
+            font=("Segoe UI", 12, "bold"),
+            text_color=COLORS['text_dark']
         )
         self.lbl_total.pack(side="left", padx=10)
 
         # Accesos aceptados
-        self.lbl_aceptados = tk.Label(
+        self.lbl_aceptados = ctk.CTkLabel(
             inner_stats,
             text="✅ Aceptados: 0",
-            font=("Arial", 11),
-            bg=COLORS['content_bg'],
-            fg=COLORS['primary']
+            font=("Segoe UI", 12),
+            text_color=COLORS['primary']
         )
         self.lbl_aceptados.pack(side="left", padx=10)
 
         # Accesos denegados
-        self.lbl_denegados = tk.Label(
+        self.lbl_denegados = ctk.CTkLabel(
             inner_stats,
             text="❌ Denegados: 0",
-            font=("Arial", 11),
-            bg=COLORS['content_bg'],
-            fg=COLORS['danger']
+            font=("Segoe UI", 12),
+            text_color=COLORS['danger']
         )
         self.lbl_denegados.pack(side="left", padx=10)
 
         # === TABLA ===
-        tabla_frame = tk.Frame(self.container, bg=COLORS['white'])
+        tabla_frame = ctk.CTkFrame(
+            self.container,
+            fg_color=COLORS['card_bg'],
+            corner_radius=14,
+            border_width=1,
+            border_color=COLORS['border']
+        )
         tabla_frame.pack(fill="both", expand=True)
 
         # Scrollbars
-        scroll_y = tk.Scrollbar(tabla_frame, orient="vertical")
+        scroll_y = ctk.CTkScrollbar(tabla_frame, orientation="vertical")
         scroll_y.pack(side="right", fill="y")
 
-        scroll_x = tk.Scrollbar(tabla_frame, orient="horizontal")
+        scroll_x = ctk.CTkScrollbar(tabla_frame, orientation="horizontal")
         scroll_x.pack(side="bottom", fill="x")
 
         # Treeview
@@ -189,16 +207,37 @@ class HistorialAccesosView:
         self.tree.tag_configure('aceptado', background='#d4edda')
         self.tree.tag_configure('denegado', background='#f8d7da')
 
+    def _configurar_estilo_tabla(self):
+        style = ttk.Style()
+        style.theme_use('default')
+        style.configure(
+            'Treeview',
+            background=COLORS['white'],
+            fieldbackground=COLORS['white'],
+            foreground=COLORS['text_dark'],
+            rowheight=30,
+            borderwidth=0,
+            font=("Segoe UI", 10)
+        )
+        style.configure(
+            'Treeview.Heading',
+            background=COLORS['content_bg'],
+            foreground=COLORS['text_dark'],
+            font=("Segoe UI", 10, "bold"),
+            relief='flat'
+        )
+        style.map('Treeview.Heading', background=[('active', COLORS['content_bg'])])
+
     def limpiar_placeholder(self, event):
         if self._placeholder_activo:
             self.entrada_busqueda.delete(0, tk.END)
-            self.entrada_busqueda.config(fg=COLORS['text_dark'])
+            self.entrada_busqueda.configure(text_color=COLORS['text_dark'])
             self._placeholder_activo = False
 
     def restaurar_placeholder(self, event):
         if not self.entrada_busqueda.get():
             self.entrada_busqueda.insert(0, "Nombre de usuario...")
-            self.entrada_busqueda.config(fg=COLORS['text_gray'])
+            self.entrada_busqueda.configure(text_color=COLORS['text_gray'])
             self._placeholder_activo = True
 
     def cargar_datos(self):

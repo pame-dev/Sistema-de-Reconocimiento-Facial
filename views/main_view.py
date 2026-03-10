@@ -1,5 +1,6 @@
 # Vista Principal con Menú Lateral
 import tkinter as tk
+import customtkinter as ctk
 import os
 import sys
 import subprocess
@@ -15,14 +16,16 @@ class MainView:
 
     def __init__(self, parent, app):
         self.app = app
-        self.menu_expanded = False
+        self.menu_visible = True
+        self.nav_buttons = []
+        self.home_logo_image = None
 
-        self.main_frame = tk.Frame(parent, bg=COLORS['background'])
+        self.main_frame = ctk.CTkFrame(parent, fg_color=COLORS['background'])
         self.main_frame.pack(fill="both", expand=True)
 
         self.create_header()
 
-        self.body_frame = tk.Frame(self.main_frame, bg=COLORS['background'])
+        self.body_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
         self.body_frame.pack(fill="both", expand=True)
 
         self.create_sidebar()
@@ -30,46 +33,50 @@ class MainView:
         self.show_home()
 
     def create_header(self):
-        header = tk.Frame(self.main_frame, bg=COLORS['header'], height=HEADER_HEIGHT)
+        header = ctk.CTkFrame(self.main_frame, fg_color=COLORS['header'], corner_radius=0, height=HEADER_HEIGHT)
         header.pack(fill="x", side="top")
         header.pack_propagate(False)
 
-        tk.Button(
+        ctk.CTkButton(
             header,
             text="☰",
-            font=("Arial", 20),
-            bg=COLORS['header'],
-            fg="white",
-            activebackground=COLORS['header_hover'],
-            activeforeground="white",
-            relief="flat",
-            cursor="hand2",
-            width=3,
+            font=("Segoe UI", 24, "bold"),
+            fg_color="transparent",
+            hover_color=COLORS['header_hover'],
+            text_color=COLORS['white'],
+            width=50,
+            height=44,
             command=self.toggle_menu
         ).pack(side="left", padx=10)
 
-        tk.Label(
+        ctk.CTkLabel(
             header,
             text="Sentinel System - Panel Principal",
-            font=("Arial", 16, "bold"),
-            bg=COLORS['header'],
-            fg="white"
+            font=("Segoe UI", 20, "bold"),
+            text_color=COLORS['white']
         ).pack(side="left", padx=20)
 
     def create_sidebar(self):
-        self.sidebar = tk.Frame(self.body_frame, bg=COLORS['sidebar'], width=SIDEBAR_WIDTH)
+        self.sidebar = ctk.CTkFrame(
+            self.body_frame,
+            fg_color=COLORS['sidebar'],
+            width=SIDEBAR_WIDTH,
+            corner_radius=0,
+            border_width=0
+        )
+        self.sidebar.pack(fill="y", side="left")
         self.sidebar.pack_propagate(False)
 
-        tk.Label(
+        ctk.CTkLabel(
             self.sidebar,
             text="Menú",
-            font=("Arial", 14, "bold"),
-            bg=COLORS['sidebar'],
-            fg="white",
-            pady=20
+            font=("Segoe UI", 18, "bold"),
+            text_color=COLORS['white']
         ).pack(fill="x")
+        ctk.CTkLabel(self.sidebar, text="", height=12).pack()
 
-        tk.Frame(self.sidebar, bg=COLORS['header'], height=2).pack(fill="x")
+        ctk.CTkFrame(self.sidebar, fg_color=COLORS['header_hover'], height=1, corner_radius=0).pack(fill="x", padx=16)
+        ctk.CTkLabel(self.sidebar, text="", height=8).pack()
 
         self.create_menu_button("🏠 Inicio",                 self.show_home)
         self.create_menu_button("➕ Nuevo Registro",        self.show_nuevo_registro)
@@ -77,54 +84,49 @@ class MainView:
         self.create_menu_button("📊 Historial de Accesos",  self.show_historial_accesos)
         self.create_menu_button("🔐 Pantalla de Accesos",   self.show_pantalla_accesos)
 
-        tk.Frame(self.sidebar, bg=COLORS['header'], height=2).pack(fill="x", pady=10)
+        ctk.CTkFrame(self.sidebar, fg_color=COLORS['header_hover'], height=1, corner_radius=0).pack(fill="x", padx=16, pady=14)
 
-        tk.Button(
+        ctk.CTkButton(
             self.sidebar,
             text="Cerrar Sesión",
-            font=("Arial", 11),
-            bg=COLORS['danger'],
-            fg="white",
-            activebackground=COLORS['danger_dark'],
-            activeforeground="white",
-            relief="flat",
-            cursor="hand2",
+            font=("Segoe UI", 12, "bold"),
+            fg_color=COLORS['danger'],
+            hover_color=COLORS['danger_dark'],
+            text_color=COLORS['white'],
+            corner_radius=10,
+            height=42,
             command=self.logout
         ).pack(side="bottom", fill="x", padx=10, pady=10)
 
     def create_menu_button(self, text, command):
-        btn = tk.Button(
+        btn = ctk.CTkButton(
             self.sidebar,
             text=text,
-            font=("Arial", 12),
-            bg=COLORS['sidebar'],
-            fg="white",
-            activebackground=COLORS['sidebar_hover'],
-            activeforeground="white",
-            relief="flat",
-            cursor="hand2",
             anchor="w",
-            padx=20,
-            pady=15,
+            font=("Segoe UI", 14),
+            fg_color="transparent",
+            hover_color=COLORS['sidebar_hover'],
+            text_color=COLORS['white'],
+            height=44,
+            corner_radius=10,
             command=command
         )
-        btn.pack(fill="x")
-        btn.bind("<Enter>", lambda e: btn.config(bg=COLORS['sidebar_hover']))
-        btn.bind("<Leave>", lambda e: btn.config(bg=COLORS['sidebar']))
+        btn.pack(fill="x", padx=10, pady=2)
+        self.nav_buttons.append(btn)
 
     def create_content_area(self):
-        self.content_frame = tk.Frame(self.body_frame, bg=COLORS['background'])
+        self.content_frame = ctk.CTkFrame(self.body_frame, fg_color=COLORS['background'])
         self.content_frame.pack(fill="both", expand=True, side="left")
 
     def toggle_menu(self):
-        if self.menu_expanded:
+        if self.menu_visible:
             self.sidebar.pack_forget()
-            self.menu_expanded = False
+            self.menu_visible = False
         else:
             self.content_frame.pack_forget()
             self.sidebar.pack(fill="y", side="left")
             self.content_frame.pack(fill="both", expand=True, side="left")
-            self.menu_expanded = True
+            self.menu_visible = True
 
     def clear_content(self):
         for widget in self.content_frame.winfo_children():
@@ -186,76 +188,82 @@ class MainView:
                 "reconocimiento.py"
             )
             script_path = os.path.abspath(script_path)
-            
+
             # Directorio raíz del proyecto
             project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-            
+
             # Verificar que el archivo existe
             if not os.path.exists(script_path):
                 raise FileNotFoundError(f"No se encontró el archivo: {script_path}")
-            
+
             # Ejecutar el script usando el mismo intérprete de Python y desde el directorio raíz
             subprocess.Popen(
                 [sys.executable, script_path],
                 cwd=project_root,
                 creationflags=subprocess.CREATE_NEW_CONSOLE if os.name == 'nt' else 0
             )
-            
+
             # Mostrar confirmación en el contenido
             self.clear_content()
-            frame = tk.Frame(self.content_frame, bg=COLORS['white'])
-            frame.place(relx=0.5, rely=0.5, anchor="center", width=400, height=200)
+            frame = ctk.CTkFrame(
+                self.content_frame,
+                fg_color=COLORS['card_bg'],
+                corner_radius=16,
+                border_width=1,
+                border_color=COLORS['border']
+            )
+            frame.place(relx=0.5, rely=0.5, anchor="center", width=480, height=260)
 
-            tk.Label(
+            ctk.CTkLabel(
                 frame,
                 text="📹",
-                font=("Arial", 48),
-                bg=COLORS['white']
+                font=("Segoe UI Emoji", 48)
             ).pack(pady=(20, 5))
 
-            tk.Label(
+            ctk.CTkLabel(
                 frame,
                 text="Sistema de Reconocimiento",
-                font=("Arial", 18, "bold"),
-                bg=COLORS['white'],
-                fg=COLORS['text_dark']
+                font=("Segoe UI", 22, "bold"),
+                text_color=COLORS['text_dark']
             ).pack()
 
-            tk.Label(
+            ctk.CTkLabel(
                 frame,
                 text="Se ha iniciado la cámara de reconocimiento facial",
-                font=("Arial", 11),
-                bg=COLORS['white'],
-                fg=COLORS['text_gray'],
+                font=("Segoe UI", 13),
+                text_color=COLORS['text_gray'],
                 wraplength=350
             ).pack(pady=5)
-            
+
         except Exception as e:
             self.clear_content()
-            frame = tk.Frame(self.content_frame, bg=COLORS['white'])
-            frame.place(relx=0.5, rely=0.5, anchor="center", width=400, height=200)
+            frame = ctk.CTkFrame(
+                self.content_frame,
+                fg_color=COLORS['card_bg'],
+                corner_radius=16,
+                border_width=1,
+                border_color=COLORS['border']
+            )
+            frame.place(relx=0.5, rely=0.5, anchor="center", width=520, height=280)
 
-            tk.Label(
+            ctk.CTkLabel(
                 frame,
                 text="⚠️",
-                font=("Arial", 48),
-                bg=COLORS['white']
+                font=("Segoe UI Emoji", 48)
             ).pack(pady=(20, 5))
 
-            tk.Label(
+            ctk.CTkLabel(
                 frame,
                 text="Error al iniciar",
-                font=("Arial", 18, "bold"),
-                bg=COLORS['white'],
-                fg=COLORS['danger']
+                font=("Segoe UI", 22, "bold"),
+                text_color=COLORS['danger']
             ).pack()
 
-            tk.Label(
+            ctk.CTkLabel(
                 frame,
                 text=str(e),
-                font=("Arial", 10),
-                bg=COLORS['white'],
-                fg=COLORS['text_gray'],
+                font=("Segoe UI", 12),
+                text_color=COLORS['text_gray'],
                 wraplength=350
             ).pack(pady=5)
 
