@@ -183,8 +183,8 @@ class HistorialAccesosView:
             height=15
         )
 
-        scroll_y.config(command=self.tree.yview)
-        scroll_x.config(command=self.tree.xview)
+        scroll_y.configure(command=self.tree.yview)
+        scroll_x.configure(command=self.tree.xview)
 
         # Configurar columnas
         self.tree.heading("id", text="ID")
@@ -270,9 +270,9 @@ class HistorialAccesosView:
             aceptados = sum(1 for d in self.datos if d[3] == 'aceptado')
             denegados = sum(1 for d in self.datos if d[3] == 'denegado')
 
-            self.lbl_total.config(text=f"Total: {total}")
-            self.lbl_aceptados.config(text=f"✅ Aceptados: {aceptados}")
-            self.lbl_denegados.config(text=f"❌ Denegados: {denegados}")
+            self.lbl_total.configure(text=f"Total: {total}")
+            self.lbl_aceptados.configure(text=f"✅ Aceptados: {aceptados}")
+            self.lbl_denegados.configure(text=f"❌ Denegados: {denegados}")
 
             self.filtrar_tabla()
 
