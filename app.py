@@ -1,4 +1,5 @@
 import tkinter as tk #libreria grafica para crear interfaces de usuario
+import customtkinter as ctk
 import os #libreria para interactuar con el sistema operativo, como manejar archivos y rutas
 from config import WINDOW_WIDTH, WINDOW_HEIGHT, ASSETS_PATH, ICON_FILE # importamos configuraciones generales del sistema
 from views.login_view import LoginView 
@@ -14,11 +15,12 @@ class SentinelApp:
         self.root.title("Sentinel System")
         self.root.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
         self.root.resizable(True, True)
+        self.root.configure(fg_color="#F4F7FB")
         
         self.center_window()
         
         # Contenedor principal donde se cargan las vistas
-        self.main_container = tk.Frame(self.root)
+        self.main_container = ctk.CTkFrame(self.root, fg_color="transparent")
         self.main_container.pack(fill="both", expand=True)
         
         self.show_login_view()
@@ -26,10 +28,15 @@ class SentinelApp:
     def center_window(self):
         """Centra la ventana en el centro de la pantalla"""
         self.root.update_idletasks()
-        width = self.root.winfo_width()
-        height = self.root.winfo_height()
-        x = (self.root.winfo_screenwidth() // 2) - (width // 2)
-        y = (self.root.winfo_screenheight() // 2) - (height // 2)
+        screen_w = self.root.winfo_screenwidth()
+        screen_h = self.root.winfo_screenheight()
+
+        # Evita abrir más grande que la pantalla útil.
+        width = min(WINDOW_WIDTH, max(720, screen_w - 80))
+        height = min(WINDOW_HEIGHT, max(520, screen_h - 120))
+
+        x = max((screen_w // 2) - (width // 2), 0)
+        y = max((screen_h // 2) - (height // 2), 0)
         self.root.geometry(f'{width}x{height}+{x}+{y}')
     
     def clear_container(self):
@@ -49,7 +56,9 @@ class SentinelApp:
 
 
 def main():
-    root = tk.Tk()
+    ctk.set_appearance_mode("light")
+    ctk.set_default_color_theme("blue")
+    root = ctk.CTk()
     
     # Configurar icono de la aplicación
     try:
