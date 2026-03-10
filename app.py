@@ -1,12 +1,12 @@
 import tkinter as tk #libreria grafica para crear interfaces de usuario
 import customtkinter as ctk
 import os #libreria para interactuar con el sistema operativo, como manejar archivos y rutas
+import ctypes
+from PIL import Image
 from config import WINDOW_WIDTH, WINDOW_HEIGHT, ASSETS_PATH, ICON_FILE # importamos configuraciones generales del sistema
 from views.login_view import LoginView 
 from views.main_view import MainView 
 
-#67 prueba de cambio 
-# prueba nannncy 
 class SentinelApp:
     """Clase principal que maneja la aplicación y navegación entre vistas"""
     
@@ -62,9 +62,21 @@ def main():
     
     # Configurar icono de la aplicación
     try:
-        icon_path = os.path.join(ASSETS_PATH, ICON_FILE)
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        icon_path = os.path.join(base_dir, ASSETS_PATH, ICON_FILE)
         if os.path.exists(icon_path):
-            root.iconphoto(True, tk.PhotoImage(file=icon_path))
+            root._icon_image = tk.PhotoImage(file=icon_path)
+            root.iconphoto(True, root._icon_image)
+
+            # En Windows, la barra de tareas usa .ico; convertir si no existe.
+            if os.name == 'nt':
+                ico_path = os.path.splitext(icon_path)[0] + '.ico'
+                if not os.path.exists(ico_path):
+                    icon_img = Image.open(icon_path)
+                    icon_img.save(ico_path, format='ICO', sizes=[(16, 16), (32, 32), (48, 48), (64, 64), (256, 256)])
+
+                ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("sentinel.system.app")
+                root.iconbitmap(ico_path)
     except:
         pass
     
