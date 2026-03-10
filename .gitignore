@@ -29,6 +29,7 @@ nombres.pkl
 *.bmp
 fotos_temp/
 capturas/
+debug_fotos/
 
 # ── Variables de entorno ──────────────────────────────────────────────────────
 .env

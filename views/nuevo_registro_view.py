@@ -1,6 +1,7 @@
 # views/nuevo_registro_view.py
 import tkinter as tk
 from tkinter import messagebox, ttk
+import customtkinter as ctk
 import cv2
 from PIL import Image, ImageTk
 import os
@@ -99,7 +100,7 @@ TOTAL_FOTOS = sum(p["fotos"] for p in POSTURAS)   # 480
 class NuevoRegistroView:
     def __init__(self, parent):
         self.parent   = parent
-        self.container = tk.Frame(parent, bg=COLORS['white'])
+        self.container = ctk.CTkFrame(parent, fg_color=COLORS['background'])
         self.container.pack(fill="both", expand=True, padx=30, pady=30)
 
         self.camara        = None
@@ -124,22 +125,28 @@ class NuevoRegistroView:
         self._limpiar_container()
 
         # Frame centrador que ocupa toda la pantalla
-        centro = tk.Frame(self.container, bg=COLORS['white'])
+        centro = ctk.CTkFrame(self.container, fg_color="transparent")
         centro.pack(fill="both", expand=True)
 
         # Centrar contenido vertical y horizontalmente
-        inner = tk.Frame(centro, bg=COLORS['white'])
+        inner = ctk.CTkFrame(centro, fg_color="transparent")
         inner.place(relx=0.5, rely=0.5, anchor="center")
 
-        tk.Label(inner, text="📝 Nuevo Registro de Usuario",
-                 font=("Arial", 24, "bold"), bg=COLORS['white'],
-                 fg=COLORS['text_dark']).pack(pady=(0, 8))
+        ctk.CTkLabel(
+            inner,
+            text="📝 Nuevo Registro de Usuario",
+            font=("Segoe UI", 30, "bold"),
+            text_color=COLORS['text_dark']
+        ).pack(pady=(0, 8))
 
-        tk.Label(inner, text="Selecciona el tipo de usuario que deseas registrar",
-                 font=("Arial", 13), bg=COLORS['white'],
-                 fg=COLORS['text_gray']).pack(pady=(0, 35))
+        ctk.CTkLabel(
+            inner,
+            text="Selecciona el tipo de usuario que deseas registrar",
+            font=("Segoe UI", 14),
+            text_color=COLORS['text_gray']
+        ).pack(pady=(0, 35))
 
-        grid = tk.Frame(inner, bg=COLORS['white'])
+        grid = ctk.CTkFrame(inner, fg_color="transparent")
         grid.pack()
 
         for idx, (rol_key, cfg) in enumerate(ROL_CONFIG.items()):
@@ -147,24 +154,29 @@ class NuevoRegistroView:
 
     def _crear_tarjeta(self, parent, rol_key, cfg, row, col):
         color = cfg["color"]
-        outer = tk.Frame(parent, bg=color)
+        outer = ctk.CTkFrame(parent, fg_color=color, corner_radius=16)
         outer.grid(row=row, column=col, padx=30, pady=18)
-        card  = tk.Frame(outer, bg=COLORS['white'], cursor="hand2")
+        card  = ctk.CTkFrame(outer, fg_color=COLORS['card_bg'], corner_radius=14)
         card.pack(padx=3, pady=3)
 
-        tk.Label(card, text=cfg["icono"], font=("Arial", 72), bg=COLORS['white']).pack(padx=90, pady=(40, 8))
-        tk.Label(card, text=cfg["titulo"], font=("Arial", 20, "bold"), bg=COLORS['white'], fg=color).pack()
-        tk.Label(card, text=cfg["desc"],   font=("Arial", 12),         bg=COLORS['white'], fg=COLORS['text_gray']).pack(pady=(6, 24))
+        ctk.CTkLabel(card, text=cfg["icono"], font=("Segoe UI Emoji", 72)).pack(padx=90, pady=(40, 8))
+        ctk.CTkLabel(card, text=cfg["titulo"], font=("Segoe UI", 20, "bold"), text_color=color).pack()
+        ctk.CTkLabel(card, text=cfg["desc"], font=("Segoe UI", 12), text_color=COLORS['text_gray']).pack(pady=(6, 24))
 
-        tk.Button(card, text="Seleccionar", bg=color, fg=COLORS['white'],
-                  font=("Arial", 12, "bold"), relief="flat", padx=36, pady=12,
-                  cursor="hand2", command=lambda r=rol_key: self._seleccionar_rol(r)
-                  ).pack(pady=(0, 36))
+        ctk.CTkButton(
+            card,
+            text="Seleccionar",
+            fg_color=color,
+            hover_color=self._darken(color),
+            text_color=COLORS['white'],
+            font=("Segoe UI", 12, "bold"),
+            corner_radius=10,
+            height=40,
+            command=lambda r=rol_key: self._seleccionar_rol(r)
+        ).pack(pady=(0, 36))
 
         for w in (outer, card):
             w.bind("<Button-1>", lambda e, r=rol_key: self._seleccionar_rol(r))
-            w.bind("<Enter>",    lambda e, o=outer, c=color: o.config(bg=self._darken(c)))
-            w.bind("<Leave>",    lambda e, o=outer, c=color: o.config(bg=c))
 
 
     @staticmethod
@@ -189,64 +201,117 @@ class NuevoRegistroView:
         color = cfg["color"]
 
         # Cabecera
-        header = tk.Frame(self.container, bg=COLORS['white'])
+        header = ctk.CTkFrame(self.container, fg_color="transparent")
         header.pack(fill="x", pady=(0, 12))
 
-        tk.Button(header, text="← Cambiar rol", bg=COLORS['white'], fg=color,
-                  font=("Arial", 10, "bold"), relief="flat", cursor="hand2",
-                  command=self._mostrar_seleccion_rol).pack(side="left")
+        ctk.CTkButton(
+            header,
+            text="← Cambiar rol",
+            fg_color="transparent",
+            hover_color=COLORS['content_bg'],
+            text_color=color,
+            font=("Segoe UI", 11, "bold"),
+            command=self._mostrar_seleccion_rol
+        ).pack(side="left")
 
-        badge = tk.Frame(header, bg=color)
+        badge = ctk.CTkFrame(header, fg_color=color, corner_radius=10)
         badge.pack(side="left", padx=12)
-        tk.Label(badge, text=f"  {cfg['icono']}  {cfg['titulo']}  ",
-                 font=("Arial", 11, "bold"), bg=color, fg=COLORS['white'], pady=4).pack()
+        ctk.CTkLabel(
+            badge,
+            text=f"  {cfg['icono']}  {cfg['titulo']}  ",
+            font=("Segoe UI", 11, "bold"),
+            text_color=COLORS['white']
+        ).pack(padx=6, pady=4)
 
-        tk.Label(header, text="Paso 1 de 2 — Datos personales",
-                 font=("Arial", 11), bg=COLORS['white'], fg=COLORS['text_gray']
-                 ).pack(side="left", padx=10)
+        ctk.CTkLabel(
+            header,
+            text="Paso 1 de 2 — Datos personales",
+            font=("Segoe UI", 12),
+            text_color=COLORS['text_gray']
+        ).pack(side="left", padx=10)
 
         ttk.Separator(self.container, orient="horizontal").pack(fill="x", pady=(0, 15))
 
-        # Formulario centrado
-        form_outer = tk.Frame(self.container, bg=COLORS['white'])
+        # Formulario con scroll para evitar que se oculten campos
+        form_outer = ctk.CTkFrame(self.container, fg_color="transparent")
         form_outer.pack(fill="both", expand=True)
 
-        form_frame = tk.Frame(form_outer, bg=COLORS['white'], width=460)
-        form_frame.pack(anchor="center", pady=10)
+        scroll = ctk.CTkScrollableFrame(form_outer, fg_color="transparent")
+        scroll.pack(fill="both", expand=True)
+
+        form_frame = ctk.CTkFrame(
+            scroll,
+            fg_color=COLORS['card_bg'],
+            corner_radius=14,
+            border_width=1,
+            border_color=COLORS['border'],
+            width=920
+        )
+        form_frame.pack(fill="x", expand=True, padx=24, pady=10)
 
         self._section_label(form_frame, "Datos personales", color)
-        for label_text, key, required in CAMPOS_COMUNES:
-            self._add_entry(form_frame, label_text, key, required)
+        self._add_fields_grid(form_frame, CAMPOS_COMUNES, columns=2)
 
         campos_rol = CAMPOS_POR_ROL.get(self.rol_actual, [])
         if campos_rol:
             titulos = {"alumno": "Información académica", "maestro": "Información docente",
                        "personal": "Información laboral"}
             self._section_label(form_frame, titulos.get(self.rol_actual, "Datos adicionales"), color)
-            for label_text, key, required in campos_rol:
-                self._add_entry(form_frame, label_text, key, required)
+            self._add_fields_grid(form_frame, campos_rol, columns=2)
 
         # Botón continuar
-        tk.Button(self.container, text="Continuar → Captura de fotos",
-                  bg=color, fg=COLORS['white'],
-                  font=("Arial", 12, "bold"), relief="flat", padx=30, pady=10,
-                  command=self._validar_y_continuar).pack(pady=20)
+        ctk.CTkButton(
+            self.container,
+            text="Continuar → Captura de fotos",
+            fg_color=color,
+            hover_color=self._darken(color),
+            text_color=COLORS['white'],
+            font=("Segoe UI", 13, "bold"),
+            corner_radius=10,
+            height=42,
+            command=self._validar_y_continuar
+        ).pack(pady=20)
 
     def _section_label(self, parent, text, color):
-        frame = tk.Frame(parent, bg=COLORS['white'])
-        frame.pack(fill="x", pady=(14, 4))
-        tk.Label(frame, text=text, bg=COLORS['white'], fg=color,
-                 font=("Arial", 11, "bold")).pack(anchor="w")
+        frame = ctk.CTkFrame(parent, fg_color="transparent")
+        frame.pack(fill="x", pady=(14, 6), padx=12)
+        ctk.CTkLabel(
+            frame,
+            text=text,
+            text_color=color,
+            font=("Segoe UI", 12, "bold")
+        ).pack(anchor="w")
         ttk.Separator(frame, orient="horizontal").pack(fill="x", pady=(3, 0))
 
-    def _add_entry(self, parent, label_text, key, required):
-        frame = tk.Frame(parent, bg=COLORS['white'])
-        frame.pack(fill="x", pady=4)
-        tk.Label(frame, text=label_text + (" *" if required else ""),
-                 bg=COLORS['white'], fg=COLORS['text_dark'],
-                 font=("Arial", 11), width=18, anchor="w").pack(side="left")
-        entry = tk.Entry(frame, font=("Arial", 11), relief="solid", borderwidth=1)
-        entry.pack(side="left", fill="x", expand=True, padx=(5, 0))
+    def _add_fields_grid(self, parent, fields, columns=2):
+        grid = ctk.CTkFrame(parent, fg_color="transparent")
+        grid.pack(fill="x", padx=12, pady=(0, 6))
+        for col in range(columns):
+            grid.grid_columnconfigure(col, weight=1, uniform="form_col")
+
+        for idx, (label_text, key, required) in enumerate(fields):
+            row = idx // columns
+            col = idx % columns
+            self._add_entry(grid, label_text, key, required, row, col)
+
+    def _add_entry(self, parent, label_text, key, required, row, col):
+        frame = ctk.CTkFrame(parent, fg_color="transparent")
+        frame.grid(row=row, column=col, sticky="ew", padx=8, pady=6)
+        ctk.CTkLabel(
+            frame,
+            text=label_text + (" *" if required else ""),
+            text_color=COLORS['text_dark'],
+            font=("Segoe UI", 11),
+            anchor="w"
+        ).pack(anchor="w", pady=(0, 4))
+        entry = ctk.CTkEntry(
+            frame,
+            font=("Segoe UI", 11),
+            height=34,
+            corner_radius=8,
+            border_color=COLORS['border']
+        )
+        entry.pack(fill="x", expand=True)
         self.entries[key] = entry
 
     def _validar_y_continuar(self):
@@ -290,83 +355,142 @@ class NuevoRegistroView:
         color = cfg["color"]
 
         # ── Cabecera ──
-        header = tk.Frame(self.container, bg=COLORS['white'])
+        header = ctk.CTkFrame(self.container, fg_color="transparent")
         header.pack(fill="x", pady=(0, 10))
 
-        tk.Button(header, text="← Volver al formulario", bg=COLORS['white'], fg=color,
-                  font=("Arial", 10, "bold"), relief="flat", cursor="hand2",
-                  command=self._volver_formulario).pack(side="left")
+        ctk.CTkButton(
+            header,
+            text="← Volver al formulario",
+            fg_color="transparent",
+            hover_color=COLORS['content_bg'],
+            text_color=color,
+            font=("Segoe UI", 11, "bold"),
+            command=self._volver_formulario
+        ).pack(side="left")
 
-        tk.Label(header, text="Paso 2 de 2 — Captura biométrica",
-                 font=("Arial", 11), bg=COLORS['white'], fg=COLORS['text_gray']
-                 ).pack(side="left", padx=15)
+        ctk.CTkLabel(
+            header,
+            text="Paso 2 de 2 — Captura biométrica",
+            font=("Segoe UI", 12),
+            text_color=COLORS['text_gray']
+        ).pack(side="left", padx=15)
 
         ttk.Separator(self.container, orient="horizontal").pack(fill="x", pady=(0, 10))
 
         # ── Progreso general ──
-        prog_frame = tk.Frame(self.container, bg=COLORS['white'])
+        prog_frame = ctk.CTkFrame(self.container, fg_color="transparent")
         prog_frame.pack(fill="x", pady=(0, 10))
 
-        self.lbl_total = tk.Label(prog_frame, text=f"Total: 0 / {TOTAL_FOTOS}",
-                                  font=("Arial", 10, "bold"), bg=COLORS['white'], fg=color)
+        self.lbl_total = ctk.CTkLabel(
+            prog_frame,
+            text=f"Total: 0 / {TOTAL_FOTOS}",
+            font=("Segoe UI", 11, "bold"),
+            text_color=color
+        )
         self.lbl_total.pack(side="left", padx=(0, 10))
 
         self.bar_total = ttk.Progressbar(prog_frame, length=300, maximum=TOTAL_FOTOS)
         self.bar_total.pack(side="left")
 
         # ── Cuerpo: guía | cámara ──
-        body = tk.Frame(self.container, bg=COLORS['white'])
+        body = ctk.CTkFrame(self.container, fg_color="transparent")
         body.pack(fill="both", expand=True)
 
         # Panel izquierdo — instrucción de postura
-        self.panel_guia = tk.Frame(body, bg=COLORS['content_bg'], width=260,
-                                   relief="solid", borderwidth=1)
+        self.panel_guia = ctk.CTkFrame(
+            body,
+            fg_color=COLORS['card_bg'],
+            width=280,
+            corner_radius=12,
+            border_width=1,
+            border_color=COLORS['border']
+        )
         self.panel_guia.pack(side="left", fill="y", padx=(0, 15))
         self.panel_guia.pack_propagate(False)
         self._construir_panel_guia(color)
 
         # Panel derecho — cámara
-        cam_panel = tk.Frame(body, bg=COLORS['content_bg'], relief="solid", borderwidth=1)
+        cam_panel = ctk.CTkFrame(
+            body,
+            fg_color=COLORS['card_bg'],
+            corner_radius=12,
+            border_width=1,
+            border_color=COLORS['border']
+        )
         cam_panel.pack(side="left", fill="both", expand=True)
 
         self.video_label = tk.Label(cam_panel, bg=COLORS['content_bg'])
         self.video_label.pack(expand=True, padx=10, pady=10)
 
         # Controles cámara
-        ctrl = tk.Frame(cam_panel, bg=COLORS['content_bg'])
+        ctrl = ctk.CTkFrame(cam_panel, fg_color="transparent")
         ctrl.pack(fill="x", padx=10, pady=8)
 
-        self.btn_cam = tk.Button(ctrl, text="📷 Iniciar Cámara",
-                                 bg=color, fg=COLORS['white'],
-                                 font=("Arial", 10, "bold"), relief="flat", padx=15, pady=6,
-                                 command=self._iniciar_camara)
+        self.btn_cam = ctk.CTkButton(
+            ctrl,
+            text="📷 Iniciar Cámara",
+            fg_color=color,
+            hover_color=self._darken(color),
+            text_color=COLORS['white'],
+            font=("Segoe UI", 11, "bold"),
+            corner_radius=10,
+            height=36,
+            command=self._iniciar_camara
+        )
         self.btn_cam.pack(side="left", padx=5)
 
-        self.btn_tomar = tk.Button(ctrl, text="📸 Tomar fotos de esta postura",
-                                   bg=COLORS['header'], fg=COLORS['white'],
-                                   font=("Arial", 10, "bold"), relief="flat", padx=15, pady=6,
-                                   state="disabled", command=self._iniciar_rafaga)
+        self.btn_tomar = ctk.CTkButton(
+            ctrl,
+            text="📸 Tomar fotos de esta postura",
+            fg_color=COLORS['header'],
+            hover_color=COLORS['header_hover'],
+            text_color=COLORS['white'],
+            font=("Segoe UI", 11, "bold"),
+            corner_radius=10,
+            height=36,
+            state="disabled",
+            command=self._iniciar_rafaga
+        )
         self.btn_tomar.pack(side="left", padx=5)
 
-        self.btn_repetir = tk.Button(ctrl, text="🔁 Repetir postura",
-                                     bg="#E67E22", fg=COLORS['white'],
-                                     font=("Arial", 10, "bold"), relief="flat", padx=15, pady=6,
-                                     state="disabled", command=self._repetir_postura)
+        self.btn_repetir = ctk.CTkButton(
+            ctrl,
+            text="🔁 Repetir postura",
+            fg_color=COLORS['accent'],
+            hover_color="#D97706",
+            text_color=COLORS['white'],
+            font=("Segoe UI", 11, "bold"),
+            corner_radius=10,
+            height=36,
+            state="disabled",
+            command=self._repetir_postura
+        )
         self.btn_repetir.pack(side="left", padx=5)
 
-        self.btn_detener = tk.Button(ctrl, text="⏹ Detener",
-                                     bg=COLORS['danger'], fg=COLORS['white'],
-                                     font=("Arial", 10, "bold"), relief="flat", padx=15, pady=6,
-                                     state="disabled", command=self._detener_camara)
+        self.btn_detener = ctk.CTkButton(
+            ctrl,
+            text="⏹ Detener",
+            fg_color=COLORS['danger'],
+            hover_color=COLORS['danger_dark'],
+            text_color=COLORS['white'],
+            font=("Segoe UI", 11, "bold"),
+            corner_radius=10,
+            height=36,
+            state="disabled",
+            command=self._detener_camara
+        )
         self.btn_detener.pack(side="left", padx=5)
 
         # Progreso de postura actual
-        pos_prog = tk.Frame(cam_panel, bg=COLORS['content_bg'])
+        pos_prog = ctk.CTkFrame(cam_panel, fg_color="transparent")
         pos_prog.pack(fill="x", padx=10, pady=(0, 8))
 
-        self.lbl_postura_prog = tk.Label(pos_prog, text="Fotos de esta postura: 0 / 80",
-                                         font=("Arial", 10), bg=COLORS['content_bg'],
-                                         fg=COLORS['text_dark'])
+        self.lbl_postura_prog = ctk.CTkLabel(
+            pos_prog,
+            text="Fotos de esta postura: 0 / 80",
+            font=("Segoe UI", 11),
+            text_color=COLORS['text_dark']
+        )
         self.lbl_postura_prog.pack(side="left", padx=5)
 
         self.bar_postura = ttk.Progressbar(pos_prog, length=220,
@@ -374,18 +498,27 @@ class NuevoRegistroView:
         self.bar_postura.pack(side="left", padx=5)
 
         # Estado de ráfaga
-        self.lbl_rafaga = tk.Label(cam_panel, text="",
-                                   font=("Arial", 11, "bold"),
-                                   bg=COLORS['content_bg'], fg=color)
+        self.lbl_rafaga = ctk.CTkLabel(
+            cam_panel,
+            text="",
+            font=("Segoe UI", 12, "bold"),
+            text_color=color
+        )
         self.lbl_rafaga.pack(pady=(0, 5))
 
         # Botón guardar (aparece al final)
-        self.btn_guardar = tk.Button(self.container,
-                                     text="💾 Guardar Usuario",
-                                     bg=color, fg=COLORS['white'],
-                                     font=("Arial", 12, "bold"), relief="flat",
-                                     padx=30, pady=10, state="disabled",
-                                     command=self._guardar_usuario)
+        self.btn_guardar = ctk.CTkButton(
+            self.container,
+            text="💾 Guardar Usuario",
+            fg_color=color,
+            hover_color=self._darken(color),
+            text_color=COLORS['white'],
+            font=("Segoe UI", 13, "bold"),
+            corner_radius=10,
+            height=42,
+            state="disabled",
+            command=self._guardar_usuario
+        )
         self.btn_guardar.pack(pady=15)
 
     def _construir_panel_guia(self, color):
@@ -396,9 +529,14 @@ class NuevoRegistroView:
         postura = POSTURAS[self.postura_idx]
 
         # Título postura
-        tk.Label(self.panel_guia, text=postura["titulo"],
-                 font=("Arial", 11, "bold"), bg=COLORS['content_bg'],
-                 fg=color, wraplength=230, justify="center").pack(pady=(15, 8))
+        ctk.CTkLabel(
+            self.panel_guia,
+            text=postura["titulo"],
+            font=("Segoe UI", 12, "bold"),
+            text_color=color,
+            wraplength=230,
+            justify="center"
+        ).pack(pady=(15, 8))
 
         # Imagen de ejemplo (si existe) o ícono grande
         img_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), postura["imagen"])
@@ -408,7 +546,7 @@ class NuevoRegistroView:
             try:
                 img = Image.open(img_path).resize((180, 180), Image.LANCZOS)
                 photo = ImageTk.PhotoImage(img)
-                lbl_img = tk.Label(self.panel_guia, image=photo, bg=COLORS['content_bg'])
+                lbl_img = tk.Label(self.panel_guia, image=photo, bg=COLORS['card_bg'])
                 lbl_img.image = photo   # evitar garbage collection
                 lbl_img.pack(pady=8)
                 img_loaded = True
@@ -416,13 +554,21 @@ class NuevoRegistroView:
                 pass
 
         if not img_loaded:
-            tk.Label(self.panel_guia, text=postura["icono"],
-                     font=("Arial", 64), bg=COLORS['content_bg']).pack(pady=15)
+            ctk.CTkLabel(
+                self.panel_guia,
+                text=postura["icono"],
+                font=("Segoe UI Emoji", 64)
+            ).pack(pady=15)
 
         # Instrucción
-        tk.Label(self.panel_guia, text=postura["instruccion"],
-                 font=("Arial", 11), bg=COLORS['content_bg'],
-                 fg=COLORS['text_dark'], wraplength=220, justify="center").pack(pady=8)
+        ctk.CTkLabel(
+            self.panel_guia,
+            text=postura["instruccion"],
+            font=("Segoe UI", 11),
+            text_color=COLORS['text_dark'],
+            wraplength=220,
+            justify="center"
+        ).pack(pady=8)
 
         ttk.Separator(self.panel_guia, orient="horizontal").pack(fill="x", padx=15, pady=10)
 
@@ -435,10 +581,13 @@ class NuevoRegistroView:
             else:
                 icono, fg = "⬜", COLORS['text_gray']
 
-            tk.Label(self.panel_guia,
-                     text=f"{icono} {p['titulo'].split('—')[1].strip()}",
-                     font=("Arial", 9), bg=COLORS['content_bg'],
-                     fg=fg, anchor="w").pack(fill="x", padx=15, pady=1)
+            ctk.CTkLabel(
+                self.panel_guia,
+                text=f"{icono} {p['titulo'].split('—')[1].strip()}",
+                font=("Segoe UI", 10),
+                text_color=fg,
+                anchor="w"
+            ).pack(fill="x", padx=15, pady=1)
 
     # ── Cámara ────────────────────────────────────────────────────────────────
 
@@ -449,9 +598,9 @@ class NuevoRegistroView:
                 messagebox.showerror("Error", "No se pudo abrir la cámara"); return
 
             self.capturando = True
-            self.btn_cam.config(state="disabled")
-            self.btn_tomar.config(state="normal")
-            self.btn_detener.config(state="normal")
+            self.btn_cam.configure(state="disabled")
+            self.btn_tomar.configure(state="normal")
+            self.btn_detener.configure(state="normal")
             self._actualizar_video()
         except Exception as e:
             messagebox.showerror("Error", f"Error al iniciar cámara: {e}")
@@ -484,9 +633,9 @@ class NuevoRegistroView:
         if hasattr(self, 'video_label'):
             self.video_label.config(image='')
         if hasattr(self, 'btn_cam'):
-            self.btn_cam.config(state="normal")
-            self.btn_tomar.config(state="disabled")
-            self.btn_detener.config(state="disabled")
+            self.btn_cam.configure(state="normal")
+            self.btn_tomar.configure(state="disabled")
+            self.btn_detener.configure(state="disabled")
 
     # ── Ráfaga de fotos ───────────────────────────────────────────────────────
 
@@ -498,11 +647,11 @@ class NuevoRegistroView:
 
         self.fotos_postura     = 0
         self.capturando_rafaga = True
-        self.btn_tomar.config(state="disabled")
-        self.btn_repetir.config(state="disabled")
+        self.btn_tomar.configure(state="disabled")
+        self.btn_repetir.configure(state="disabled")
 
         postura = POSTURAS[self.postura_idx]
-        self.lbl_rafaga.config(text=f"📸 Capturando ráfaga… 0 / {postura['fotos']}")
+        self.lbl_rafaga.configure(text=f"📸 Capturando ráfaga… 0 / {postura['fotos']}")
         self._capturar_siguiente(postura["fotos"])
 
     def _capturar_siguiente(self, total):
@@ -526,11 +675,11 @@ class NuevoRegistroView:
             # Actualizar barras
             self.bar_postura['value']  = self.fotos_postura
             self.bar_total['value']    = len(self.fotos_temp)
-            self.lbl_postura_prog.config(
+            self.lbl_postura_prog.configure(
                 text=f"Fotos de esta postura: {self.fotos_postura} / {total}")
-            self.lbl_total.config(
+            self.lbl_total.configure(
                 text=f"Total: {len(self.fotos_temp)} / {TOTAL_FOTOS}")
-            self.lbl_rafaga.config(
+            self.lbl_rafaga.configure(
                 text=f"📸 Capturando ráfaga… {self.fotos_postura} / {total}")
 
         # Siguiente foto en 60ms (~16 fps de captura)
@@ -541,24 +690,24 @@ class NuevoRegistroView:
         postura = POSTURAS[self.postura_idx]
 
         self.posturas_completadas.append(self.postura_idx)
-        self.lbl_rafaga.config(text=f"✅ Postura completada ({postura['fotos']} fotos)")
-        self.btn_repetir.config(state="normal")
+        self.lbl_rafaga.configure(text=f"✅ Postura completada ({postura['fotos']} fotos)")
+        self.btn_repetir.configure(state="normal")
 
         # ¿Hay más posturas?
         if self.postura_idx < len(POSTURAS) - 1:
             color = ROL_CONFIG[self.rol_actual]["color"]
-            self.btn_tomar.config(
+            self.btn_tomar.configure(
                 text=f"▶ Siguiente postura →",
                 state="normal",
-                bg=color,
+                fg_color=color,
                 command=self._siguiente_postura
             )
         else:
             # Todas las posturas completadas
-            self.btn_tomar.config(state="disabled")
-            self.lbl_rafaga.config(
+            self.btn_tomar.configure(state="disabled")
+            self.lbl_rafaga.configure(
                 text=f"🎉 ¡Todas las posturas completadas! {len(self.fotos_temp)} fotos en total.")
-            self.btn_guardar.config(state="normal")
+            self.btn_guardar.configure(state="normal")
             self._construir_panel_guia(ROL_CONFIG[self.rol_actual]["color"])
 
     def _siguiente_postura(self):
@@ -569,18 +718,18 @@ class NuevoRegistroView:
         # Actualizar barra de postura
         self.bar_postura.config(maximum=POSTURAS[self.postura_idx]["fotos"])
         self.bar_postura['value'] = 0
-        self.lbl_postura_prog.config(
+        self.lbl_postura_prog.configure(
             text=f"Fotos de esta postura: 0 / {POSTURAS[self.postura_idx]['fotos']}")
 
         # Restaurar botón tomar
-        self.btn_tomar.config(
+        self.btn_tomar.configure(
             text="📸 Tomar fotos de esta postura",
-            bg=COLORS['header'],
+            fg_color=COLORS['header'],
             command=self._iniciar_rafaga,
             state="normal"
         )
-        self.btn_repetir.config(state="disabled")
-        self.lbl_rafaga.config(text="")
+        self.btn_repetir.configure(state="disabled")
+        self.lbl_rafaga.configure(text="")
 
         # Actualizar panel guía
         self._construir_panel_guia(color)
@@ -598,20 +747,20 @@ class NuevoRegistroView:
         self.fotos_postura = 0
         self.bar_postura['value'] = 0
         self.bar_total['value']   = len(self.fotos_temp)
-        self.lbl_total.config(text=f"Total: {len(self.fotos_temp)} / {TOTAL_FOTOS}")
-        self.lbl_postura_prog.config(
+        self.lbl_total.configure(text=f"Total: {len(self.fotos_temp)} / {TOTAL_FOTOS}")
+        self.lbl_postura_prog.configure(
             text=f"Fotos de esta postura: 0 / {POSTURAS[self.postura_idx]['fotos']}")
-        self.lbl_rafaga.config(text="🔁 Postura reiniciada. Presiona 'Tomar fotos' cuando estés listo.")
+        self.lbl_rafaga.configure(text="🔁 Postura reiniciada. Presiona 'Tomar fotos' cuando estés listo.")
 
         color = ROL_CONFIG[self.rol_actual]["color"]
-        self.btn_tomar.config(
+        self.btn_tomar.configure(
             text="📸 Tomar fotos de esta postura",
-            bg=COLORS['header'],
+            fg_color=COLORS['header'],
             command=self._iniciar_rafaga,
             state="normal"
         )
-        self.btn_repetir.config(state="disabled")
-        self.btn_guardar.config(state="disabled")
+        self.btn_repetir.configure(state="disabled")
+        self.btn_guardar.configure(state="disabled")
         self._construir_panel_guia(color)
 
     # ── Navegación ────────────────────────────────────────────────────────────
