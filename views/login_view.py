@@ -115,7 +115,7 @@ class LoginView:
         try:
             logo_path = os.path.join(ASSETS_PATH, LOGO_FILE)
             image = Image.open(logo_path)
-            self.logo_image = ctk.CTkImage(light_image=image, dark_image=image, size=(220, 140))
+            self.logo_image = ctk.CTkImage(light_image=image, dark_image=image, size=(220, 150))
             ctk.CTkLabel(self.center_card, text="", image=self.logo_image).pack(pady=(26, 10))
         except Exception:
             ctk.CTkLabel(
