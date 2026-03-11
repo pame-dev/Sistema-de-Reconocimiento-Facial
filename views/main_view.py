@@ -140,7 +140,7 @@ class MainView:
 
         tk.Label(
             welcome_frame,
-            text="Bienvenido al Sistema",
+            text="Sentinel System le da la Bienvenida",
             font=("Arial", 24, "bold"),
             bg=COLORS['white'],
             fg=COLORS['text_dark']
