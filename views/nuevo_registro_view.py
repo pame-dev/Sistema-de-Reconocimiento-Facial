@@ -86,8 +86,8 @@ POSTURAS = [
     },
     {
         "id":          "arriba",
-        "titulo":      "Postura 6 — Ligeramente hacia arriba",
-        "instruccion": "Inclina la cabeza ligeramente\nhacia arriba, como si la\ncámara estuviera en la puerta.",
+        "titulo":      "Postura 6 — Ligeramente hacia abajo",
+        "instruccion": "Inclina la cabeza ligeramente\nhacia abajo, como si la\ncámara estuviera en la puerta.",
         "imagen":      "assets/posturas/postura_arriba.png",
         "icono":       "🙄",
         "fotos":       80,
