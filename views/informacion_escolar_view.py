@@ -101,7 +101,7 @@ class InformacionEscolarView:
             filtros_frame,
             text="Buscar:",
             text_color=COLORS['text_dark'],
-            font=("Segoe UI", 12, "bold")
+            font=("Segoe UI", 16, "bold")
         ).pack(side="left", padx=(14, 5), pady=12)
 
         self.busqueda_var = tk.StringVar()
@@ -122,12 +122,12 @@ class InformacionEscolarView:
             filtros_frame,
             text="Rol:",
             text_color=COLORS['text_dark'],
-            font=("Segoe UI", 12, "bold")
+            font=("Segoe UI", 16, "bold")
         ).pack(side="left", padx=(0, 5), pady=12)
 
         self.filtro_rol = ttk.Combobox(
             filtros_frame, values=["Todos", "alumno", "maestro", "personal"],
-            state="readonly", width=15, font=("Segoe UI", 11)
+            state="readonly", width=20, font=("Segoe UI", 16)
         )
         self.filtro_rol.set("Todos")
         self.filtro_rol.pack(side="left", pady=10)
@@ -218,13 +218,13 @@ class InformacionEscolarView:
             foreground=COLORS['text_dark'],
             rowheight=30,
             borderwidth=0,
-            font=("Segoe UI", 10)
+            font=("Segoe UI", 15)
         )
         style.configure(
             'Treeview.Heading',
             background=COLORS['content_bg'],
             foreground=COLORS['text_dark'],
-            font=("Segoe UI", 10, "bold"),
+            font=("Segoe UI", 16, "bold"),
             relief='flat'
         )
         style.map('Treeview.Heading', background=[('active', COLORS['content_bg'])])

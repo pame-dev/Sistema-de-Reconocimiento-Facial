@@ -136,12 +136,12 @@ class MainView:
         self.clear_content()
 
         welcome_frame = tk.Frame(self.content_frame, bg=COLORS['white'])
-        welcome_frame.place(relx=0.5, rely=0.5, anchor="center", width=500, height=350)
+        welcome_frame.place(relx=0.5, rely=0.5, anchor="center", width=800, height=650)
 
         tk.Label(
             welcome_frame,
-            text="Sentinel System le da la Bienvenida",
-            font=("Arial", 24, "bold"),
+            text="\nSentinel System le da \nla Bienvenida",
+            font=("Arial", 40, "bold"),
             bg=COLORS['white'],
             fg=COLORS['text_dark']
         ).pack(pady=40)
@@ -149,7 +149,7 @@ class MainView:
         tk.Label(
             welcome_frame,
             text="Seleccione una opción del menú\npara comenzar",
-            font=("Arial", 14),
+            font=("Arial", 30),
             bg=COLORS['white'],
             fg=COLORS['text_gray'],
             justify="center"
@@ -158,7 +158,7 @@ class MainView:
         try:
             logo_path = os.path.join(os.path.dirname(__file__), "..", "assets", "sentinelSystemIcono.png")
             logo_img = Image.open(logo_path)
-            logo_img = logo_img.resize((100, 90))
+            logo_img = logo_img.resize((140, 130))
             logo_photo = ImageTk.PhotoImage(logo_img)
             logo_label = tk.Label(welcome_frame, image=logo_photo, bg=COLORS['white'])
             logo_label.image = logo_photo
