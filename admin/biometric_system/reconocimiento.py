@@ -173,10 +173,10 @@ class ReconocerFacial:
         cursor = conn.cursor()
         try:
             cursor.execute("""
-                INSERT INTO accesos (fkIdUsuario, estado_acceso, confianzaAcceso, umbralConfianzaUsado)
-                VALUES (?, ?, ?, ?)
-            """, (user_id, estado, confianza, self.umbral_confianza))
-            conn.commit()
+                INSERT INTO accesos (fkIdUsuario, estado_acceso, confianzaAcceso, umbralConfianzaUsado, fechaHoraIntentoAcceso)
+                VALUES (?, ?, ?, ?, ?)
+            """, (user_id, estado, confianza, self.umbral_confianza, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+            conn.commit() 
 
             key = user_id if user_id is not None else "desconocido"
             self._ultimo_registro[key] = datetime.now()
