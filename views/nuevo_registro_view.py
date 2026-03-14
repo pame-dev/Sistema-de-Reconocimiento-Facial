@@ -94,12 +94,12 @@ POSTURAS = [
     },
 ]
 
-TOTAL_FOTOS = sum(p["fotos"] for p in POSTURAS)   # 480
+TOTAL_FOTOS = sum(p["fotos"] for p in POSTURAS)  # 480
 
 
 class NuevoRegistroView:
     def __init__(self, parent):
-        self.parent   = parent
+        self.parent    = parent
         self.container = ctk.CTkFrame(parent, fg_color=COLORS['background'])
         self.container.pack(fill="both", expand=True, padx=30, pady=30)
 
@@ -110,10 +110,19 @@ class NuevoRegistroView:
         self.entries       = {}
 
         # Estado de posturas
-        self.postura_idx        = 0   # postura actual
-        self.fotos_postura      = 0   # fotos tomadas en postura actual
-        self.capturando_rafaga  = False
+        self.postura_idx          = 0
+        self.fotos_postura        = 0
+        self.capturando_rafaga    = False
         self.posturas_completadas = []
+
+        # Detector reutilizable (se crea una sola vez)
+        self.detector = cv2.CascadeClassifier(
+            cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+        )
+
+        # Modo retomar fotos (lo activa informacion_escolar_view)
+        self.modo_retomar_fotos  = False
+        self.user_id_existente   = None
 
         self._mostrar_seleccion_rol()
 
@@ -124,11 +133,9 @@ class NuevoRegistroView:
     def _mostrar_seleccion_rol(self):
         self._limpiar_container()
 
-        # Frame centrador que ocupa toda la pantalla
         centro = ctk.CTkFrame(self.container, fg_color="transparent")
         centro.pack(fill="both", expand=True)
 
-        # Centrar contenido vertical y horizontalmente
         inner = ctk.CTkFrame(centro, fg_color="transparent")
         inner.place(relx=0.5, rely=0.5, anchor="center")
 
@@ -178,10 +185,9 @@ class NuevoRegistroView:
         for w in (outer, card):
             w.bind("<Button-1>", lambda e, r=rol_key: self._seleccionar_rol(r))
 
-
     @staticmethod
     def _darken(hex_color, amount=30):
-        h    = hex_color.lstrip('#')
+        h       = hex_color.lstrip('#')
         r, g, b = (int(h[i:i+2], 16) for i in (0, 2, 4))
         return f"#{max(0,r-amount):02x}{max(0,g-amount):02x}{max(0,b-amount):02x}"
 
@@ -232,7 +238,6 @@ class NuevoRegistroView:
 
         ttk.Separator(self.container, orient="horizontal").pack(fill="x", pady=(0, 15))
 
-        # Formulario con scroll para evitar que se oculten campos
         form_outer = ctk.CTkFrame(self.container, fg_color="transparent")
         form_outer.pack(fill="both", expand=True)
 
@@ -254,12 +259,14 @@ class NuevoRegistroView:
 
         campos_rol = CAMPOS_POR_ROL.get(self.rol_actual, [])
         if campos_rol:
-            titulos = {"alumno": "Información académica", "maestro": "Información docente",
-                       "personal": "Información laboral"}
+            titulos = {
+                "alumno":   "Información académica",
+                "maestro":  "Información docente",
+                "personal": "Información laboral"
+            }
             self._section_label(form_frame, titulos.get(self.rol_actual, "Datos adicionales"), color)
             self._add_fields_grid(form_frame, campos_rol, columns=2)
 
-        # Botón continuar
         ctk.CTkButton(
             self.container,
             text="Continuar → Captura de fotos",
@@ -315,10 +322,10 @@ class NuevoRegistroView:
         self.entries[key] = entry
 
     def _validar_y_continuar(self):
-        nombre  = self.entries.get('nombreUsuario')
-        paterno = self.entries.get('apellidoPaternoUsuario')
-        telefono= self.entries.get('telefonoUsuario')
-        correo  = self.entries.get('correoUsuario')
+        nombre   = self.entries.get('nombreUsuario')
+        paterno  = self.entries.get('apellidoPaternoUsuario')
+        telefono = self.entries.get('telefonoUsuario')
+        correo   = self.entries.get('correoUsuario')
 
         if not nombre or not nombre.get().strip():
             messagebox.showwarning("Campo requerido", "El nombre es obligatorio"); return
@@ -333,9 +340,8 @@ class NuevoRegistroView:
             if required and not self.entries.get(key, tk.Entry()).get().strip():
                 messagebox.showwarning("Campo requerido", f"El campo '{key}' es obligatorio"); return
 
-        # Guardar valores como strings ANTES de destruir los widgets
+        # Guardar valores antes de destruir widgets
         self.valores_form = {key: entry.get().strip() for key, entry in self.entries.items()}
-
         self._mostrar_captura()
 
     # ════════════════════════════════════════════════════════════════════════
@@ -354,7 +360,7 @@ class NuevoRegistroView:
         cfg   = ROL_CONFIG[self.rol_actual]
         color = cfg["color"]
 
-        # ── Cabecera ──
+        # Cabecera
         header = ctk.CTkFrame(self.container, fg_color="transparent")
         header.pack(fill="x", pady=(0, 10))
 
@@ -377,7 +383,7 @@ class NuevoRegistroView:
 
         ttk.Separator(self.container, orient="horizontal").pack(fill="x", pady=(0, 10))
 
-        # ── Progreso general ──
+        # Progreso general
         prog_frame = ctk.CTkFrame(self.container, fg_color="transparent")
         prog_frame.pack(fill="x", pady=(0, 10))
 
@@ -392,7 +398,7 @@ class NuevoRegistroView:
         self.bar_total = ttk.Progressbar(prog_frame, length=300, maximum=TOTAL_FOTOS)
         self.bar_total.pack(side="left")
 
-        # ── Cuerpo: guía | cámara ──
+        # Cuerpo: guía | cámara
         body = ctk.CTkFrame(self.container, fg_color="transparent")
         body.pack(fill="both", expand=True)
 
@@ -493,8 +499,9 @@ class NuevoRegistroView:
         )
         self.lbl_postura_prog.pack(side="left", padx=5)
 
-        self.bar_postura = ttk.Progressbar(pos_prog, length=220,
-                                           maximum=POSTURAS[0]["fotos"])
+        self.bar_postura = ttk.Progressbar(
+            pos_prog, length=220, maximum=POSTURAS[0]["fotos"]
+        )
         self.bar_postura.pack(side="left", padx=5)
 
         # Estado de ráfaga
@@ -506,7 +513,7 @@ class NuevoRegistroView:
         )
         self.lbl_rafaga.pack(pady=(0, 5))
 
-        # Botón guardar (aparece al final)
+        # Botón guardar
         self.btn_guardar = ctk.CTkButton(
             self.container,
             text="💾 Guardar Usuario",
@@ -522,13 +529,11 @@ class NuevoRegistroView:
         self.btn_guardar.pack(pady=15)
 
     def _construir_panel_guia(self, color):
-        """Construye o reconstruye el panel lateral con la postura actual."""
         for w in self.panel_guia.winfo_children():
             w.destroy()
 
         postura = POSTURAS[self.postura_idx]
 
-        # Título postura
         ctk.CTkLabel(
             self.panel_guia,
             text=postura["titulo"],
@@ -538,19 +543,19 @@ class NuevoRegistroView:
             justify="center"
         ).pack(pady=(15, 8))
 
-        # Imagen de ejemplo (si existe) o ícono grande
-        img_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), postura["imagen"])
+        # Imagen de postura o ícono de respaldo
+        img_path   = os.path.join(os.path.dirname(os.path.dirname(__file__)), postura["imagen"])
         img_loaded = False
 
         if os.path.exists(img_path):
             try:
-                img = Image.open(img_path).resize((180, 180), Image.LANCZOS)
+                img   = Image.open(img_path).resize((180, 180), Image.LANCZOS)
                 photo = ImageTk.PhotoImage(img)
-                lbl_img = tk.Label(self.panel_guia, image=photo, bg=COLORS['card_bg'])
-                lbl_img.image = photo   # evitar garbage collection
+                lbl_img       = tk.Label(self.panel_guia, image=photo, bg=COLORS['card_bg'])
+                lbl_img.image = photo
                 lbl_img.pack(pady=8)
                 img_loaded = True
-            except:
+            except Exception:
                 pass
 
         if not img_loaded:
@@ -560,7 +565,6 @@ class NuevoRegistroView:
                 font=("Segoe UI Emoji", 64)
             ).pack(pady=15)
 
-        # Instrucción
         ctk.CTkLabel(
             self.panel_guia,
             text=postura["instruccion"],
@@ -572,7 +576,6 @@ class NuevoRegistroView:
 
         ttk.Separator(self.panel_guia, orient="horizontal").pack(fill="x", padx=15, pady=10)
 
-        # Mini lista de posturas (completadas / actual / pendientes)
         for i, p in enumerate(POSTURAS):
             if i in self.posturas_completadas:
                 icono, fg = "✅", COLORS['primary']
@@ -595,7 +598,8 @@ class NuevoRegistroView:
         try:
             self.camara = cv2.VideoCapture(0)
             if not self.camara.isOpened():
-                messagebox.showerror("Error", "No se pudo abrir la cámara"); return
+                messagebox.showerror("Error", "No se pudo abrir la cámara")
+                return
 
             self.capturando = True
             self.btn_cam.configure(state="disabled")
@@ -611,15 +615,27 @@ class NuevoRegistroView:
 
         ret, frame = self.camara.read()
         if ret:
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            h, w = frame_rgb.shape[:2]
-            nw, nh = 420, int(420 / w * h)
-            frame_rgb = cv2.resize(frame_rgb, (nw, nh))
-            rh, rw = frame_rgb.shape[:2]
+            frame_rgb    = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            h, w         = frame_rgb.shape[:2]
+            nw, nh       = 420, int(420 / w * h)
+            frame_rgb    = cv2.resize(frame_rgb, (nw, nh))
+            rh, rw       = frame_rgb.shape[:2]
+
+            # Rectángulo guía centrado
             cv2.rectangle(frame_rgb, (rw//4, rh//4), (3*rw//4, 3*rh//4), (0, 255, 0), 2)
 
-            img    = Image.fromarray(frame_rgb)
-            imgtk  = ImageTk.PhotoImage(image=img)
+            # Indicador de cara detectada en tiempo real
+            gray  = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2GRAY)
+            caras = self.detector.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(60, 60))
+            if len(caras) > 0:
+                cv2.putText(frame_rgb, "✓ Cara detectada", (10, 25),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 220, 0), 2)
+            else:
+                cv2.putText(frame_rgb, "Sin cara", (10, 25),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 220), 2)
+
+            img   = Image.fromarray(frame_rgb)
+            imgtk = ImageTk.PhotoImage(image=img)
             self.video_label.imgtk = imgtk
             self.video_label.config(image=imgtk)
 
@@ -655,7 +671,6 @@ class NuevoRegistroView:
         self._capturar_siguiente(postura["fotos"])
 
     def _capturar_siguiente(self, total):
-        """Captura una foto y se programa a sí misma para la siguiente."""
         if not self.capturando or self.camara is None:
             self.capturando_rafaga = False
             return
@@ -666,23 +681,33 @@ class NuevoRegistroView:
 
         ret, frame = self.camara.read()
         if ret:
-            h, w = frame.shape[:2]
-            rostro = cv2.resize(frame[h//4:3*h//4, w//4:3*w//4], (200, 200))
-            _, buf = cv2.imencode('.jpg', rostro)
-            self.fotos_temp.append(buf.tobytes())
-            self.fotos_postura += 1
+            gray  = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            # Reutiliza self.detector creado en __init__
+            caras = self.detector.detectMultiScale(
+                gray, scaleFactor=1.1, minNeighbors=5, minSize=(80, 80)
+            )
 
-            # Actualizar barras
-            self.bar_postura['value']  = self.fotos_postura
-            self.bar_total['value']    = len(self.fotos_temp)
-            self.lbl_postura_prog.configure(
-                text=f"Fotos de esta postura: {self.fotos_postura} / {total}")
-            self.lbl_total.configure(
-                text=f"Total: {len(self.fotos_temp)} / {TOTAL_FOTOS}")
-            self.lbl_rafaga.configure(
-                text=f"📸 Capturando ráfaga… {self.fotos_postura} / {total}")
+            if len(caras) > 0:
+                # Cara más grande detectada
+                x, y, w, h = max(caras, key=lambda c: c[2] * c[3])
+                rostro      = frame[y:y+h, x:x+w]
+                rostro      = cv2.resize(rostro, (200, 200))
+                _, buf      = cv2.imencode('.jpg', rostro)
+                self.fotos_temp.append(buf.tobytes())
+                self.fotos_postura += 1
 
-        # Siguiente foto en 60ms (~16 fps de captura)
+                self.bar_postura['value'] = self.fotos_postura
+                self.bar_total['value']   = len(self.fotos_temp)
+                self.lbl_postura_prog.configure(
+                    text=f"Fotos de esta postura: {self.fotos_postura} / {total}")
+                self.lbl_total.configure(
+                    text=f"Total: {len(self.fotos_temp)} / {TOTAL_FOTOS}")
+                self.lbl_rafaga.configure(
+                    text=f"📸 Capturando ráfaga… {self.fotos_postura} / {total}")
+            else:
+                self.lbl_rafaga.configure(
+                    text="⚠️ No se detectó cara, acércate un poco...")
+
         self.video_label.after(30, lambda: self._capturar_siguiente(total))
 
     def _rafaga_completada(self):
@@ -693,17 +718,15 @@ class NuevoRegistroView:
         self.lbl_rafaga.configure(text=f"✅ Postura completada ({postura['fotos']} fotos)")
         self.btn_repetir.configure(state="normal")
 
-        # ¿Hay más posturas?
         if self.postura_idx < len(POSTURAS) - 1:
             color = ROL_CONFIG[self.rol_actual]["color"]
             self.btn_tomar.configure(
-                text=f"▶ Siguiente postura →",
+                text="▶ Siguiente postura →",
                 state="normal",
                 fg_color=color,
                 command=self._siguiente_postura
             )
         else:
-            # Todas las posturas completadas
             self.btn_tomar.configure(state="disabled")
             self.lbl_rafaga.configure(
                 text=f"🎉 ¡Todas las posturas completadas! {len(self.fotos_temp)} fotos en total.")
@@ -711,17 +734,15 @@ class NuevoRegistroView:
             self._construir_panel_guia(ROL_CONFIG[self.rol_actual]["color"])
 
     def _siguiente_postura(self):
-        self.postura_idx   += 1
-        self.fotos_postura  = 0
+        self.postura_idx  += 1
+        self.fotos_postura = 0
         color = ROL_CONFIG[self.rol_actual]["color"]
 
-        # Actualizar barra de postura
         self.bar_postura.config(maximum=POSTURAS[self.postura_idx]["fotos"])
         self.bar_postura['value'] = 0
         self.lbl_postura_prog.configure(
             text=f"Fotos de esta postura: 0 / {POSTURAS[self.postura_idx]['fotos']}")
 
-        # Restaurar botón tomar
         self.btn_tomar.configure(
             text="📸 Tomar fotos de esta postura",
             fg_color=COLORS['header'],
@@ -730,17 +751,13 @@ class NuevoRegistroView:
         )
         self.btn_repetir.configure(state="disabled")
         self.lbl_rafaga.configure(text="")
-
-        # Actualizar panel guía
         self._construir_panel_guia(color)
 
     def _repetir_postura(self):
-        """Elimina las fotos de la postura actual y la repite."""
         fotos_a_eliminar = POSTURAS[self.postura_idx]["fotos"]
         if len(self.fotos_temp) >= fotos_a_eliminar:
             self.fotos_temp = self.fotos_temp[:-fotos_a_eliminar]
 
-        # Quitar de completadas
         if self.postura_idx in self.posturas_completadas:
             self.posturas_completadas.remove(self.postura_idx)
 
@@ -750,7 +767,8 @@ class NuevoRegistroView:
         self.lbl_total.configure(text=f"Total: {len(self.fotos_temp)} / {TOTAL_FOTOS}")
         self.lbl_postura_prog.configure(
             text=f"Fotos de esta postura: 0 / {POSTURAS[self.postura_idx]['fotos']}")
-        self.lbl_rafaga.configure(text="🔁 Postura reiniciada. Presiona 'Tomar fotos' cuando estés listo.")
+        self.lbl_rafaga.configure(
+            text="🔁 Postura reiniciada. Presiona 'Tomar fotos' cuando estés listo.")
 
         color = ROL_CONFIG[self.rol_actual]["color"]
         self.btn_tomar.configure(
@@ -775,11 +793,10 @@ class NuevoRegistroView:
 
     # ── Guardar en BD ─────────────────────────────────────────────────────────
 
-
     def _guardar_usuario(self):
         try:
             rol = self.rol_actual
-            v   = getattr(self, 'valores_form', {})  # valores guardados como strings
+            v   = getattr(self, 'valores_form', {})
 
             def val(key, upper=True):
                 t = v.get(key, "").strip()
@@ -792,20 +809,16 @@ class NuevoRegistroView:
             telefono  = val('telefonoUsuario',  upper=False)
             correo    = val('correoUsuario',    upper=False)
 
-            conn    = get_db()
-            ahora   = datetime.now()
-            
-            # ── SI SOLO ESTAMOS RETOMANDO FOTOS ──
-            if getattr(self, "modo_retomar_fotos", False):
+            conn  = get_db()
+            ahora = datetime.now()
 
+            # Modo retomar fotos: solo actualiza biometría
+            if self.modo_retomar_fotos:
                 user_id = self.user_id_existente
-
-                cursor = conn.cursor()
+                cursor  = conn.cursor()
                 cursor.execute("DELETE FROM biometria WHERE fkIdUsuario = ?", (user_id,))
-
                 for foto_bytes in self.fotos_temp:
                     sp_insertar_biometria(conn, user_id, foto_bytes, ahora)
-
                 conn.commit()
                 conn.close()
 
@@ -813,12 +826,11 @@ class NuevoRegistroView:
                     "Fotos actualizadas",
                     f"Se actualizaron {len(self.fotos_temp)} fotos del usuario."
                 )
-
                 self._detener_camara()
                 self._mostrar_seleccion_rol()
                 return
 
-            # sp_insertar_usuario
+            # Registro nuevo
             user_id = sp_insertar_usuario(conn, {
                 'nombre':    nombre,
                 'paterno':   paterno,
@@ -829,7 +841,6 @@ class NuevoRegistroView:
                 'correo':    correo,
             })
 
-            # sp_insertar_<rol>
             if rol == "alumno":
                 sp_insertar_alumno(conn, user_id, {
                     'grado':    val('gradoAlumno', upper=False),
@@ -848,7 +859,6 @@ class NuevoRegistroView:
                     'area':   val('areaPersonalEscolar'),
                 })
 
-            # sp_insertar_biometria (una por foto)
             for foto_bytes in self.fotos_temp:
                 sp_insertar_biometria(conn, user_id, foto_bytes, ahora)
 
@@ -856,10 +866,11 @@ class NuevoRegistroView:
             conn.close()
 
             cfg = ROL_CONFIG[rol]
-            messagebox.showinfo("✅ Registro exitoso",
+            messagebox.showinfo(
+                "✅ Registro exitoso",
                 f"{cfg['icono']} {nombre} {paterno} ({cfg['titulo']})\n"
-                f"Registrado con {len(self.fotos_temp)} fotos en {len(POSTURAS)} posturas.")
-
+                f"Registrado con {len(self.fotos_temp)} fotos en {len(POSTURAS)} posturas."
+            )
             self._detener_camara()
             self._mostrar_seleccion_rol()
 
