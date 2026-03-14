@@ -16,7 +16,7 @@ class ReconocerFacial:
         self.names_path = os.path.join(self.artifacts_dir, 'nombres.pkl')
 
         self.recognizer = cv2.face.LBPHFaceRecognizer_create(
-            radius=1,
+            radius=2,
             neighbors=8,
             grid_x=8,
             grid_y=8
@@ -28,19 +28,15 @@ class ReconocerFacial:
 
         self.nombres = {}
 
-        # ✅ CORRECCIÓN 1: Umbral subido a 95
-        # Tus valores reales según el DEBUG son ~89-93
-        # El umbral debe ser MAYOR que tu confianza para reconocerte
-        self.umbral_confianza = 95
+        self.umbral_confianza = 50
 
         self._votos = []
         self._frames_votar = 10
         self._ultimo_registro = {}
-        self._cooldown_segundos = 5
+        self._cooldown_segundos = 30  # no se vuelve a guardar la misma persona por 30 seg
         self._frame_counter = 0
         self._procesar_cada = 2
         self._ultimo_resultado = []
-        self._ultimo_usuario_registrado = None
 
     def get_db(self):
         try:
@@ -56,6 +52,7 @@ class ReconocerFacial:
         clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
         img = clahe.apply(img)
         img = cv2.bilateralFilter(img, d=9, sigmaColor=75, sigmaSpace=75)
+        img = cv2.normalize(img, None, 0, 255, cv2.NORM_MINMAX) 
         return img
 
     def preparar_datos(self):
@@ -105,7 +102,7 @@ class ReconocerFacial:
                 cv2.imwrite(ruta, img)
                 print(f"  💾 {ruta} — shape: {img.shape}, min: {img.min()}, max: {img.max()}")
 
-            img = cv2.resize(img, (200, 200))
+            img = cv2.resize(img, (250, 250))
             img = self.preprocesar(img)
 
             if idx < 5:
@@ -166,7 +163,7 @@ class ReconocerFacial:
         return (ahora - ultimo).total_seconds() >= self._cooldown_segundos
 
     def registrar_acceso(self, user_id, estado, confianza):
-        if user_id == self._ultimo_usuario_registrado:
+        if not self._puede_registrar(user_id):
             return
 
         conn = self.get_db()
@@ -180,7 +177,10 @@ class ReconocerFacial:
                 VALUES (?, ?, ?, ?)
             """, (user_id, estado, confianza, self.umbral_confianza))
             conn.commit()
-            self._ultimo_usuario_registrado = user_id
+
+            key = user_id if user_id is not None else "desconocido"
+            self._ultimo_registro[key] = datetime.now()
+
             print(f"📝 Acceso registrado: {estado} — Confianza: {confianza:.1f}")
         except Exception as e:
             print(f"❌ Error registrando acceso: {e}")
@@ -206,16 +206,12 @@ class ReconocerFacial:
 
         print(f"🎥 Cámara iniciada")
         print(f"🎯 Umbral inicial: {self.umbral_confianza}")
+        print(f"⏱  Cooldown: {self._cooldown_segundos} segundos por persona")
         print("="*55)
         print("⌨️  CONTROLES — HAZ CLIC EN LA VENTANA DE LA CÁMARA PRIMERO:")
         print("   q     → salir")
         print("   +     → subir umbral (+5)")
         print("   -     → bajar umbral (-5)")
-        print("="*55)
-        print("📊 Tus valores de confianza vistos son ~89-93")
-        print("   Umbral en 95 → deberías aparecer reconocida ahora.")
-        print("   Si tus compañeras también pasan, baja el umbral con '-'")
-        print("   hasta que solo tú seas reconocida.")
         print("="*55)
 
         while True:
@@ -239,7 +235,7 @@ class ReconocerFacial:
 
                 for (x, y, w, h) in faces_det:
                     rostro = gray[y:y+h, x:x+w]
-                    rostro = cv2.resize(rostro, (200, 200))
+                    rostro = cv2.resize(rostro, (250, 250))
                     rostro = self.preprocesar(rostro)
 
                     label_raw, conf_raw = self.recognizer.predict(rostro)
@@ -276,7 +272,6 @@ class ReconocerFacial:
                 cv2.putText(frame, texto, (x, y - 10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.75, color, 2)
 
-            # ✅ CORRECCIÓN 2: Aviso de foco en pantalla
             cv2.putText(frame, f"Umbral: {self.umbral_confianza}  |  Clic aqui, luego +/-",
                         (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.52, (255, 255, 0), 2)
             cv2.putText(frame, f"Votos: {len(self._votos)}/{self._frames_votar}",
@@ -284,17 +279,16 @@ class ReconocerFacial:
 
             cv2.imshow('Reconocimiento Facial — Sentinel System', frame)
 
-            # ✅ CORRECCIÓN 3: Capturar tanto caracteres ASCII como keycodes directos
             key = cv2.waitKey(1) & 0xFF
             if key == ord('q'):
                 break
             elif key in (ord('+'), ord('='), 43, 61):
                 self.umbral_confianza += 5
-                self._votos = []  # resetear votos para recalcular con nuevo umbral
+                self._votos = []
                 print(f"🎯 Umbral subido → {self.umbral_confianza}")
             elif key in (ord('-'), ord('_'), 45, 95):
                 self.umbral_confianza = max(0, self.umbral_confianza - 5)
-                self._votos = []  # resetear votos para recalcular con nuevo umbral
+                self._votos = []
                 print(f"🎯 Umbral bajado → {self.umbral_confianza}")
 
         cap.release()

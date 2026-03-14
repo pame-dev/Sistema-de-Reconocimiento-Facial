@@ -21,6 +21,14 @@ from database.queries import (
 )
 
 class InformacionEscolarView:
+    def _actualizar_todo(self):
+        self.filtro_rol.set("Todos")
+        self.busqueda_var.set("")
+        self.entrada_busqueda.delete(0, tk.END)
+        self.entrada_busqueda.insert(0, "Nombre, matrícula o carrera...")
+        self.entrada_busqueda.configure(text_color=COLORS['text_gray'])
+        self._placeholder_activo = True
+        self.cargar_datos()
 
     def __init__(self, parent):
         self.parent = parent
@@ -57,7 +65,7 @@ class InformacionEscolarView:
             font=("Segoe UI", 12, "bold"),
             corner_radius=10,
             height=38,
-            command=self.cargar_datos
+            command=self._actualizar_todo
         ).pack(side="right")
 
         self.btn_toggle_detalles = ctk.CTkButton(
@@ -124,6 +132,11 @@ class InformacionEscolarView:
             text_color=COLORS['text_dark'],
             font=("Segoe UI", 16, "bold")
         ).pack(side="left", padx=(0, 5), pady=12)
+
+        win = self.parent.winfo_toplevel()
+        win.option_add("*TCombobox*Listbox.font", ("Segoe UI", 14))
+        win.option_add("*TCombobox*Listbox.background", COLORS['white'])
+        win.option_add("*TCombobox*Listbox.foreground", COLORS['text_dark'])
 
         self.filtro_rol = ttk.Combobox(
             filtros_frame, values=["Todos", "alumno", "maestro", "personal"],
