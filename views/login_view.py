@@ -126,22 +126,6 @@ class LoginView:
             ).pack(pady=(30, 18))
 
     def login(self):
-        """Valida credenciales y navega a la vista principal."""
-        email = self.email_var.get().strip()
-        password = self.password_var.get().strip()
-        
-        # Validar que los campos no estén vacíos
-        if not email or not password:
-            self.show_error("Por favor, complete todos los campos")
-            return
-        
-        # Validar formato de correo básico
-        if "@" not in email or "." not in email:
-            self.show_error("Por favor, ingrese un correo valido")
-            return
-        
-        # Aquí puedes agregar validación contra base de datos
-        # Por ahora, permitir acceso para continuar con el sistema
         self.app.show_main_view()
 
     def show_error(self, message):
