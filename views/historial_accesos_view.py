@@ -16,7 +16,7 @@ class HistorialAccesosView:
     def __init__(self, parent):
         self.parent = parent
         self.container = ctk.CTkFrame(parent, fg_color=COLORS['background'])
-        self.container.pack(fill="both", expand=True, padx=30, pady=30)
+        self.container.pack(fill="both", expand=True, padx=24, pady=20)
 
         self.datos = []
         self._placeholder_activo = True
@@ -26,33 +26,33 @@ class HistorialAccesosView:
     def crear_interfaz(self):
         self._configurar_estilo_tabla()
 
-        # === CABECERA ===
-        header_frame = ctk.CTkFrame(self.container, fg_color="transparent")
-        header_frame.pack(fill="x", pady=(0, 20))
+        # ── Cabecera ──────────────────────────────────────────────────────────
+        header = ctk.CTkFrame(self.container, fg_color="transparent")
+        header.pack(fill="x", pady=(0, 16))
+
+        left = ctk.CTkFrame(header, fg_color="transparent")
+        left.pack(side="left")
 
         ctk.CTkLabel(
-            header_frame,
-            text="📊 Historial de Accesos",
-            font=("Segoe UI", 26, "bold"),
+            left,
+            text="📊  Historial de Accesos",
+            font=("Segoe UI", 24, "bold"),
             text_color=COLORS['text_dark']
-        ).pack(side="left")
+        ).pack(anchor="w")
+
+        ctk.CTkLabel(
+            left,
+            text="Registro de todos los intentos de acceso al sistema",
+            font=("Segoe UI", 11),
+            text_color=COLORS['text_gray']
+        ).pack(anchor="w", pady=(2, 0))
+
+        btn_row = ctk.CTkFrame(header, fg_color="transparent")
+        btn_row.pack(side="right")
 
         ctk.CTkButton(
-            header_frame,
-            text="🔄 Actualizar",
-            fg_color=COLORS['primary'],
-            hover_color=COLORS['primary_dark'],
-            text_color=COLORS['white'],
-            font=("Segoe UI", 12, "bold"),
-            corner_radius=10,
-            height=38,
-            command=self.cargar_datos
-        ).pack(side="right", padx=(5, 0))
-
-        # Botón para limpiar historial
-        ctk.CTkButton(
-            header_frame,
-            text="🗑️ Limpiar Todo",
+            btn_row,
+            text="🗑️  Limpiar Todo",
             fg_color=COLORS['danger'],
             hover_color=COLORS['danger_dark'],
             text_color=COLORS['white'],
@@ -60,152 +60,189 @@ class HistorialAccesosView:
             corner_radius=10,
             height=38,
             command=self.limpiar_historial
-        ).pack(side="right")
+        ).pack(side="left", padx=(0, 8))
 
-        # === FILTROS ===
-        filtros_frame = ctk.CTkFrame(
+        ctk.CTkButton(
+            btn_row,
+            text="🔄  Actualizar",
+            fg_color=COLORS['primary'],
+            hover_color=COLORS['primary_dark'],
+            text_color=COLORS['white'],
+            font=("Segoe UI", 12, "bold"),
+            corner_radius=10,
+            height=38,
+            command=self.cargar_datos
+        ).pack(side="left")
+
+        # ── Tarjetas de estadísticas ──────────────────────────────────────────
+        stats_row = ctk.CTkFrame(self.container, fg_color="transparent")
+        stats_row.pack(fill="x", pady=(0, 14))
+        stats_row.grid_columnconfigure((0, 1, 2), weight=1, uniform="stat")
+
+        self.lbl_total     = self._stat_card(stats_row, "Total de accesos",    "0", COLORS['primary'], "🔢", 0)
+        self.lbl_aceptados = self._stat_card(stats_row, "Accesos aceptados",   "0", "#27AE60",          "✅", 1)
+        self.lbl_denegados = self._stat_card(stats_row, "Accesos denegados",   "0", COLORS['danger'],   "❌", 2)
+
+        # ── Barra de filtros ──────────────────────────────────────────────────
+        filtros = ctk.CTkFrame(
             self.container,
             fg_color=COLORS['card_bg'],
-            corner_radius=14,
+            corner_radius=12,
             border_width=1,
             border_color=COLORS['border']
         )
-        filtros_frame.pack(fill="x", pady=(0, 15))
-        filtros_frame.grid_columnconfigure((0, 1, 2, 3), weight=0)
+        filtros.pack(fill="x", pady=(0, 12))
 
         ctk.CTkLabel(
-            filtros_frame,
-            text="Buscar:",
+            filtros,
+            text="🔍  Buscar:",
             text_color=COLORS['text_dark'],
             font=("Segoe UI", 12, "bold")
-        ).pack(side="left", padx=(14, 5), pady=12)
+        ).pack(side="left", padx=(14, 6), pady=10)
 
-        self.busqueda_var = tk.StringVar()
+        self.busqueda_var     = tk.StringVar()
         self.entrada_busqueda = ctk.CTkEntry(
-            filtros_frame,
+            filtros,
             textvariable=self.busqueda_var,
             font=("Segoe UI", 12),
-            width=260,
-            height=36,
+            width=270, height=36,
             corner_radius=10,
             fg_color=COLORS['white'],
             border_color=COLORS['border'],
             text_color=COLORS['text_gray']
         )
-        self.entrada_busqueda.pack(side="left", padx=(0, 15), pady=10)
+        self.entrada_busqueda.pack(side="left", padx=(0, 16), pady=10)
         self.entrada_busqueda.insert(0, "Nombre de usuario...")
-        self.entrada_busqueda.bind("<FocusIn>", self.limpiar_placeholder)
-        self.entrada_busqueda.bind("<FocusOut>", self.restaurar_placeholder)
+        self.entrada_busqueda.bind("<FocusIn>",   self.limpiar_placeholder)
+        self.entrada_busqueda.bind("<FocusOut>",  self.restaurar_placeholder)
         self.entrada_busqueda.bind("<KeyRelease>", lambda e: self.filtrar_tabla())
 
         ctk.CTkLabel(
-            filtros_frame,
+            filtros,
             text="Estado:",
             text_color=COLORS['text_dark'],
             font=("Segoe UI", 12, "bold")
-        ).pack(side="left", padx=(0, 5), pady=12)
+        ).pack(side="left", padx=(0, 6), pady=10)
+
+        # Combobox con fuente grande en dropdown
+        win = self.container.winfo_toplevel()
+        win.option_add("*TCombobox*Listbox.font", ("Segoe UI", 12))
 
         self.filtro_estado = ttk.Combobox(
-            filtros_frame,
+            filtros,
             values=["Todos", "aceptado", "denegado"],
             state="readonly",
-            width=15,
-            font=("Segoe UI", 11)
+            width=14,
+            font=("Segoe UI", 12)
         )
         self.filtro_estado.set("Todos")
         self.filtro_estado.pack(side="left", pady=10)
         self.filtro_estado.bind('<<ComboboxSelected>>', lambda e: self.filtrar_tabla())
 
-        # === ESTADÍSTICAS ===
-        stats_frame = ctk.CTkFrame(
+        # ── Tabla ─────────────────────────────────────────────────────────────
+        tabla_card = ctk.CTkFrame(
             self.container,
             fg_color=COLORS['card_bg'],
-            corner_radius=14,
+            corner_radius=12,
             border_width=1,
             border_color=COLORS['border']
         )
-        stats_frame.pack(fill="x", pady=(0, 15))
+        tabla_card.pack(fill="both", expand=True)
 
-        inner_stats = ctk.CTkFrame(stats_frame, fg_color="transparent")
-        inner_stats.pack(fill="x", padx=15, pady=10)
+        # Header de la tabla
+        tabla_header = ctk.CTkFrame(tabla_card, fg_color="transparent")
+        tabla_header.pack(fill="x", padx=16, pady=(12, 6))
 
-        # Total de accesos
-        self.lbl_total = ctk.CTkLabel(
-            inner_stats,
-            text="Total: 0",
-            font=("Segoe UI", 12, "bold"),
+        ctk.CTkLabel(
+            tabla_header,
+            text="Registros",
+            font=("Segoe UI", 13, "bold"),
             text_color=COLORS['text_dark']
-        )
-        self.lbl_total.pack(side="left", padx=10)
+        ).pack(side="left")
 
-        # Accesos aceptados
-        self.lbl_aceptados = ctk.CTkLabel(
-            inner_stats,
-            text="✅ Aceptados: 0",
-            font=("Segoe UI", 12),
-            text_color=COLORS['primary']
+        self.lbl_conteo = ctk.CTkLabel(
+            tabla_header,
+            text="0 registros",
+            font=("Segoe UI", 11),
+            text_color=COLORS['text_gray']
         )
-        self.lbl_aceptados.pack(side="left", padx=10)
-
-        # Accesos denegados
-        self.lbl_denegados = ctk.CTkLabel(
-            inner_stats,
-            text="❌ Denegados: 0",
-            font=("Segoe UI", 12),
-            text_color=COLORS['danger']
-        )
-        self.lbl_denegados.pack(side="left", padx=10)
-
-        # === TABLA ===
-        tabla_frame = ctk.CTkFrame(
-            self.container,
-            fg_color=COLORS['card_bg'],
-            corner_radius=14,
-            border_width=1,
-            border_color=COLORS['border']
-        )
-        tabla_frame.pack(fill="both", expand=True)
+        self.lbl_conteo.pack(side="right")
 
         # Scrollbars
-        scroll_y = ctk.CTkScrollbar(tabla_frame, orientation="vertical")
-        scroll_y.pack(side="right", fill="y")
+        scroll_y = ctk.CTkScrollbar(tabla_card, orientation="vertical")
+        scroll_y.pack(side="right", fill="y", padx=(0, 4))
 
-        scroll_x = ctk.CTkScrollbar(tabla_frame, orientation="horizontal")
-        scroll_x.pack(side="bottom", fill="x")
+        scroll_x = ctk.CTkScrollbar(tabla_card, orientation="horizontal")
+        scroll_x.pack(side="bottom", fill="x", pady=(0, 4))
 
-        # Treeview
         self.tree = ttk.Treeview(
-            tabla_frame,
+            tabla_card,
             columns=("id", "usuario", "fecha", "estado", "confianza", "umbral"),
             show="headings",
             yscrollcommand=scroll_y.set,
             xscrollcommand=scroll_x.set,
             height=15
         )
-
         scroll_y.configure(command=self.tree.yview)
         scroll_x.configure(command=self.tree.xview)
 
-        # Configurar columnas
-        self.tree.heading("id", text="ID")
-        self.tree.heading("usuario", text="Usuario")
-        self.tree.heading("fecha", text="Fecha y Hora")
-        self.tree.heading("estado", text="Estado")
-        self.tree.heading("confianza", text="Confianza")
-        self.tree.heading("umbral", text="Umbral")
+        cols = [
+            ("id",        "ID",          55,  "center"),
+            ("usuario",   "Usuario",     220, "w"),
+            ("fecha",     "Fecha y Hora",165, "center"),
+            ("estado",    "Estado",      120, "center"),
+            ("confianza", "Confianza",   110, "center"),
+            ("umbral",    "Umbral",      90,  "center"),
+        ]
+        for col, label, w, anchor in cols:
+            self.tree.heading(col, text=label)
+            self.tree.column(col, width=w, anchor=anchor)
 
-        self.tree.column("id", width=50, anchor="center")
-        self.tree.column("usuario", width=200, anchor="w")
-        self.tree.column("fecha", width=150, anchor="center")
-        self.tree.column("estado", width=100, anchor="center")
-        self.tree.column("confianza", width=100, anchor="center")
-        self.tree.column("umbral", width=100, anchor="center")
+        self.tree.pack(fill="both", expand=True, padx=4)
 
-        self.tree.pack(fill="both", expand=True)
+        # Tags de color por estado
+        self.tree.tag_configure('aceptado', background='#EAF7EE', foreground='#1A7A40')
+        self.tree.tag_configure('denegado', background='#FEF0F0', foreground='#C0392B')
 
-        # Estilos para filas
-        self.tree.tag_configure('aceptado', background='#d4edda')
-        self.tree.tag_configure('denegado', background='#f8d7da')
+    # ── Stat card ─────────────────────────────────────────────────────────────
+
+    def _stat_card(self, parent, titulo, valor, color, icono, col):
+        card = ctk.CTkFrame(
+            parent,
+            fg_color=COLORS['card_bg'],
+            corner_radius=12,
+            border_width=1,
+            border_color=COLORS['border']
+        )
+        card.grid(row=0, column=col, padx=6, sticky="ew")
+
+        inner = ctk.CTkFrame(card, fg_color="transparent")
+        inner.pack(padx=16, pady=12, fill="x")
+
+        top = ctk.CTkFrame(inner, fg_color="transparent")
+        top.pack(fill="x")
+
+        ctk.CTkLabel(
+            top, text=titulo,
+            font=("Segoe UI", 11, "bold"),
+            text_color=color, anchor="w"
+        ).pack(side="left")
+
+        ctk.CTkLabel(
+            top, text=icono,
+            font=("Segoe UI Emoji", 16)
+        ).pack(side="right")
+
+        lbl = ctk.CTkLabel(
+            inner, text=valor,
+            font=("Segoe UI", 30, "bold"),
+            text_color=COLORS['text_dark'],
+            anchor="w"
+        )
+        lbl.pack(anchor="w", pady=(4, 0))
+        return lbl
+
+    # ── Estilo tabla ──────────────────────────────────────────────────────────
 
     def _configurar_estilo_tabla(self):
         style = ttk.Style()
@@ -215,18 +252,22 @@ class HistorialAccesosView:
             background=COLORS['white'],
             fieldbackground=COLORS['white'],
             foreground=COLORS['text_dark'],
-            rowheight=30,
+            rowheight=32,
             borderwidth=0,
-            font=("Segoe UI", 10)
+            font=("Segoe UI", 11)
         )
         style.configure(
             'Treeview.Heading',
             background=COLORS['content_bg'],
             foreground=COLORS['text_dark'],
-            font=("Segoe UI", 10, "bold"),
-            relief='flat'
+            font=("Segoe UI", 11, "bold"),
+            relief='flat',
+            padding=6
         )
+        style.map('Treeview', background=[('selected', COLORS['primary'])])
         style.map('Treeview.Heading', background=[('active', COLORS['content_bg'])])
+
+    # ── Placeholder ───────────────────────────────────────────────────────────
 
     def limpiar_placeholder(self, event):
         if self._placeholder_activo:
@@ -240,8 +281,9 @@ class HistorialAccesosView:
             self.entrada_busqueda.configure(text_color=COLORS['text_gray'])
             self._placeholder_activo = True
 
+    # ── Datos ─────────────────────────────────────────────────────────────────
+
     def cargar_datos(self):
-        """Carga los datos de accesos desde la base de datos"""
         try:
             conn = get_db()
             if not conn:
@@ -250,7 +292,7 @@ class HistorialAccesosView:
 
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT 
+                SELECT
                     a.idAcceso,
                     COALESCE(u.nombreUsuario || ' ' || u.apellidoPaternoUsuario, 'Desconocido') as nombreCompleto,
                     a.fechaHoraIntentoAcceso,
@@ -261,18 +303,16 @@ class HistorialAccesosView:
                 LEFT JOIN usuarios u ON a.fkIdUsuario = u.idUsuario
                 ORDER BY a.fechaHoraIntentoAcceso DESC
             """)
-
             self.datos = cursor.fetchall()
             conn.close()
 
-            # Actualizar estadísticas
-            total = len(self.datos)
+            total     = len(self.datos)
             aceptados = sum(1 for d in self.datos if d[3] == 'aceptado')
             denegados = sum(1 for d in self.datos if d[3] == 'denegado')
 
-            self.lbl_total.configure(text=f"Total: {total}")
-            self.lbl_aceptados.configure(text=f"✅ Aceptados: {aceptados}")
-            self.lbl_denegados.configure(text=f"❌ Denegados: {denegados}")
+            self.lbl_total.configure(text=str(total))
+            self.lbl_aceptados.configure(text=str(aceptados))
+            self.lbl_denegados.configure(text=str(denegados))
 
             self.filtrar_tabla()
 
@@ -280,63 +320,46 @@ class HistorialAccesosView:
             messagebox.showerror("Error", f"Error al cargar datos: {str(e)}")
 
     def filtrar_tabla(self):
-        """Filtra y muestra los datos en la tabla"""
-        # Limpiar tabla
         for item in self.tree.get_children():
             self.tree.delete(item)
 
-        # Obtener filtros
-        busqueda = self.busqueda_var.get().lower()
-        if self._placeholder_activo:
-            busqueda = ""
-
+        busqueda     = "" if self._placeholder_activo else self.busqueda_var.get().lower().strip()
         estado_filtro = self.filtro_estado.get()
 
-        # Filtrar datos
+        conteo = 0
         for dato in self.datos:
             id_acceso, nombre, fecha, estado, confianza, umbral = dato
 
-            # Aplicar filtros
             if estado_filtro != "Todos" and estado != estado_filtro:
                 continue
-
             if busqueda and busqueda not in nombre.lower():
                 continue
 
-            # Formatear fecha
             try:
-                fecha_obj = datetime.strptime(fecha, "%Y-%m-%d %H:%M:%S")
-                fecha_formatted = fecha_obj.strftime("%d/%m/%Y %H:%M:%S")
-            except:
-                fecha_formatted = fecha
+                fecha_fmt = datetime.strptime(fecha, "%Y-%m-%d %H:%M:%S").strftime("%d/%m/%Y  %H:%M:%S")
+            except Exception:
+                fecha_fmt = fecha or "—"
 
-            # Formatear estado
-            estado_formatted = "✅ Aceptado" if estado == "aceptado" else "❌ Denegado"
+            estado_fmt = "✅  Aceptado" if estado == "aceptado" else "❌  Denegado"
 
-            # Insertar en tabla
-            tag = estado
-            self.tree.insert(
-                "",
-                "end",
-                values=(
-                    id_acceso,
-                    nombre,
-                    fecha_formatted,
-                    estado_formatted,
-                    f"{confianza:.2f}",
-                    f"{umbral:.0f}" if umbral else "N/A"
-                ),
-                tags=(tag,)
-            )
+            self.tree.insert("", "end", values=(
+                id_acceso,
+                nombre,
+                fecha_fmt,
+                estado_fmt,
+                f"{confianza:.2f}" if confianza else "—",
+                f"{umbral:.0f}"    if umbral    else "N/A"
+            ), tags=(estado,))
+            conteo += 1
+
+        self.lbl_conteo.configure(text=f"{conteo} registro{'s' if conteo != 1 else ''}")
 
     def limpiar_historial(self):
-        """Limpia todo el historial de accesos"""
         respuesta = messagebox.askyesno(
-            "Confirmar",
-            "¿Estás segura de que quieres eliminar TODO el historial de accesos?\n\nEsta acción no se puede deshacer.",
+            "Confirmar eliminación",
+            "¿Estás segura de que quieres eliminar TODO el historial?\n\nEsta acción no se puede deshacer.",
             icon='warning'
         )
-
         if not respuesta:
             return
 
@@ -345,14 +368,10 @@ class HistorialAccesosView:
             if not conn:
                 messagebox.showerror("Error", "No se pudo conectar a la base de datos")
                 return
-
-            cursor = conn.cursor()
-            cursor.execute("DELETE FROM accesos")
+            conn.cursor().execute("DELETE FROM accesos")
             conn.commit()
             conn.close()
-
-            messagebox.showinfo("Éxito", "Historial limpiado correctamente")
+            messagebox.showinfo("✅ Listo", "Historial eliminado correctamente.")
             self.cargar_datos()
-
         except Exception as e:
             messagebox.showerror("Error", f"Error al limpiar historial: {str(e)}")
