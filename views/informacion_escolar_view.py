@@ -16,210 +16,238 @@ from database.queries import (
     sp_actualizar_maestro,
     sp_actualizar_personal,
     sp_eliminar_usuario,
-    sp_get_usuarios_inactivos,   
-    sp_restaurar_usuario   
+    sp_get_usuarios_inactivos,
+    sp_restaurar_usuario
 )
 
+# Colores por rol
+ROL_COLOR = {
+    "alumno":   "#4A90D9",
+    "maestro":  "#27AE60",
+    "personal": "#E67E22",
+}
+ROL_ICONO = {
+    "alumno":   "🎓",
+    "maestro":  "📚",
+    "personal": "🏢",
+}
+
+
 class InformacionEscolarView:
-    def _actualizar_todo(self):
-        self.filtro_rol.set("Todos")
-        self.busqueda_var.set("")
-        self.entrada_busqueda.delete(0, tk.END)
-        self.entrada_busqueda.insert(0, "Nombre, matrícula o carrera...")
-        self.entrada_busqueda.configure(text_color=COLORS['text_gray'])
-        self._placeholder_activo = True
-        self.cargar_datos()
 
     def __init__(self, parent):
-        self.parent = parent
+        self.parent    = parent
         self.container = ctk.CTkFrame(parent, fg_color=COLORS['background'])
-        self.container.pack(fill="both", expand=True, padx=30, pady=30)
+        self.container.pack(fill="both", expand=True, padx=24, pady=20)
 
         self.usuario_seleccionado = None
-        self.datos = []
-        self._placeholder_activo = True
+        self.datos                = []
+        self._placeholder_activo  = True
 
         self.crear_interfaz()
         self.cargar_datos()
 
+    # ── Interfaz ──────────────────────────────────────────────────────────────
+
     def crear_interfaz(self):
         self._configurar_estilo_tabla()
 
-        # === CABECERA ===
-        header_frame = ctk.CTkFrame(self.container, fg_color="transparent")
-        header_frame.pack(fill="x", pady=(0, 20))
+        # ── Cabecera ──
+        header = ctk.CTkFrame(self.container, fg_color="transparent")
+        header.pack(fill="x", pady=(0, 14))
+
+        left = ctk.CTkFrame(header, fg_color="transparent")
+        left.pack(side="left")
 
         ctk.CTkLabel(
-            header_frame,
-            text="📚 Información Escolar",
-            font=("Segoe UI", 26, "bold"),
+            left,
+            text="📚  Información Escolar",
+            font=("Segoe UI", 24, "bold"),
             text_color=COLORS['text_dark']
-        ).pack(side="left")
+        ).pack(anchor="w")
+
+        ctk.CTkLabel(
+            left,
+            text="Gestión de usuarios registrados en el sistema",
+            font=("Segoe UI", 11),
+            text_color=COLORS['text_gray']
+        ).pack(anchor="w", pady=(2, 0))
+
+        btn_row = ctk.CTkFrame(header, fg_color="transparent")
+        btn_row.pack(side="right")
 
         ctk.CTkButton(
-            header_frame,
-            text="🔄 Actualizar",
-            fg_color=COLORS['primary'],
-            hover_color=COLORS['primary_dark'],
-            text_color=COLORS['white'],
+            btn_row, text="🗑  Papelera",
+            fg_color=COLORS['content_bg'], hover_color=COLORS['border'],
+            text_color=COLORS['text_dark'],
             font=("Segoe UI", 12, "bold"),
-            corner_radius=10,
-            height=38,
-            command=self._actualizar_todo
-        ).pack(side="right")
+            corner_radius=10, height=38,
+            command=self._papelera
+        ).pack(side="left", padx=(0, 8))
 
         self.btn_toggle_detalles = ctk.CTkButton(
-            header_frame,
-            text="Ocultar detalles",
-            fg_color=COLORS['header'],
-            hover_color=COLORS['header_hover'],
+            btn_row, text="Ver detalles",
+            fg_color=COLORS['header'], hover_color=COLORS['header_hover'],
             text_color=COLORS['white'],
             font=("Segoe UI", 12, "bold"),
-            corner_radius=10,
-            height=38,
+            corner_radius=10, height=38,
             state="disabled",
             command=self.toggle_detalles
         )
-        self.btn_toggle_detalles.pack(side="right", padx=(0, 10))
-        
-        # Botón papelera 
-        ctk.CTkButton(
-            header_frame,
-            text="🗑 Papelera",
-            fg_color=COLORS['content_bg'],
-            hover_color=COLORS['border'],
-            text_color=COLORS['text_dark'],
-            font=("Segoe UI", 12, "bold"),
-            corner_radius=10,
-            height=38,
-            command=self._papelera
-        ).pack(side="right", padx=(0,10))
+        self.btn_toggle_detalles.pack(side="left", padx=(0, 8))
 
-        # === FILTROS ===
-        filtros_frame = ctk.CTkFrame(
+        ctk.CTkButton(
+            btn_row, text="🔄  Actualizar",
+            fg_color=COLORS['primary'], hover_color=COLORS['primary_dark'],
+            text_color=COLORS['white'],
+            font=("Segoe UI", 12, "bold"),
+            corner_radius=10, height=38,
+            command=self._actualizar_todo
+        ).pack(side="left")
+
+        # ── Filtros ──
+        filtros = ctk.CTkFrame(
             self.container,
             fg_color=COLORS['card_bg'],
-            corner_radius=14,
+            corner_radius=12,
             border_width=1,
             border_color=COLORS['border']
         )
-        filtros_frame.pack(fill="x", pady=(0, 15))
+        filtros.pack(fill="x", pady=(0, 12))
 
         ctk.CTkLabel(
-            filtros_frame,
-            text="Buscar:",
+            filtros, text="🔍  Buscar:",
             text_color=COLORS['text_dark'],
-            font=("Segoe UI", 16, "bold")
-        ).pack(side="left", padx=(14, 5), pady=12)
+            font=("Segoe UI", 12, "bold")
+        ).pack(side="left", padx=(14, 6), pady=10)
 
         self.busqueda_var = tk.StringVar()
         self.entrada_busqueda = ctk.CTkEntry(
-            filtros_frame, textvariable=self.busqueda_var,
-            font=("Segoe UI", 12), width=260,
-            height=36, corner_radius=10,
+            filtros, textvariable=self.busqueda_var,
+            font=("Segoe UI", 12), width=270, height=36,
+            corner_radius=10,
             fg_color=COLORS['white'], border_color=COLORS['border'],
             text_color=COLORS['text_gray']
         )
-        self.entrada_busqueda.pack(side="left", padx=(0, 15), pady=10)
+        self.entrada_busqueda.pack(side="left", padx=(0, 16), pady=10)
         self.entrada_busqueda.insert(0, "Nombre, matrícula o carrera...")
-        self.entrada_busqueda.bind("<FocusIn>",   self.limpiar_placeholder)
-        self.entrada_busqueda.bind("<FocusOut>",  self.restaurar_placeholder)
+        self.entrada_busqueda.bind("<FocusIn>",    self.limpiar_placeholder)
+        self.entrada_busqueda.bind("<FocusOut>",   self.restaurar_placeholder)
         self.entrada_busqueda.bind("<KeyRelease>", lambda e: self.filtrar_tabla())
 
         ctk.CTkLabel(
-            filtros_frame,
-            text="Rol:",
+            filtros, text="Rol:",
             text_color=COLORS['text_dark'],
-            font=("Segoe UI", 16, "bold")
-        ).pack(side="left", padx=(0, 5), pady=12)
+            font=("Segoe UI", 12, "bold")
+        ).pack(side="left", padx=(0, 6), pady=10)
 
         win = self.parent.winfo_toplevel()
-        win.option_add("*TCombobox*Listbox.font", ("Segoe UI", 14))
+        win.option_add("*TCombobox*Listbox.font", ("Segoe UI", 13))
         win.option_add("*TCombobox*Listbox.background", COLORS['white'])
         win.option_add("*TCombobox*Listbox.foreground", COLORS['text_dark'])
 
         self.filtro_rol = ttk.Combobox(
-            filtros_frame, values=["Todos", "alumno", "maestro", "personal"],
-            state="readonly", width=20, font=("Segoe UI", 16)
+            filtros, values=["Todos", "alumno", "maestro", "personal"],
+            state="readonly", width=16, font=("Segoe UI", 12)
         )
         self.filtro_rol.set("Todos")
         self.filtro_rol.pack(side="left", pady=10)
         self.filtro_rol.bind('<<ComboboxSelected>>', lambda e: self.filtrar_tabla())
 
-        # === PANEL DETALLES (bottom) ===
+        # Contador de resultados
+        self.lbl_conteo = ctk.CTkLabel(
+            filtros, text="",
+            font=("Segoe UI", 11), text_color=COLORS['text_gray']
+        )
+        self.lbl_conteo.pack(side="right", padx=14)
+
+        # ── Panel de detalles (oculto por defecto) ──
         self.detalles_frame = ctk.CTkFrame(
             self.container,
             fg_color=COLORS['card_bg'],
-            corner_radius=14,
+            corner_radius=12,
             border_width=1,
             border_color=COLORS['border']
         )
-        self.detalles_frame.pack(fill="x", pady=(0, 10))
         self.crear_panel_detalles()
         self.detalles_frame.pack_forget()
 
-        # === BOTONES ACCIÓN (bottom, ocultos al inicio) ===
+        # ── Botones de acción (ocultos por defecto) ──
         self.acciones_frame = ctk.CTkFrame(self.container, fg_color="transparent")
 
-        izq = ctk.CTkFrame(self.acciones_frame, fg_color="transparent")
-        izq.pack(side="left")
-
         self.btn_editar = ctk.CTkButton(
-            izq, text="✏️ Editar Información",
+            self.acciones_frame, text="✏️  Editar",
             fg_color=COLORS['header'], hover_color=COLORS['header_hover'],
             text_color=COLORS['white'],
             font=("Segoe UI", 12, "bold"),
-            corner_radius=10,
-            height=38,
+            corner_radius=10, height=36,
             command=self.editar_usuario
         )
         self.btn_editar.pack(side="left", padx=(0, 8))
 
         self.btn_eliminar = ctk.CTkButton(
-            izq, text="🗑️ Eliminar Usuario",
+            self.acciones_frame, text="🗑️  Eliminar",
             fg_color=COLORS['danger'], hover_color=COLORS['danger_dark'],
             text_color=COLORS['white'],
             font=("Segoe UI", 12, "bold"),
-            corner_radius=10,
-            height=38,
+            corner_radius=10, height=36,
             command=self.eliminar_usuario
         )
         self.btn_eliminar.pack(side="left")
 
-        # === TABLA (centro, toma espacio restante) ===
+        # ── Tabla ──
         self.tabla_frame = ctk.CTkFrame(
             self.container,
             fg_color=COLORS['card_bg'],
-            corner_radius=14,
+            corner_radius=12,
             border_width=1,
             border_color=COLORS['border']
         )
-        self.tabla_frame.pack(fill="both", expand=True, pady=(0, 10))
+        self.tabla_frame.pack(fill="both", expand=True, pady=(0, 8))
+
+        # Header de la tabla
+        th = ctk.CTkFrame(self.tabla_frame, fg_color="transparent")
+        th.pack(fill="x", padx=16, pady=(10, 4))
+        ctk.CTkLabel(
+            th, text="Usuarios registrados",
+            font=("Segoe UI", 13, "bold"),
+            text_color=COLORS['text_dark']
+        ).pack(side="left")
 
         scroll_y = ctk.CTkScrollbar(self.tabla_frame)
-        scroll_y.pack(side="right", fill="y")
+        scroll_y.pack(side="right", fill="y", padx=(0, 4))
         scroll_x = ctk.CTkScrollbar(self.tabla_frame, orientation="horizontal")
-        scroll_x.pack(side="bottom", fill="x")
+        scroll_x.pack(side="bottom", fill="x", pady=(0, 4))
 
         self.tabla = ttk.Treeview(
             self.tabla_frame,
             columns=("id", "nombre", "matricula", "rol", "fotos"),
-            show="headings", yscrollcommand=scroll_y.set,
-            xscrollcommand=scroll_x.set, height=12
+            show="headings",
+            yscrollcommand=scroll_y.set,
+            xscrollcommand=scroll_x.set,
+            height=14
         )
         scroll_y.configure(command=self.tabla.yview)
         scroll_x.configure(command=self.tabla.xview)
 
-        headers = [("id",50,"center"),("nombre",250,"w"),("matricula",120,"center"),
-                   ("rol",100,"center"),("fotos",80,"center")]
-        labels  = {"id":"ID","nombre":"Nombre Completo","matricula":"Matrícula",
-                   "rol":"Rol","fotos":"Fotos"}
-        for col, w, anchor in headers:
-            self.tabla.heading(col, text=labels[col])
+        cols = [
+            ("id",        "ID",             55,  "center"),
+            ("nombre",    "Nombre Completo",260, "w"),
+            ("matricula", "Matrícula",       130, "center"),
+            ("rol",       "Rol",            110, "center"),
+            ("fotos",     "📸 Fotos",        80,  "center"),
+        ]
+        for col, label, w, anchor in cols:
+            self.tabla.heading(col, text=label)
             self.tabla.column(col, width=w, anchor=anchor)
 
-        self.tabla.pack(fill="both", expand=True)
+        self.tabla.pack(fill="both", expand=True, padx=4)
         self.tabla.bind('<<TreeviewSelect>>', self.on_select)
+
+        # Tags de color por rol
+        self.tabla.tag_configure('alumno',   background='#EBF5FB')
+        self.tabla.tag_configure('maestro',  background='#EAFAF1')
+        self.tabla.tag_configure('personal', background='#FEF9E7')
 
     def _configurar_estilo_tabla(self):
         style = ttk.Style()
@@ -229,102 +257,128 @@ class InformacionEscolarView:
             background=COLORS['white'],
             fieldbackground=COLORS['white'],
             foreground=COLORS['text_dark'],
-            rowheight=30,
-            borderwidth=0,
-            font=("Segoe UI", 15)
+            rowheight=32, borderwidth=0,
+            font=("Segoe UI", 12)
         )
         style.configure(
             'Treeview.Heading',
             background=COLORS['content_bg'],
             foreground=COLORS['text_dark'],
-            font=("Segoe UI", 16, "bold"),
-            relief='flat'
+            font=("Segoe UI", 12, "bold"),
+            relief='flat', padding=6
         )
+        style.map('Treeview', background=[('selected', COLORS['primary'])])
         style.map('Treeview.Heading', background=[('active', COLORS['content_bg'])])
 
-    # ── Panel detalles ───────────────────────────────────────────────────────
+    # ── Panel detalles ────────────────────────────────────────────────────────
 
     def crear_panel_detalles(self):
         for w in self.detalles_frame.winfo_children():
             w.destroy()
 
+        if not self.usuario_seleccionado:
+            return
+
+        u     = self.usuario_seleccionado
+        rol   = u.get('rol', '')
+        color = ROL_COLOR.get(rol, COLORS['primary'])
+        icono = ROL_ICONO.get(rol, '👤')
+
+        # Header del panel
+        ph = ctk.CTkFrame(self.detalles_frame, fg_color=color, corner_radius=0, height=36)
+        ph.pack(fill="x")
+        ph.pack_propagate(False)
+
+        nombre_completo = f"{u.get('nombre','')} {u.get('apellido_paterno','')} {u.get('apellido_materno','')}".strip()
         ctk.CTkLabel(
-            self.detalles_frame,
-            text="📋 Detalles del Usuario",
-            font=("Segoe UI", 14, "bold"),
-            text_color=COLORS['text_dark']
-        ).pack(anchor="w", padx=15, pady=(10, 5))
+            ph,
+            text=f"  {icono}  {nombre_completo}  —  {rol.capitalize()}",
+            font=("Segoe UI", 12, "bold"),
+            text_color=COLORS['white']
+        ).pack(side="left", padx=14, pady=8)
 
-        info_frame = ctk.CTkFrame(self.detalles_frame, fg_color="transparent")
-        info_frame.pack(fill="x", padx=15, pady=5)
-
-        if self.usuario_seleccionado:
-            self.mostrar_detalles_usuario(info_frame)
-        else:
+        # Chips de stats rápidos
+        stats_row = ctk.CTkFrame(ph, fg_color="transparent")
+        stats_row.pack(side="right", padx=14)
+        for txt, val in [("📸", u.get('fotos', 0)), ("🔐", u.get('accesos', 0))]:
+            chip = ctk.CTkFrame(stats_row, fg_color="white", corner_radius=6)
+            chip.pack(side="left", padx=3)
             ctk.CTkLabel(
-                info_frame,
-                text="Selecciona un usuario para ver sus detalles",
-                text_color=COLORS['text_gray'],
-                font=("Segoe UI", 12, "italic")
-            ).pack(pady=15)
-            
+                chip, text=f"  {txt} {val}  ",
+                font=("Segoe UI", 10, "bold"),
+                text_color=color
+            ).pack(padx=2, pady=3)
 
-    def mostrar_detalles_usuario(self, parent):
-        u = self.usuario_seleccionado
-        fila = 0
-        self._fila(parent, "Nombre:",    u.get('nombre', ''), fila); fila += 1
-        self._fila(parent, "Apellido Paterno:", u.get('apellido_paterno', 'N/A'), fila); fila += 1
-        self._fila(parent, "Apellido Materno:", u.get('apellido_materno', 'N/A'), fila); fila += 1
-        self._fila(parent, "Matrícula:", u.get('matricula', ''), fila); fila += 1
-        self._fila(parent, "Rol:",       u.get('rol', ''), fila); fila += 1
-        self._fila(parent, "Teléfono:",  u.get('telefono', 'N/A'), fila); fila += 1
+        # Cuerpo de detalles
+        body = ctk.CTkFrame(self.detalles_frame, fg_color="transparent")
+        body.pack(fill="x", padx=16, pady=10)
 
-        rol = u.get('rol')
+        # Columnas de datos
+        cols_data = self._get_cols_data(u, rol)
+        for ci, col_items in enumerate(cols_data):
+            col_frame = ctk.CTkFrame(body, fg_color="transparent")
+            col_frame.pack(side="left", fill="x", expand=True, padx=(0, 16))
+            for label, valor in col_items:
+                self._detail_item(col_frame, label, valor, color)
+
+    def _get_cols_data(self, u, rol):
+        """Devuelve los datos agrupados en 2-3 columnas según el rol."""
+        col1 = [
+            ("Nombre",           u.get('nombre', '—')),
+            ("Apellido Paterno",  u.get('apellido_paterno', '—')),
+            ("Apellido Materno",  u.get('apellido_materno', '—')),
+        ]
+        col2 = [
+            ("Matrícula",  u.get('matricula', '—')),
+            ("Teléfono",   u.get('telefono', '—')),
+            ("Rol",        rol.capitalize()),
+        ]
+        col3 = []
         if rol == 'alumno':
-            self._fila(parent, "Facultad:", u.get('facultad', 'N/A'), fila); fila += 1
-            self._fila(parent, "Carrera:", u.get('carrera', 'N/A'), fila); fila += 1
-            self._fila(parent, "Grado:", u.get('grado', '-'), fila); fila += 1
-            self._fila(parent, "Grupo:", u.get('grupo', '-'), fila); fila += 1
+            col3 = [
+                ("Facultad", u.get('facultad', '—')),
+                ("Carrera",  u.get('carrera', '—')),
+                ("Grado",    u.get('grado', '—')),
+                ("Grupo",    u.get('grupo', '—')),
+            ]
         elif rol == 'maestro':
-            self._fila(parent, "Materia:", u.get('materia', 'N/A'), fila); fila += 1
-            self._fila(parent, "Grado que imparte:", u.get('grado', '-'), fila); fila += 1
+            col3 = [
+                ("Materia", u.get('materia', '—')),
+                ("Grado que imparte", u.get('grado', '—')),
+            ]
         elif rol == 'personal':
-            self._fila(parent, "Puesto:", u.get('puesto', 'N/A'), fila); fila += 1
-            self._fila(parent, "Área:", u.get('area', 'N/A'), fila); fila += 1
+            col3 = [
+                ("Puesto", u.get('puesto', '—')),
+                ("Área",   u.get('area', '—')),
+            ]
+        return [c for c in [col1, col2, col3] if c]
 
-        stats = ctk.CTkFrame(parent, fg_color="transparent")
-        stats.grid(row=fila, column=0, columnspan=2, pady=(10, 0), sticky="w")
+    def _detail_item(self, parent, label, valor, color):
+        row = ctk.CTkFrame(parent, fg_color="transparent")
+        row.pack(fill="x", pady=2)
         ctk.CTkLabel(
-            stats,
-            text=f"📸 Fotos: {u.get('fotos', 0)}",
-            text_color=COLORS['primary'],
-            font=("Segoe UI", 11, "bold")
-        ).pack(side="left", padx=(0, 20))
+            row, text=label + ":",
+            font=("Segoe UI", 10),
+            text_color=COLORS['text_gray'],
+            width=130, anchor="w"
+        ).pack(side="left")
         ctk.CTkLabel(
-            stats,
-            text=f"🔐 Accesos: {u.get('accesos', 0)}",
-            text_color=COLORS['header'],
-            font=("Segoe UI", 11, "bold")
+            row, text=str(valor),
+            font=("Segoe UI", 10, "bold"),
+            text_color=COLORS['text_dark'],
+            anchor="w"
         ).pack(side="left")
 
-    def _fila(self, parent, label, valor, fila):
-        ctk.CTkLabel(
-            parent,
-            text=label,
-            text_color=COLORS['text_gray'],
-            font=("Segoe UI", 10),
-            width=120,
-            anchor="w"
-        ).grid(row=fila, column=0, sticky="w", pady=2)
-        ctk.CTkLabel(
-            parent,
-            text=valor,
-            text_color=COLORS['text_dark'],
-            font=("Segoe UI", 10, "bold"),
-            anchor="w"
-        ).grid(row=fila, column=1, sticky="w", pady=2, padx=(10, 0))
+    # ── Datos ─────────────────────────────────────────────────────────────────
 
-    # ── Carga de datos — usa sp_get_usuarios ─────────────────────────────────
+    def _actualizar_todo(self):
+        self.filtro_rol.set("Todos")
+        self.busqueda_var.set("")
+        self.entrada_busqueda.delete(0, tk.END)
+        self.entrada_busqueda.insert(0, "Nombre, matrícula o carrera...")
+        self.entrada_busqueda.configure(text_color=COLORS['text_gray'])
+        self._placeholder_activo = True
+        self.cargar_datos()
 
     def cargar_datos(self):
         try:
@@ -332,7 +386,6 @@ class InformacionEscolarView:
             if not conn:
                 messagebox.showerror("Error", "No se pudo conectar a la base de datos")
                 return
-
             resultados = sp_get_usuarios(conn)
             conn.close()
 
@@ -340,32 +393,31 @@ class InformacionEscolarView:
             for row in resultados:
                 rol = row[5]
                 if rol == 'alumno':
-                    carrera, grado, grupo = row[7] or 'No especificada', row[8] or '-', row[9] or '-'
+                    carrera, grado, grupo = row[7] or '—', row[8] or '—', row[9] or '—'
                 elif rol == 'maestro':
-                    carrera, grado, grupo = row[11] or 'No especificada', row[12] or '-', '-'
+                    carrera, grado, grupo = row[11] or '—', row[12] or '—', '—'
                 else:
-                    carrera, grado, grupo = row[13] or '-', '-', '-'
+                    carrera, grado, grupo = row[13] or '—', '—', '—'
 
                 self.datos.append({
-                    'id':       row[0],
-                    'nombre':   row[1] or '',
-                    'apellido_paterno': row[2] or 'N/A',
-                    'apellido_materno': row[3] or 'N/A',
-                    'matricula':row[4] or 'N/A',
-                    'rol':      rol,
-                    'telefono': row[6] or 'N/A',
-                    'carrera':  carrera,
-                    'grado':    grado,
-                    'grupo':    grupo,
-                    'materia':  row[11] or 'N/A',
-                    'puesto':   row[13] or 'N/A',
-                    'area':     row[14] or 'N/A',
-                    'facultad': row[10] if rol == 'alumno' else 'N/A',
-                    'fotos':    row[15] or 0,
-                    'accesos':  row[16] or 0,
+                    'id':              row[0],
+                    'nombre':          row[1] or '',
+                    'apellido_paterno':row[2] or '—',
+                    'apellido_materno':row[3] or '—',
+                    'matricula':       row[4] or '—',
+                    'rol':             rol,
+                    'telefono':        row[6] or '—',
+                    'carrera':         carrera,
+                    'grado':           grado,
+                    'grupo':           grupo,
+                    'materia':         row[11] or '—',
+                    'puesto':          row[13] or '—',
+                    'area':            row[14] or '—',
+                    'facultad':        row[10] if rol == 'alumno' else '—',
+                    'fotos':           row[15] or 0,
+                    'accesos':         row[16] or 0,
                 })
             self.actualizar_tabla()
-
         except Exception as e:
             messagebox.showerror("Error", f"Error al cargar datos: {e}")
             self.datos = []
@@ -373,11 +425,17 @@ class InformacionEscolarView:
     def actualizar_tabla(self, datos_filtrados=None):
         for item in self.tabla.get_children():
             self.tabla.delete(item)
-        for u in (datos_filtrados if datos_filtrados is not None else self.datos):
-            nombre_completo = f"{u.get('nombre', '')} {u.get('apellido_paterno', '')} {u.get('apellido_materno', '')}".strip()
+
+        lista = datos_filtrados if datos_filtrados is not None else self.datos
+        for u in lista:
+            nombre_completo = f"{u.get('nombre','')} {u.get('apellido_paterno','')} {u.get('apellido_materno','')}".strip()
+            tag = u.get('rol', '')
             self.tabla.insert("", "end", values=(
                 u['id'], nombre_completo, u['matricula'], u['rol'], u['fotos']
-            ))
+            ), tags=(tag,))
+
+        total = len(lista)
+        self.lbl_conteo.configure(text=f"{total} usuario{'s' if total != 1 else ''}")
 
     def filtrar_tabla(self):
         rol_filtro = self.filtro_rol.get()
@@ -395,7 +453,7 @@ class InformacionEscolarView:
         ]
         self.actualizar_tabla(resultado)
 
-    # ── Placeholder ──────────────────────────────────────────────────────────
+    # ── Placeholder ───────────────────────────────────────────────────────────
 
     def limpiar_placeholder(self, event):
         if self._placeholder_activo:
@@ -409,13 +467,13 @@ class InformacionEscolarView:
             self.entrada_busqueda.configure(text_color=COLORS['text_gray'])
             self._placeholder_activo = True
 
-    # ── Selección ────────────────────────────────────────────────────────────
+    # ── Selección ─────────────────────────────────────────────────────────────
 
     def on_select(self, event):
-        seleccion = self.tabla.selection()
-        if not seleccion:
+        sel = self.tabla.selection()
+        if not sel:
             return
-        user_id = self.tabla.item(seleccion[0])['values'][0]
+        user_id = self.tabla.item(sel[0])['values'][0]
         for u in self.datos:
             if u['id'] == user_id:
                 self.usuario_seleccionado = u
@@ -425,228 +483,168 @@ class InformacionEscolarView:
 
     def mostrar_detalles_panel(self):
         if not self.detalles_frame.winfo_ismapped():
-            self.detalles_frame.pack(fill="x", pady=(0, 10), before=self.tabla_frame)
+            self.detalles_frame.pack(fill="x", pady=(0, 8), before=self.tabla_frame)
         if not self.acciones_frame.winfo_ismapped():
-            self.acciones_frame.pack(fill="x", pady=(0, 8), before=self.detalles_frame)
+            self.acciones_frame.pack(fill="x", pady=(0, 6), before=self.detalles_frame)
         self.btn_toggle_detalles.configure(state="normal", text="Ocultar detalles")
         self.container.update_idletasks()
-        self.detalles_frame.lift()
 
     def ocultar_detalles_panel(self):
         if self.acciones_frame.winfo_ismapped():
             self.acciones_frame.pack_forget()
         if self.detalles_frame.winfo_ismapped():
             self.detalles_frame.pack_forget()
-        self.btn_toggle_detalles.configure(text="Mostrar detalles")
+        self.btn_toggle_detalles.configure(text="Ver detalles")
 
     def toggle_detalles(self):
         if self.detalles_frame.winfo_ismapped():
             self.ocultar_detalles_panel()
-            return
-        if self.usuario_seleccionado:
+        elif self.usuario_seleccionado:
             self.mostrar_detalles_panel()
             self.crear_panel_detalles()
-            return
-        messagebox.showinfo("Detalles", "Selecciona un usuario para mostrar detalles")
+        else:
+            messagebox.showinfo("Detalles", "Selecciona un usuario para mostrar detalles")
 
-    # ── Editar — usa sp_actualizar_* ─────────────────────────────────────────
+    # ── Editar ────────────────────────────────────────────────────────────────
 
     def editar_usuario(self):
         if not self.usuario_seleccionado:
             messagebox.showwarning("Atención", "Selecciona un usuario primero")
             return
 
-        u       = self.usuario_seleccionado
-        partes  = u['nombre'].split()
+        u      = self.usuario_seleccionado
+        partes = u['nombre'].split()
+        color  = ROL_COLOR.get(u.get('rol', ''), COLORS['primary'])
 
         win = ctk.CTkToplevel(self.parent)
         win.title("Editar Usuario")
-        win.geometry("480x580")
+        win.geometry("500x600")
         win.configure(fg_color=COLORS['background'])
         win.grab_set()
 
+        # Header de la ventana
+        wh = ctk.CTkFrame(win, fg_color=color, corner_radius=0, height=54)
+        wh.pack(fill="x")
+        wh.pack_propagate(False)
         ctk.CTkLabel(
-            win,
-            text="✏️ Editar Usuario",
-            font=("Segoe UI", 18, "bold"),
-            text_color=COLORS['text_dark']
-        ).pack(pady=(20, 5))
-        ctk.CTkLabel(
-            win,
-            text=f"ID: {u['id']}  |  Rol actual: {u['rol']}",
-            font=("Segoe UI", 11),
-            text_color=COLORS['text_gray']
-        ).pack(pady=(0, 15))
+            wh, text=f"  ✏️  Editar  —  {u['nombre']} ({u['rol']})",
+            font=("Segoe UI", 13, "bold"), text_color="white"
+        ).pack(side="left", padx=16, pady=14)
 
         form = ctk.CTkFrame(win, fg_color="transparent")
-        form.pack(padx=30, fill="x")
+        form.pack(padx=28, fill="x", pady=16)
 
-        # Variables
         vars_ = {
             'nombre':    tk.StringVar(value=partes[0] if partes else ''),
             'paterno':   tk.StringVar(value=partes[1] if len(partes) > 1 else ''),
             'materno':   tk.StringVar(value=partes[2] if len(partes) > 2 else ''),
-            'matricula': tk.StringVar(value=u['matricula'] if u['matricula'] != 'N/A' else ''),
-            'telefono':  tk.StringVar(value=u['telefono']  if u['telefono']  != 'N/A' else ''),
+            'matricula': tk.StringVar(value=u['matricula'] if u['matricula'] != '—' else ''),
+            'telefono':  tk.StringVar(value=u['telefono']  if u['telefono']  != '—' else ''),
             'rol':       tk.StringVar(value=u['rol']),
-            'carrera':   tk.StringVar(value=u['carrera']   if u['carrera']   != '-'   else ''),
-            'grado':     tk.StringVar(value=u['grado']     if u['grado']     != '-'   else ''),
-            'grupo':     tk.StringVar(value=u['grupo']     if u['grupo']     != '-'   else ''),
+            'carrera':   tk.StringVar(value=u['carrera']   if u['carrera']   != '—' else ''),
+            'grado':     tk.StringVar(value=u['grado']     if u['grado']     != '—' else ''),
+            'grupo':     tk.StringVar(value=u['grupo']     if u['grupo']     != '—' else ''),
         }
-
         originales = {k: v.get() for k, v in vars_.items()}
 
-        def campo(parent, label, var, row, state="normal"):
-            ctk.CTkLabel(
-                parent,
-                text=label,
-                text_color=COLORS['text_gray'],
-                font=("Segoe UI", 10),
-                anchor="w"
-            ).grid(row=row, column=0, sticky="w", pady=4)
-            e = ctk.CTkEntry(
-                parent,
-                textvariable=var,
-                font=("Segoe UI", 11),
-                width=260,
-                height=34,
-                corner_radius=8,
-                border_color=COLORS['border']
-            )
+        def campo(lbl, var, row, state="normal"):
+            ctk.CTkLabel(form, text=lbl, text_color=COLORS['text_gray'],
+                         font=("Segoe UI", 10), anchor="w"
+                         ).grid(row=row, column=0, sticky="w", pady=4)
+            e = ctk.CTkEntry(form, textvariable=var, font=("Segoe UI", 11),
+                             width=270, height=34, corner_radius=8,
+                             border_color=COLORS['border'], fg_color=COLORS['white'])
             if state == "disabled":
                 e.configure(state="disabled")
             e.grid(row=row, column=1, sticky="w", padx=(10, 0), pady=4)
             return e
 
-        campo(form, "Nombre:",       vars_['nombre'],    0)
-        campo(form, "Apellido P.:",  vars_['paterno'],   1)
-        campo(form, "Apellido M.:",  vars_['materno'],   2)
-        campo(form, "Matrícula:",    vars_['matricula'], 3)
-        campo(form, "Teléfono:",     vars_['telefono'],  4)
+        campo("Nombre:",        vars_['nombre'],    0)
+        campo("Apellido P.:",   vars_['paterno'],   1)
+        campo("Apellido M.:",   vars_['materno'],   2)
+        campo("Matrícula:",     vars_['matricula'], 3)
+        campo("Teléfono:",      vars_['telefono'],  4)
 
-        # Rol
-        ctk.CTkLabel(
-            form,
-            text="Rol:",
-            text_color=COLORS['text_gray'],
-            font=("Segoe UI", 10),
-            anchor="w"
-        ).grid(row=5, column=0, sticky="w", pady=4)
-
-        combo_rol = ttk.Combobox(
-            form,
-            textvariable=vars_['rol'],
-            values=["alumno","maestro","personal"],
-            state="readonly",
-            width=26,
-            font=("Segoe UI", 11)
-        )
+        ctk.CTkLabel(form, text="Rol:", text_color=COLORS['text_gray'],
+                     font=("Segoe UI", 10), anchor="w"
+                     ).grid(row=5, column=0, sticky="w", pady=4)
+        combo_rol = ttk.Combobox(form, textvariable=vars_['rol'],
+                                 values=["alumno", "maestro", "personal"],
+                                 state="readonly", width=28, font=("Segoe UI", 11))
         combo_rol.grid(row=5, column=1, sticky="w", padx=(10, 0), pady=4)
 
-        e_carrera = campo(form, "Carrera/Materia:", vars_['carrera'], 6)
-        e_grado   = campo(form, "Grado:",           vars_['grado'],   7)
-        e_grupo   = campo(form, "Grupo/Área:",      vars_['grupo'],   8)
+        e_carrera = campo("Carrera/Materia:", vars_['carrera'], 6)
+        e_grado   = campo("Grado:",           vars_['grado'],   7)
+        e_grupo   = campo("Grupo/Área:",      vars_['grupo'],   8)
 
         def actualizar_campos(*_):
             rol = vars_['rol'].get()
-            e_carrera.configure(state="normal" if rol in ("alumno","maestro") else "disabled")
-            e_grado.configure(  state="normal" if rol in ("alumno","maestro") else "disabled")
+            e_carrera.configure(state="normal" if rol in ("alumno", "maestro") else "disabled")
+            e_grado.configure(  state="normal" if rol in ("alumno", "maestro") else "disabled")
             e_grupo.configure(  state="normal" if rol == "alumno" else "disabled")
 
         combo_rol.bind("<<ComboboxSelected>>", actualizar_campos)
         actualizar_campos()
 
-
         # Botones
-        btn_frame = ctk.CTkFrame(win, fg_color="transparent")
-        btn_frame.pack(pady=20)
+        btn_row = ctk.CTkFrame(win, fg_color="transparent")
+        btn_row.pack(pady=12)
 
         btn_guardar = ctk.CTkButton(
-            btn_frame,
-            text="💾 Guardar Cambios",
-            fg_color=COLORS['primary'],
-            hover_color=COLORS['primary_dark'],
-            text_color=COLORS['white'],
-            font=("Segoe UI", 12, "bold"),
-            corner_radius=10,
-            height=38,
+            btn_row, text="💾  Guardar",
+            fg_color=COLORS['primary'], hover_color=COLORS['primary_dark'],
+            text_color=COLORS['white'], font=("Segoe UI", 12, "bold"),
+            corner_radius=10, height=38, state="disabled",
             command=lambda: self._guardar_edicion(u['id'], vars_, win)
         )
-        btn_guardar.pack(side="left", padx=8)
-        btn_guardar.configure(state="disabled")
+        btn_guardar.pack(side="left", padx=6)
 
         ctk.CTkButton(
-            btn_frame,
-            text="Cancelar",
-            fg_color=COLORS['danger'],
-            hover_color=COLORS['danger_dark'],
-            text_color=COLORS['white'],
-            font=("Segoe UI", 12, "bold"),
-            corner_radius=10,
-            height=38,
-            command=win.destroy
-        ).pack(side="left")
-
-        ctk.CTkButton(
-            btn_frame,
-            text="🔁 Volver a tomar fotos",
-            fg_color=COLORS['accent'],
-            hover_color="#D97706",
-            text_color=COLORS['white'],
-            font=("Segoe UI", 12, "bold"),
-            corner_radius=10,
-            height=38,
+            btn_row, text="🔁  Retomar fotos",
+            fg_color=COLORS['accent'], hover_color="#D97706",
+            text_color=COLORS['white'], font=("Segoe UI", 12, "bold"),
+            corner_radius=10, height=38,
             command=lambda: self._retomar_fotos(u, win)
-        ).pack(side="left", padx=8)
+        ).pack(side="left", padx=6)
 
-        # 🔧 DETECTOR DE CAMBIOS (esto habilita el botón)
-        def detectar_cambios(*args):
+        ctk.CTkButton(
+            btn_row, text="Cancelar",
+            fg_color=COLORS['content_bg'], hover_color=COLORS['border'],
+            text_color=COLORS['text_dark'], font=("Segoe UI", 12, "bold"),
+            corner_radius=10, height=38,
+            command=win.destroy
+        ).pack(side="left", padx=6)
 
-            for k, v in vars_.items():
-                if v.get() != originales[k]:
-                    btn_guardar.configure(state="normal")
-                    return
-
-            btn_guardar.configure(state="disabled")
+        def detectar_cambios(*_):
+            changed = any(v.get() != originales[k] for k, v in vars_.items())
+            btn_guardar.configure(state="normal" if changed else "disabled")
 
         for v in vars_.values():
             v.trace_add("write", detectar_cambios)
 
-
-
     def _guardar_edicion(self, user_id, vars_, ventana):
-
         import sqlite3
-        from tkinter import messagebox
 
-
-        nombre     = vars_['nombre'].get().strip()
-        paterno    = vars_['paterno'].get().strip()
-        materno    = vars_['materno'].get().strip()
-        matricula  = vars_['matricula'].get().strip()
-        telefono   = vars_['telefono'].get().strip()
-        rol        = vars_['rol'].get().strip()
-        carrera    = vars_['carrera'].get().strip()
-        grado      = vars_['grado'].get().strip()
-        grupo      = vars_['grupo'].get().strip()
-
+        nombre    = vars_['nombre'].get().strip()
+        paterno   = vars_['paterno'].get().strip()
+        materno   = vars_['materno'].get().strip()
+        matricula = vars_['matricula'].get().strip()
+        telefono  = vars_['telefono'].get().strip()
+        rol       = vars_['rol'].get().strip()
+        carrera   = vars_['carrera'].get().strip()
+        grado     = vars_['grado'].get().strip()
+        grupo     = vars_['grupo'].get().strip()
 
         if not nombre or not paterno:
-
             messagebox.showwarning("Campos obligatorios", "Nombre y apellido paterno son obligatorios")
             return
 
-
         try:
-
-            conn = sqlite3.connect("database/sistema_biometrico.db")
+            conn   = sqlite3.connect("database/sistema_biometrico.db")
             cursor = conn.cursor()
 
-
             cursor.execute("""
-
-                UPDATE usuarios
-                SET
+                UPDATE usuarios SET
                     nombreUsuario = ?,
                     apellidoPaternoUsuario = ?,
                     apellidoMaternoUsuario = ?,
@@ -654,257 +652,175 @@ class InformacionEscolarView:
                     telefonoUsuario = ?,
                     rolUsuario = ?
                 WHERE idUsuario = ?
+            """, (nombre, paterno, materno, matricula, telefono, rol, user_id))
 
-            """, (
-
-                nombre,
-                paterno,
-                materno,
-                matricula,
-                telefono,
-                rol,
-                user_id
-
-            ))
-
-
-            cursor.execute("DELETE FROM alumnos WHERE fkIdUsuario = ?", (user_id,))
-            cursor.execute("DELETE FROM maestros WHERE fkIdUsuario = ?", (user_id,))
+            cursor.execute("DELETE FROM alumnos          WHERE fkIdUsuario = ?", (user_id,))
+            cursor.execute("DELETE FROM maestros         WHERE fkIdUsuario = ?", (user_id,))
             cursor.execute("DELETE FROM personal_escolar WHERE fkIdUsuario = ?", (user_id,))
 
-
             if rol == "alumno":
-
                 cursor.execute("""
-
-                    INSERT INTO alumnos
-                    (fkIdUsuario, gradoAlumno, grupoAlumno, carreraAlumno)
-
+                    INSERT INTO alumnos (fkIdUsuario, gradoAlumno, grupoAlumno, carreraAlumno)
                     VALUES (?, ?, ?, ?)
-
-                """, (
-
-                    user_id,
-                    grado,
-                    grupo,
-                    carrera
-
-                ))
-
-
+                """, (user_id, grado, grupo, carrera))
             elif rol == "maestro":
-
                 cursor.execute("""
-
-                    INSERT INTO maestros
-                    (fkIdUsuario, gradoImpartidoMaestro, materiaImpartidaMaestro)
-
+                    INSERT INTO maestros (fkIdUsuario, gradoImpartidoMaestro, materiaImpartidaMaestro)
                     VALUES (?, ?, ?)
-
-                """, (
-
-                    user_id,
-                    grado,
-                    carrera
-
-                ))
-
-
+                """, (user_id, grado, carrera))
             elif rol == "personal":
-
                 cursor.execute("""
-
-                    INSERT INTO personal_escolar
-                    (fkIdUsuario, areaPersonalEscolar)
-
+                    INSERT INTO personal_escolar (fkIdUsuario, areaPersonalEscolar)
                     VALUES (?, ?)
-
-                """, (
-
-                    user_id,
-                    grupo
-
-                ))
-
+                """, (user_id, grupo))
 
             conn.commit()
             conn.close()
-
-
-            messagebox.showinfo("Éxito", "Usuario actualizado correctamente")
-
+            messagebox.showinfo("✅ Actualizado", "Usuario actualizado correctamente.")
             ventana.destroy()
-
+            self.cargar_datos()
 
         except Exception as e:
+            messagebox.showerror("Error", f"No se pudo actualizar:\n{e}")
 
-            messagebox.showerror("Error", f"No se pudo actualizar el usuario:\n{e}")
-        
-    # ── Método para re-tomar fotos ──
     def _retomar_fotos(self, usuario, ventana_actual):
         try:
-            import tkinter as tk
-            from tkinter import messagebox
             from views.nuevo_registro_view import NuevoRegistroView
-
-            # Cerrar ventana actual
             ventana_actual.destroy()
-
-            # Limpiar el contenedor principal
             for widget in self.parent.winfo_children():
                 widget.destroy()
 
-            # Crear vista de nuevo registro
             nuevo_reg = NuevoRegistroView(self.parent)
-
-            # ── MODO RETOMAR FOTOS ──
-            nuevo_reg.modo_retomar_fotos = True
-            nuevo_reg.user_id_existente = usuario.get("id")
-
-            # Asignar rol
-            nuevo_reg.rol_actual = usuario.get('rol', 'alumno')
-
-            # Mostrar formulario
+            nuevo_reg.modo_retomar_fotos  = True
+            nuevo_reg.user_id_existente   = usuario.get("id")
+            nuevo_reg.rol_actual          = usuario.get('rol', 'alumno')
             nuevo_reg._mostrar_formulario()
 
-            # Mapear campos
             campo_map = {
-                'nombreUsuario': 'nombre',
+                'nombreUsuario':          'nombre',
                 'apellidoPaternoUsuario': 'paterno',
                 'apellidoMaternoUsuario': 'materno',
-                'matriculaUsuario': 'matricula',
-                'telefonoUsuario': 'telefono',
-                'correoUsuario': 'correo',
-                'gradoAlumno': 'grado',
-                'grupoAlumno': 'grupo',
-                'carreraAlumno': 'carrera'
+                'matriculaUsuario':       'matricula',
+                'telefonoUsuario':        'telefono',
+                'correoUsuario':          'correo',
+                'gradoAlumno':            'grado',
+                'grupoAlumno':            'grupo',
+                'carreraAlumno':          'carrera',
             }
-
-            # Llenar formulario
             for entry_key, user_key in campo_map.items():
                 valor = usuario.get(user_key, '')
                 if entry_key in nuevo_reg.entries and valor:
                     nuevo_reg.entries[entry_key].delete(0, tk.END)
                     nuevo_reg.entries[entry_key].insert(0, valor)
 
-            # Guardar valores para captura
             nuevo_reg.valores_form = {k: e.get().strip() for k, e in nuevo_reg.entries.items()}
-
-            # Ir directo a captura
             nuevo_reg.parent.after(200, nuevo_reg._mostrar_captura)
 
         except Exception as e:
             messagebox.showerror("Error", f"No se pudo iniciar la captura: {e}")
 
-    # ── Eliminar — usa sp_eliminar_usuario ────────────────────────────────────
+    # ── Eliminar ──────────────────────────────────────────────────────────────
 
     def eliminar_usuario(self):
         if not self.usuario_seleccionado:
             return
         u = self.usuario_seleccionado
-        confirmar = messagebox.askyesno(
+        if not messagebox.askyesno(
             "Confirmar eliminación",
-            f"¿Estás seguro de eliminar a:\n\n"
-            f"{u['nombre']} ({u['rol']})\n\n"
-        )
-        if not confirmar:
+            f"¿Eliminar a {u['nombre']} {u.get('apellido_paterno','')} ({u['rol']})?"
+        ):
             return
         try:
             conn = get_db()
             sp_eliminar_usuario(conn, u['id'])
             conn.commit()
             conn.close()
-
             self.usuario_seleccionado = None
-            self.acciones_frame.pack_forget()
-            self.crear_panel_detalles()
+            self.ocultar_detalles_panel()
             self.cargar_datos()
             messagebox.showinfo("✅ Eliminado", f"{u['nombre']} eliminado correctamente.")
-
         except Exception as e:
             messagebox.showerror("Error", f"No se pudo eliminar: {e}")
+
+    # ── Papelera ──────────────────────────────────────────────────────────────
 
     def _papelera(self):
         win = ctk.CTkToplevel(self.parent)
         win.title("Papelera de Usuarios")
-        win.geometry("900x500")
+        win.geometry("860x480")
         win.configure(fg_color=COLORS['background'])
         win.grab_set()
 
+        # Header
+        wh = ctk.CTkFrame(win, fg_color=COLORS['danger'], corner_radius=0, height=50)
+        wh.pack(fill="x")
+        wh.pack_propagate(False)
         ctk.CTkLabel(
-            win,
-            text="🗑 Usuarios Inactivos",
-            font=("Segoe UI", 18, "bold"),
-            text_color=COLORS['text_dark']
-        ).pack(pady=10)
+            wh, text="  🗑  Papelera — Usuarios Inactivos",
+            font=("Segoe UI", 14, "bold"), text_color="white"
+        ).pack(side="left", padx=16, pady=12)
+
+        # Tabla
+        tabla_frame = ctk.CTkFrame(win, fg_color=COLORS['card_bg'],
+                                    corner_radius=12, border_width=1,
+                                    border_color=COLORS['border'])
+        tabla_frame.pack(fill="both", expand=True, padx=16, pady=12)
+
+        scroll = ctk.CTkScrollbar(tabla_frame)
+        scroll.pack(side="right", fill="y")
 
         tabla = ttk.Treeview(
-            win,
-            columns=("id","nombre","rol","matricula"),
-            show="headings",
-            height=15
+            tabla_frame,
+            columns=("id", "nombre", "rol", "matricula"),
+            show="headings", height=12,
+            yscrollcommand=scroll.set
         )
-        tabla.heading("id", text="ID")
-        tabla.heading("nombre", text="Nombre")
-        tabla.heading("rol", text="Rol")
-        tabla.heading("matricula", text="Matrícula")
-        tabla.column("id", width=60, anchor="center")
-        tabla.column("nombre", width=280)
-        tabla.column("rol", width=120, anchor="center")
-        tabla.column("matricula", width=150, anchor="center")
-        tabla.pack(fill="both", expand=True, padx=15, pady=10)
+        scroll.configure(command=tabla.yview)
 
-        # ── Cargar usuarios inactivos (SP) ──
+        for col, lbl, w, anc in [
+            ("id",       "ID",         60,  "center"),
+            ("nombre",   "Nombre",     300, "w"),
+            ("rol",      "Rol",        120, "center"),
+            ("matricula","Matrícula",  160, "center"),
+        ]:
+            tabla.heading(col, text=lbl)
+            tabla.column(col, width=w, anchor=anc)
+
+        tabla.pack(fill="both", expand=True, padx=4, pady=4)
+
         try:
             conn = get_db()
             rows = sp_get_usuarios_inactivos(conn)
             conn.close()
-
             for r in rows:
                 nombre = f"{r[1]} {r[2] or ''} {r[3] or ''}".strip()
-                tabla.insert("", "end", values=(r[0], nombre, r[5], r[4] or "N/A"))
-
+                tabla.insert("", "end", values=(r[0], nombre, r[5], r[4] or "—"))
         except Exception as e:
             messagebox.showerror("Error", f"No se pudo cargar la papelera:\n{e}")
             return
 
-        # ── Restaurar usuario ──
         def restaurar():
             sel = tabla.selection()
             if not sel:
-                messagebox.showwarning("Atención", "Selecciona un usuario")
-                return
-
+                messagebox.showwarning("Atención", "Selecciona un usuario"); return
             user_id = tabla.item(sel[0])['values'][0]
-
-            confirmar = messagebox.askyesno(
-                "Confirmar restauración",
-                "¿Restaurar este usuario?"
-            )
-            if not confirmar:
+            if not messagebox.askyesno("Confirmar", "¿Restaurar este usuario?"):
                 return
-
             try:
                 conn = get_db()
                 sp_restaurar_usuario(conn, user_id)
                 conn.commit()
                 conn.close()
-
-                messagebox.showinfo("Restaurado", "Usuario restaurado correctamente")
+                messagebox.showinfo("✅ Restaurado", "Usuario restaurado correctamente.")
                 win.destroy()
                 self.cargar_datos()
-
             except Exception as e:
                 messagebox.showerror("Error", f"No se pudo restaurar:\n{e}")
 
         ctk.CTkButton(
-            win,
-            text="♻️ Restaurar Usuario",
-            fg_color=COLORS['primary'],
-            hover_color=COLORS['primary_dark'],
-            text_color=COLORS['white'],
-            font=("Segoe UI", 12, "bold"),
-            corner_radius=10,
-            height=38,
+            win, text="♻️  Restaurar Usuario",
+            fg_color=COLORS['primary'], hover_color=COLORS['primary_dark'],
+            text_color=COLORS['white'], font=("Segoe UI", 12, "bold"),
+            corner_radius=10, height=38,
             command=restaurar
-        ).pack(pady=10)
+        ).pack(pady=(0, 12))
