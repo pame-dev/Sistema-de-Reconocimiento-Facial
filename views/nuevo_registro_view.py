@@ -109,67 +109,104 @@ class NuevoRegistroView:
         self.rol_actual    = None
         self.entries       = {}
 
-        # Estado de posturas
         self.postura_idx          = 0
         self.fotos_postura        = 0
         self.capturando_rafaga    = False
         self.posturas_completadas = []
 
-        # Detector reutilizable (se crea una sola vez)
         self.detector = cv2.CascadeClassifier(
             cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
         )
 
-        # Modo retomar fotos (lo activa informacion_escolar_view)
         self.modo_retomar_fotos  = False
         self.user_id_existente   = None
 
         self._mostrar_seleccion_rol()
 
     # ════════════════════════════════════════════════════════════════════════
-    # PANTALLA 1 — Selección de rol
+    # PANTALLA 1 — Selección de rol  (RESPONSIVE)
     # ════════════════════════════════════════════════════════════════════════
 
     def _mostrar_seleccion_rol(self):
         self._limpiar_container()
 
-        centro = ctk.CTkFrame(self.container, fg_color="transparent")
-        centro.pack(fill="both", expand=True)
+        # Frame externo que ocupa todo el espacio
+        outer = ctk.CTkFrame(self.container, fg_color="transparent")
+        outer.pack(fill="both", expand=True)
 
-        inner = ctk.CTkFrame(centro, fg_color="transparent")
-        inner.place(relx=0.5, rely=0.5, anchor="center")
-
+        # Título centrado arriba
         ctk.CTkLabel(
-            inner,
+            outer,
             text="📝 Nuevo Registro de Usuario",
-            font=("Segoe UI", 30, "bold"),
+            font=("Segoe UI", 22, "bold"),
             text_color=COLORS['text_dark']
-        ).pack(pady=(0, 8))
+        ).pack(pady=(20, 4))
 
         ctk.CTkLabel(
-            inner,
+            outer,
             text="Selecciona el tipo de usuario que deseas registrar",
-            font=("Segoe UI", 14),
+            font=("Segoe UI", 12),
             text_color=COLORS['text_gray']
-        ).pack(pady=(0, 35))
+        ).pack(pady=(0, 16))
 
-        grid = ctk.CTkFrame(inner, fg_color="transparent")
-        grid.pack()
+        # Frame de tarjetas que se adapta al ancho disponible
+        cards_frame = ctk.CTkFrame(outer, fg_color="transparent")
+        cards_frame.pack(fill="both", expand=True, padx=20, pady=(0, 20))
+
+        # 3 columnas con peso igual — se estiran con la ventana
+        cards_frame.grid_columnconfigure(0, weight=1, uniform="rol")
+        cards_frame.grid_columnconfigure(1, weight=1, uniform="rol")
+        cards_frame.grid_columnconfigure(2, weight=1, uniform="rol")
+        cards_frame.grid_rowconfigure(0, weight=1)
 
         for idx, (rol_key, cfg) in enumerate(ROL_CONFIG.items()):
-            self._crear_tarjeta(grid, rol_key, cfg, 0, idx)
+            self._crear_tarjeta_responsive(cards_frame, rol_key, cfg, col=idx)
 
-    def _crear_tarjeta(self, parent, rol_key, cfg, row, col):
+    def _crear_tarjeta_responsive(self, parent, rol_key, cfg, col):
         color = cfg["color"]
-        outer = ctk.CTkFrame(parent, fg_color=color, corner_radius=16)
-        outer.grid(row=row, column=col, padx=30, pady=18)
-        card  = ctk.CTkFrame(outer, fg_color=COLORS['card_bg'], corner_radius=14)
-        card.pack(padx=3, pady=3)
 
-        ctk.CTkLabel(card, text=cfg["icono"], font=("Segoe UI Emoji", 72)).pack(padx=90, pady=(40, 8))
-        ctk.CTkLabel(card, text=cfg["titulo"], font=("Segoe UI", 20, "bold"), text_color=color).pack()
-        ctk.CTkLabel(card, text=cfg["desc"], font=("Segoe UI", 12), text_color=COLORS['text_gray']).pack(pady=(6, 24))
+        # Borde de color
+        outer = ctk.CTkFrame(parent, fg_color=color, corner_radius=14)
+        outer.grid(row=0, column=col, padx=10, pady=10, sticky="nsew")
+        outer.grid_rowconfigure(0, weight=1)
+        outer.grid_columnconfigure(0, weight=1)
 
+        # Contenido blanco/card interior
+        card = ctk.CTkFrame(outer, fg_color=COLORS['card_bg'], corner_radius=12)
+        card.grid(row=0, column=0, padx=3, pady=3, sticky="nsew")
+        card.grid_rowconfigure(1, weight=1)   # el espacio vacío se expande
+        card.grid_columnconfigure(0, weight=1)
+
+        # Ícono — tamaño fijo razonable
+        ctk.CTkLabel(
+            card,
+            text=cfg["icono"],
+            font=("Segoe UI Emoji", 52),
+        ).grid(row=0, column=0, pady=(28, 6))
+
+        # Textos centrados
+        info = ctk.CTkFrame(card, fg_color="transparent")
+        info.grid(row=1, column=0, sticky="ew", padx=16)
+
+        ctk.CTkLabel(
+            info,
+            text=cfg["titulo"],
+            font=("Segoe UI", 16, "bold"),
+            text_color=color,
+            wraplength=160,
+            justify="center",
+        ).pack()
+
+        ctk.CTkLabel(
+            info,
+            text=cfg["desc"],
+            font=("Segoe UI", 11),
+            text_color=COLORS['text_gray'],
+            wraplength=160,
+            justify="center",
+        ).pack(pady=(4, 0))
+
+        # Botón siempre visible en la parte baja
         ctk.CTkButton(
             card,
             text="Seleccionar",
@@ -178,10 +215,11 @@ class NuevoRegistroView:
             text_color=COLORS['white'],
             font=("Segoe UI", 12, "bold"),
             corner_radius=10,
-            height=40,
-            command=lambda r=rol_key: self._seleccionar_rol(r)
-        ).pack(pady=(0, 36))
+            height=38,
+            command=lambda r=rol_key: self._seleccionar_rol(r),
+        ).grid(row=2, column=0, padx=20, pady=(12, 22), sticky="ew")
 
+        # Click en cualquier parte de la tarjeta
         for w in (outer, card):
             w.bind("<Button-1>", lambda e, r=rol_key: self._seleccionar_rol(r))
 
@@ -206,7 +244,6 @@ class NuevoRegistroView:
         cfg   = ROL_CONFIG[self.rol_actual]
         color = cfg["color"]
 
-        # Cabecera
         header = ctk.CTkFrame(self.container, fg_color="transparent")
         header.pack(fill="x", pady=(0, 12))
 
@@ -340,12 +377,11 @@ class NuevoRegistroView:
             if required and not self.entries.get(key, tk.Entry()).get().strip():
                 messagebox.showwarning("Campo requerido", f"El campo '{key}' es obligatorio"); return
 
-        # Guardar valores antes de destruir widgets
         self.valores_form = {key: entry.get().strip() for key, entry in self.entries.items()}
         self._mostrar_captura()
 
     # ════════════════════════════════════════════════════════════════════════
-    # PANTALLA 3 — Captura guiada por posturas
+    # PANTALLA 3 — Captura guiada
     # ════════════════════════════════════════════════════════════════════════
 
     def _mostrar_captura(self):
@@ -360,7 +396,6 @@ class NuevoRegistroView:
         cfg   = ROL_CONFIG[self.rol_actual]
         color = cfg["color"]
 
-        # Cabecera
         header = ctk.CTkFrame(self.container, fg_color="transparent")
         header.pack(fill="x", pady=(0, 10))
 
@@ -383,7 +418,6 @@ class NuevoRegistroView:
 
         ttk.Separator(self.container, orient="horizontal").pack(fill="x", pady=(0, 10))
 
-        # Progreso general
         prog_frame = ctk.CTkFrame(self.container, fg_color="transparent")
         prog_frame.pack(fill="x", pady=(0, 10))
 
@@ -398,11 +432,9 @@ class NuevoRegistroView:
         self.bar_total = ttk.Progressbar(prog_frame, length=300, maximum=TOTAL_FOTOS)
         self.bar_total.pack(side="left")
 
-        # Cuerpo: guía | cámara
         body = ctk.CTkFrame(self.container, fg_color="transparent")
         body.pack(fill="both", expand=True)
 
-        # Panel izquierdo — instrucción de postura
         self.panel_guia = ctk.CTkFrame(
             body,
             fg_color=COLORS['card_bg'],
@@ -415,7 +447,6 @@ class NuevoRegistroView:
         self.panel_guia.pack_propagate(False)
         self._construir_panel_guia(color)
 
-        # Panel derecho — cámara
         cam_panel = ctk.CTkFrame(
             body,
             fg_color=COLORS['card_bg'],
@@ -428,7 +459,6 @@ class NuevoRegistroView:
         self.video_label = tk.Label(cam_panel, bg=COLORS['content_bg'])
         self.video_label.pack(expand=True, padx=10, pady=10)
 
-        # Controles cámara
         ctrl = ctk.CTkFrame(cam_panel, fg_color="transparent")
         ctrl.pack(fill="x", padx=10, pady=8)
 
@@ -487,7 +517,6 @@ class NuevoRegistroView:
         )
         self.btn_detener.pack(side="left", padx=5)
 
-        # Progreso de postura actual
         pos_prog = ctk.CTkFrame(cam_panel, fg_color="transparent")
         pos_prog.pack(fill="x", padx=10, pady=(0, 8))
 
@@ -504,7 +533,6 @@ class NuevoRegistroView:
         )
         self.bar_postura.pack(side="left", padx=5)
 
-        # Estado de ráfaga
         self.lbl_rafaga = ctk.CTkLabel(
             cam_panel,
             text="",
@@ -513,7 +541,6 @@ class NuevoRegistroView:
         )
         self.lbl_rafaga.pack(pady=(0, 5))
 
-        # Botón guardar
         self.btn_guardar = ctk.CTkButton(
             self.container,
             text="💾 Guardar Usuario",
@@ -543,7 +570,6 @@ class NuevoRegistroView:
             justify="center"
         ).pack(pady=(15, 8))
 
-        # Imagen de postura o ícono de respaldo
         img_path   = os.path.join(os.path.dirname(os.path.dirname(__file__)), postura["imagen"])
         img_loaded = False
 
@@ -621,10 +647,8 @@ class NuevoRegistroView:
             frame_rgb    = cv2.resize(frame_rgb, (nw, nh))
             rh, rw       = frame_rgb.shape[:2]
 
-            # Rectángulo guía centrado
             cv2.rectangle(frame_rgb, (rw//4, rh//4), (3*rw//4, 3*rh//4), (0, 255, 0), 2)
 
-            # Indicador de cara detectada en tiempo real
             gray  = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2GRAY)
             caras = self.detector.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(60, 60))
             if len(caras) > 0:
@@ -653,7 +677,7 @@ class NuevoRegistroView:
             self.btn_tomar.configure(state="disabled")
             self.btn_detener.configure(state="disabled")
 
-    # ── Ráfaga de fotos ───────────────────────────────────────────────────────
+    # ── Ráfaga ────────────────────────────────────────────────────────────────
 
     def _iniciar_rafaga(self):
         if self.camara is None or not self.capturando:
@@ -682,13 +706,11 @@ class NuevoRegistroView:
         ret, frame = self.camara.read()
         if ret:
             gray  = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            # Reutiliza self.detector creado en __init__
             caras = self.detector.detectMultiScale(
                 gray, scaleFactor=1.1, minNeighbors=5, minSize=(80, 80)
             )
 
             if len(caras) > 0:
-                # Cara más grande detectada
                 x, y, w, h = max(caras, key=lambda c: c[2] * c[3])
                 rostro      = frame[y:y+h, x:x+w]
                 rostro      = cv2.resize(rostro, (200, 200))
@@ -781,8 +803,6 @@ class NuevoRegistroView:
         self.btn_guardar.configure(state="disabled")
         self._construir_panel_guia(color)
 
-    # ── Navegación ────────────────────────────────────────────────────────────
-
     def _volver_formulario(self):
         self._detener_camara()
         self._mostrar_formulario()
@@ -812,7 +832,6 @@ class NuevoRegistroView:
             conn  = get_db()
             ahora = datetime.now()
 
-            # Modo retomar fotos: solo actualiza biometría
             if self.modo_retomar_fotos:
                 user_id = self.user_id_existente
                 cursor  = conn.cursor()
@@ -830,7 +849,6 @@ class NuevoRegistroView:
                 self._mostrar_seleccion_rol()
                 return
 
-            # Registro nuevo
             user_id = sp_insertar_usuario(conn, {
                 'nombre':    nombre,
                 'paterno':   paterno,
