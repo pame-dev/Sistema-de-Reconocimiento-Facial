@@ -77,11 +77,11 @@ class InformacionEscolarView:
         btn_row.pack(side="right")
 
         ctk.CTkButton(
-            btn_row, text="🗑 Papelera",
+            btn_row, text="🗑",
             fg_color=COLORS['content_bg'], hover_color=COLORS['border'],
             text_color=COLORS['text_dark'],
             font=("Segoe UI", 12, "bold"),
-            corner_radius=10, height=38, width=70,
+            corner_radius=10, height=38, width=30,
             command=self._papelera
         ).pack(side="left", padx=(0, 8))
 
@@ -90,7 +90,7 @@ class InformacionEscolarView:
             fg_color=COLORS['header'], hover_color=COLORS['header_hover'],
             text_color=COLORS['white'],
             font=("Segoe UI", 12, "bold"),
-            corner_radius=10, height=38,width=60,
+            corner_radius=10, height=38,width=70,
             state="disabled",
             command=self.toggle_detalles
         )
