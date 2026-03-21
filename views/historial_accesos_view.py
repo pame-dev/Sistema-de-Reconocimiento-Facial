@@ -105,7 +105,7 @@ class HistorialAccesosView:
             filtros,
             textvariable=self.busqueda_var,
             font=("Segoe UI", 12),
-            width=270, height=36,
+            width=180, height=36,
             corner_radius=10,
             fg_color=COLORS['white'],
             border_color=COLORS['border'],

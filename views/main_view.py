@@ -289,7 +289,7 @@ class MainView:
                            corner_radius=0, height=56)
         bar.grid(row=0, column=0, sticky="ew")
         bar.grid_propagate(False)
-        bar.grid_columnconfigure(1, weight=1)
+        bar.grid_columnconfigure(3, weight=1)
 
         # Logo + título
         logo_f = ctk.CTkFrame(bar, fg_color="transparent")
@@ -301,46 +301,41 @@ class MainView:
                      font=("Segoe UI", 14, "bold"),
                      text_color="#1565c0").pack(side="left")
 
+        # Botones
+        btns = ctk.CTkFrame(bar, fg_color="transparent")
+        btns.grid(row=0, column=1, padx=(4, 0), pady=10, sticky="w")
+
+        self._btn_iniciar = ctk.CTkButton(btns, text="▶ Iniciar",
+                  fg_color="#16a34a", hover_color="#15803d",
+                  text_color="white",
+                  font=("Segoe UI", 12, "bold"),
+                  width=90, height=32, corner_radius=8,
+                  command=self._start_camera)
+        self._btn_iniciar.pack(side="left", padx=4)
+        self._anim_running = False
+
+        ctk.CTkButton(btns, text="⏹ Detener",
+                  fg_color="#dc2626", hover_color="#b91c1c",
+                  text_color="white",
+                  font=("Segoe UI", 12, "bold"),
+                  width=90, height=32, corner_radius=8,
+                  command=self._stop_camera).pack(side="left", padx=4)
+
+        ctk.CTkButton(btns, text="⚡  Entrenar",
+                  fg_color="#1d4ed8", hover_color="#1e40af",
+                  text_color="white",
+                  font=("Segoe UI", 12, "bold"),
+                  width=90, height=32, corner_radius=8,
+                  command=self._train_model).pack(side="left", padx=4)
+
         # Badges de estado
         mid = ctk.CTkFrame(bar, fg_color="transparent")
-        mid.grid(row=0, column=1)
-
-        self._lbl_status = ctk.CTkLabel(mid, text="⬤  Iniciando...",
-                                         font=("Segoe UI", 11, "bold"),
-                                         text_color="#f59e0b")
-        self._lbl_status.pack()
+        mid.grid(row=0, column=2, padx=(14, 0), pady=8, sticky="w")
 
         self._lbl_cam = ctk.CTkLabel(mid, text="⬤  Cámara apagada",
                                       font=("Segoe UI", 10),
                                       text_color="#ef4444")
         self._lbl_cam.pack()
-
-        # Botones
-        btns = ctk.CTkFrame(bar, fg_color="transparent")
-        btns.grid(row=0, column=2, padx=14, pady=10, sticky="e")
-
-        self._btn_iniciar = ctk.CTkButton(btns, text="▶ Iniciar",
-                      fg_color="#16a34a", hover_color="#15803d",
-                      text_color="white",
-                      font=("Segoe UI", 12, "bold"),
-                      width=90, height=32, corner_radius=8,
-                      command=self._start_camera)
-        self._btn_iniciar.pack(side="left", padx=4)
-        self._anim_running = False
-
-        ctk.CTkButton(btns, text="⏹ Detener",
-                      fg_color="#dc2626", hover_color="#b91c1c",
-                      text_color="white",
-                      font=("Segoe UI", 12, "bold"),
-                      width=90, height=32, corner_radius=8,
-                      command=self._stop_camera).pack(side="left", padx=4)
-
-        ctk.CTkButton(btns, text="⚡  Entrenar",
-                      fg_color="#1d4ed8", hover_color="#1e40af",
-                      text_color="white",
-                      font=("Segoe UI", 12, "bold"),
-                      width=90, height=32, corner_radius=8,
-                      command=self._train_model).pack(side="left", padx=4)
 
         # ── Área de cámara ────────────────────────────────────────────────────
         cam_card = ctk.CTkFrame(outer, fg_color="#ffffff",
@@ -393,16 +388,6 @@ class MainView:
 
     def _train_model(self):
         self._lbl_status.configure(text="⬤  Entrenando...", text_color="#f59e0b")
-        def _do():
-            ok = self._engine.entrenar()
-            if ok:
-                n = len(self._engine.nombres)
-                self.main_frame.after(0, lambda: self._lbl_status.configure(
-                    text=f"⬤  Modelo listo · {n} usuarios", text_color="#16a34a"))
-            else:
-                self.main_frame.after(0, lambda: self._lbl_status.configure(
-                    text="⬤  Error — Sin datos en DB", text_color="#ef4444"))
-        threading.Thread(target=_do, daemon=True).start()
 
     # ── Animación del botón Iniciar ───────────────────────────────────────────
     def _anim_btn(self, step=0):
