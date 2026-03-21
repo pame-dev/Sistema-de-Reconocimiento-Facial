@@ -78,7 +78,7 @@ class MainView:
                      font=("Segoe UI", 18, "bold"),
                      text_color=COLORS['white']).pack(side="left")
 
-        ctk.CTkButton(header, text="⏻  Salir",
+        ctk.CTkButton(header, text="← Salir",
                       font=("Segoe UI", 12, "bold"),
                       fg_color=COLORS['danger'], hover_color=COLORS['danger_dark'],
                       text_color=COLORS['white'],
@@ -183,9 +183,9 @@ class MainView:
         stats_row.pack(fill="x", pady=(0, 18))
         stats_row.grid_columnconfigure((0, 1, 2), weight=1, uniform="stat")
 
-        self._stat_total     = self._stat_card(stats_row, "Accesos totales",     "0", COLORS['primary'], "🔢", 0)
-        self._stat_aceptados = self._stat_card(stats_row, "Accesos conseguidos", "0", "#27AE60",          "✅", 1)
-        self._stat_denegados = self._stat_card(stats_row, "Accesos denegados",   "0", COLORS['danger'],   "❌", 2)
+        self._stat_total     = self._stat_card(stats_row, "Accesos",     "0", COLORS['primary'], "🔢", 0)
+        self._stat_aceptados = self._stat_card(stats_row, "Aceptados", "0", "#27AE60",          "✅", 1)
+        self._stat_denegados = self._stat_card(stats_row, "Denegados",   "0", COLORS['danger'],   "❌", 2)
         self._cargar_stats()
 
         card = ctk.CTkFrame(outer, fg_color=COLORS['card_bg'],
@@ -297,7 +297,7 @@ class MainView:
         ctk.CTkLabel(logo_f, text="🛡",
                      font=("Segoe UI Emoji", 22),
                      text_color="#1565c0").pack(side="left", padx=(0, 8))
-        ctk.CTkLabel(logo_f, text="Sentinel System  —  Reconocimiento Facial",
+        ctk.CTkLabel(logo_f, text="Reconocimiento Facial",
                      font=("Segoe UI", 14, "bold"),
                      text_color="#1565c0").pack(side="left")
 
@@ -319,7 +319,7 @@ class MainView:
         btns = ctk.CTkFrame(bar, fg_color="transparent")
         btns.grid(row=0, column=2, padx=14, pady=10, sticky="e")
 
-        self._btn_iniciar = ctk.CTkButton(btns, text="▶  Iniciar",
+        self._btn_iniciar = ctk.CTkButton(btns, text="▶ Iniciar",
                       fg_color="#16a34a", hover_color="#15803d",
                       text_color="white",
                       font=("Segoe UI", 12, "bold"),
@@ -328,7 +328,7 @@ class MainView:
         self._btn_iniciar.pack(side="left", padx=4)
         self._anim_running = False
 
-        ctk.CTkButton(btns, text="⏹  Detener",
+        ctk.CTkButton(btns, text="⏹ Detener",
                       fg_color="#dc2626", hover_color="#b91c1c",
                       text_color="white",
                       font=("Segoe UI", 12, "bold"),

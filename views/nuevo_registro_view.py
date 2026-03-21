@@ -20,9 +20,9 @@ from database.queries import (
 
 # ── Configuración de roles ───────────────────────────────────────────────────
 ROL_CONFIG = {
-    "alumno":   {"icono": "🎓", "titulo": "Alumno",   "desc": "Estudiante inscrito",     "color": "#4A90D9"},
-    "maestro":  {"icono": "📚", "titulo": "Maestro",  "desc": "Docente del plantel",     "color": "#27AE60"},
-    "personal": {"icono": "🏢", "titulo": "Personal", "desc": "Personal administrativo", "color": "#E67E22"},
+    "alumno":   {"icono": "🎓", "titulo": "Alumno",   "desc": "Estudiante ",     "color": "#4A90D9"},
+    "maestro":  {"icono": "📚", "titulo": "Maestro",  "desc": "Docente ",     "color": "#27AE60"},
+    "personal": {"icono": "🏢", "titulo": "Personal", "desc": "administrativo", "color": "#E67E22"},
 }
 
 CAMPOS_POR_ROL = {
@@ -209,7 +209,7 @@ class NuevoRegistroView:
         # Botón siempre visible en la parte baja
         ctk.CTkButton(
             card,
-            text="Seleccionar",
+            text="✓",
             fg_color=color,
             hover_color=self._darken(color),
             text_color=COLORS['white'],

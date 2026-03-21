@@ -124,7 +124,7 @@ class InformacionEscolarView:
         self.busqueda_var = tk.StringVar()
         self.entrada_busqueda = ctk.CTkEntry(
             filtros, textvariable=self.busqueda_var,
-            font=("Segoe UI", 12), width=270, height=36,
+            font=("Segoe UI", 12), width=220, height=36,
             corner_radius=10,
             fg_color=COLORS['white'], border_color=COLORS['border'],
             text_color=COLORS['text_gray']
