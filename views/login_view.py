@@ -6,7 +6,7 @@ from PIL import Image
 
 from config import ASSETS_PATH, COLORS, LOGO_FILE
 
-LOGO_PATH = r"C:\Users\Colibecas\Desktop\Sistema-de-Reconocimiento-Facial\assets\sentinelSystemIcono.ico"
+LOGO_PATH = r"C:\Users\Colibecas\Desktop\Sistema-de-Reconocimiento-Facial\assets\sentinelSystemIcono.png"
 
 # Paleta light moderna
 _DARK_BG    = "#F0F4F8"   # fondo general gris muy claro
