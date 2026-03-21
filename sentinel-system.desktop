@@ -1,0 +1,14 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Sentinel System
+Comment=Sistema de reconocimiento facial
+Terminal=false
+Categories=Utility;Security;
+StartupNotify=true
+
+# Reemplaza esta ruta por la ruta real de tu proyecto en Linux
+Exec=bash -lc 'cd "/RUTA/A/TU/Sistema-de-Reconocimiento-Facial" && (./.venv/bin/python app.py || python3 app.py)'
+
+# Icono PNG (Linux sí acepta PNG)
+Icon=/RUTA/A/TU/Sistema-de-Reconocimiento-Facial/assets/sentinelSystemIcono.png

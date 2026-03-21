@@ -198,7 +198,7 @@ class MainView:
 
         try:
             logo_path = os.path.join(os.path.dirname(__file__), "..", "assets", "sentinelSystemIcono.png")
-            img = Image.open(logo_path).resize((100, 90), Image.LANCZOS)
+            img = Image.open(logo_path).resize((90, 90), Image.LANCZOS)
             self._home_logo = ctk.CTkImage(light_image=img, dark_image=img, size=(100, 90))
             ctk.CTkLabel(inner, image=self._home_logo, text="").pack(pady=(0, 12))
         except Exception:
@@ -310,16 +310,9 @@ class MainView:
                   text_color="white",
                   font=("Segoe UI", 12, "bold"),
                   width=90, height=32, corner_radius=8,
-                  command=self._start_camera)
+                  command=self._toggle_camera)
         self._btn_iniciar.pack(side="left", padx=4)
         self._anim_running = False
-
-        ctk.CTkButton(btns, text="⏹ Detener",
-                  fg_color="#dc2626", hover_color="#b91c1c",
-                  text_color="white",
-                  font=("Segoe UI", 12, "bold"),
-                  width=90, height=32, corner_radius=8,
-                  command=self._stop_camera).pack(side="left", padx=4)
 
         ctk.CTkButton(btns, text="⚡  Entrenar",
                   fg_color="#1d4ed8", hover_color="#1e40af",
@@ -401,6 +394,12 @@ class MainView:
             return
         self.main_frame.after(400, self._anim_btn, step + 1)
 
+    def _toggle_camera(self):
+        if self._cam_running:
+            self._stop_camera()
+        else:
+            self._start_camera()
+
     # ── Cámara ────────────────────────────────────────────────────────────────
     def _start_camera(self):
         if self._cam_running or not self._engine:
@@ -428,8 +427,8 @@ class MainView:
         # Detener animación y poner botón en estado "activo"
         self._anim_running = False
         self._btn_iniciar.configure(
-            text="● En vivo", fg_color="#15803d",
-            hover_color="#166534", state="normal")
+            text="⏹ Detener", fg_color="#dc2626",
+            hover_color="#b91c1c", state="normal")
         self._lbl_cam.configure(text="⬤  Cámara en línea", text_color="#16a34a")
 
     def _stop_camera(self):
@@ -513,13 +512,25 @@ class MainView:
                 self._cam_canvas.create_line(
                     cx, cy, cx, cy+dy*sz, fill="#1d4ed8", width=3)
 
-            # Icono y texto
-            self._cam_canvas.create_text(w//2, h//2 - 22,
-                text="🛡  Sentinel System",
-                font=("Segoe UI", 18, "bold"), fill="#1d4ed8")
-            self._cam_canvas.create_text(w//2, h//2 + 14,
+            # Logo y texto
+            try:
+                if not hasattr(self, "_placeholder_logo") or self._placeholder_logo is None:
+                    logo_path = os.path.join(os.path.dirname(__file__), "..", "assets", "sentinelSystemIcono.png")
+                    img = Image.open(logo_path).resize((100, 100), Image.LANCZOS)
+                    self._placeholder_logo = ImageTk.PhotoImage(img)
+
+                self._cam_canvas.create_image(w//2, h//2 - 28, image=self._placeholder_logo)
+                self._cam_canvas.create_text(w//2, h//2 + 24,
+                    text="Sentinel System",
+                    font=("Segoe UI", 22, "bold"), fill="#1d4ed8")
+            except Exception:
+                self._cam_canvas.create_text(w//2, h//2 - 22,
+                    text="🛡  Sentinel System",
+                    font=("Segoe UI", 22, "bold"), fill="#1d4ed8")
+
+            self._cam_canvas.create_text(w//2, h//2 + 48,
                 text="Presiona  ▶ Iniciar  para comenzar",
-                font=("Segoe UI", 11), fill="#64748b")
+                font=("Segoe UI", 16), fill="#64748b")
         except Exception:
             pass
 

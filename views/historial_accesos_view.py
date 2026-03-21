@@ -58,6 +58,7 @@ class HistorialAccesosView:
             text_color=COLORS['white'],
             font=("Segoe UI", 12, "bold"),
             corner_radius=10,
+            width=50,
             height=38,
             command=self.limpiar_historial
         ).pack(side="left")
@@ -70,6 +71,7 @@ class HistorialAccesosView:
             text_color=COLORS['white'],
             font=("Segoe UI", 12, "bold"),
             corner_radius=10,
+            width=50,
             height=38,
             command=self.cargar_datos
         ).pack(side="left")
