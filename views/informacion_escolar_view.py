@@ -77,11 +77,11 @@ class InformacionEscolarView:
         btn_row.pack(side="right")
 
         ctk.CTkButton(
-            btn_row, text="🗑  Papelera",
+            btn_row, text="🗑 Papelera",
             fg_color=COLORS['content_bg'], hover_color=COLORS['border'],
             text_color=COLORS['text_dark'],
             font=("Segoe UI", 12, "bold"),
-            corner_radius=10, height=38,
+            corner_radius=10, height=38, width=70,
             command=self._papelera
         ).pack(side="left", padx=(0, 8))
 
@@ -90,18 +90,18 @@ class InformacionEscolarView:
             fg_color=COLORS['header'], hover_color=COLORS['header_hover'],
             text_color=COLORS['white'],
             font=("Segoe UI", 12, "bold"),
-            corner_radius=10, height=38,
+            corner_radius=10, height=38,width=60,
             state="disabled",
             command=self.toggle_detalles
         )
         self.btn_toggle_detalles.pack(side="left", padx=(0, 8))
 
         ctk.CTkButton(
-            btn_row, text="🔄  Actualizar",
+            btn_row, text="🔄",
             fg_color=COLORS['primary'], hover_color=COLORS['primary_dark'],
             text_color=COLORS['white'],
             font=("Segoe UI", 12, "bold"),
-            corner_radius=10, height=38,
+            corner_radius=10, height=38,width=50,
             command=self._actualizar_todo
         ).pack(side="left")
 
@@ -124,7 +124,7 @@ class InformacionEscolarView:
         self.busqueda_var = tk.StringVar()
         self.entrada_busqueda = ctk.CTkEntry(
             filtros, textvariable=self.busqueda_var,
-            font=("Segoe UI", 12), width=220, height=36,
+            font=("Segoe UI", 12), width=180, height=36,
             corner_radius=10,
             fg_color=COLORS['white'], border_color=COLORS['border'],
             text_color=COLORS['text_gray']

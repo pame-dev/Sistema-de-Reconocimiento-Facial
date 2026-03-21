@@ -268,7 +268,7 @@ class NuevoRegistroView:
 
         ctk.CTkLabel(
             header,
-            text="Paso 1 de 2 — Datos personales",
+            text="Paso 1/2 — Datos personales",
             font=("Segoe UI", 12),
             text_color=COLORS['text_gray']
         ).pack(side="left", padx=10)
@@ -411,7 +411,7 @@ class NuevoRegistroView:
 
         ctk.CTkLabel(
             header,
-            text="Paso 2 de 2 — Captura biométrica",
+            text="Paso 2/2 — Captura biométrica",
             font=("Segoe UI", 12),
             text_color=COLORS['text_gray']
         ).pack(side="left", padx=15)
