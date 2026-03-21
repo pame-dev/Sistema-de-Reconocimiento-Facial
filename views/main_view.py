@@ -67,7 +67,7 @@ class MainView:
         title_frame.pack(side="left", padx=12)
 
         try:
-            logo_path = os.path.join(os.path.dirname(__file__), "..", "assets", "sentinelSystemIcono.ico")
+            logo_path = os.path.join(os.path.dirname(__file__), "..", "assets", "sentinelSystemIcono.png")
             img = Image.open(logo_path).resize((32, 32), Image.LANCZOS)
             self._header_logo = ctk.CTkImage(light_image=img, dark_image=img, size=(32, 32))
             ctk.CTkLabel(title_frame, image=self._header_logo, text="").pack(side="left", padx=(0, 8))
