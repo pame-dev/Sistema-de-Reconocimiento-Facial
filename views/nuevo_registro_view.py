@@ -7,6 +7,7 @@ from PIL import Image, ImageTk
 import os
 from datetime import datetime
 import sys
+from views.font_scale import FontScale
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import COLORS, get_db
@@ -20,9 +21,9 @@ from database.queries import (
 
 # ── Configuración de roles ───────────────────────────────────────────────────
 ROL_CONFIG = {
-    "alumno":   {"icono": "🎓", "titulo": "Alumno",   "desc": "Estudiante ",     "color": "#4A90D9"},
-    "maestro":  {"icono": "📚", "titulo": "Maestro",  "desc": "Docente ",     "color": "#27AE60"},
-    "personal": {"icono": "🏢", "titulo": "Personal", "desc": "administrativo", "color": "#E67E22"},
+    "alumno":   {"icono": "🎓", "titulo": "Estudiante",   "desc": " ",     "color": "#4A90D9"},
+    "maestro":  {"icono": "📚", "titulo": "Docente",  "desc": " ",     "color": "#27AE60"},
+    "personal": {"icono": "🏢", "titulo": "Personal", "desc": "", "color": "#E67E22"},
 }
 
 CAMPOS_POR_ROL = {
@@ -310,7 +311,7 @@ class NuevoRegistroView:
             fg_color=color,
             hover_color=self._darken(color),
             text_color=COLORS['white'],
-            font=("Segoe UI", 13, "bold"),
+            font=FontScale.fb(13),
             corner_radius=10,
             height=42,
             command=self._validar_y_continuar
@@ -547,7 +548,7 @@ class NuevoRegistroView:
             fg_color=color,
             hover_color=self._darken(color),
             text_color=COLORS['white'],
-            font=("Segoe UI", 13, "bold"),
+            font=FontScale.fb(13),
             corner_radius=10,
             height=42,
             state="disabled",

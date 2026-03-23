@@ -5,6 +5,7 @@ import customtkinter as ctk
 import sys
 import os
 from datetime import datetime
+from views.font_scale import FontScale
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import COLORS, get_db
@@ -158,7 +159,7 @@ class HistorialAccesosView:
         ctk.CTkLabel(
             tabla_header,
             text="Registros",
-            font=("Segoe UI", 13, "bold"),
+            font=FontScale.fb(13),
             text_color=COLORS['text_dark']
         ).pack(side="left")
 

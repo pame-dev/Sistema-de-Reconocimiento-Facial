@@ -4,7 +4,7 @@ from tkinter import ttk, messagebox
 import customtkinter as ctk
 import sys
 import os
-
+from views.font_scale import FontScale
 from views import nuevo_registro_view
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -210,7 +210,7 @@ class InformacionEscolarView:
         th.pack(fill="x", padx=16, pady=(10, 4))
         ctk.CTkLabel(
             th, text="Usuarios registrados",
-            font=("Segoe UI", 13, "bold"),
+            font=FontScale.fb(13),
             text_color=COLORS['text_dark']
         ).pack(side="left")
 
@@ -528,7 +528,7 @@ class InformacionEscolarView:
         wh.pack_propagate(False)
         ctk.CTkLabel(
             wh, text=f"  ✏️  Editar  —  {u['nombre']} ({u['rol']})",
-            font=("Segoe UI", 13, "bold"), text_color="white"
+            font=FontScale.fb(13), text_color="white"
         ).pack(side="left", padx=16, pady=14)
 
         form = ctk.CTkFrame(win, fg_color="transparent")
