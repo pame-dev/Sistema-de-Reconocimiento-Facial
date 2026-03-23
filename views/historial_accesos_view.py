@@ -52,24 +52,26 @@ class HistorialAccesosView:
 
         ctk.CTkButton(
             btn_row,
-            text="🗑️  Limpiar Todo",
+            text="🗑️Limpiar",
             fg_color=COLORS['danger'],
             hover_color=COLORS['danger_dark'],
             text_color=COLORS['white'],
             font=("Segoe UI", 12, "bold"),
             corner_radius=10,
+            width=50,
             height=38,
             command=self.limpiar_historial
-        ).pack(side="left", padx=(0, 8))
+        ).pack(side="left")
 
         ctk.CTkButton(
             btn_row,
-            text="🔄  Actualizar",
+            text="🔄",
             fg_color=COLORS['primary'],
             hover_color=COLORS['primary_dark'],
             text_color=COLORS['white'],
             font=("Segoe UI", 12, "bold"),
             corner_radius=10,
+            width=50,
             height=38,
             command=self.cargar_datos
         ).pack(side="left")
@@ -79,9 +81,9 @@ class HistorialAccesosView:
         stats_row.pack(fill="x", pady=(0, 14))
         stats_row.grid_columnconfigure((0, 1, 2), weight=1, uniform="stat")
 
-        self.lbl_total     = self._stat_card(stats_row, "Total de accesos",    "0", COLORS['primary'], "🔢", 0)
-        self.lbl_aceptados = self._stat_card(stats_row, "Accesos aceptados",   "0", "#27AE60",          "✅", 1)
-        self.lbl_denegados = self._stat_card(stats_row, "Accesos denegados",   "0", COLORS['danger'],   "❌", 2)
+        self.lbl_total     = self._stat_card(stats_row, "Accesos",    "0", COLORS['primary'], "🔢", 0)
+        self.lbl_aceptados = self._stat_card(stats_row, "Aceptados",   "0", "#27AE60",          "✅", 1)
+        self.lbl_denegados = self._stat_card(stats_row, "Denegados",   "0", COLORS['danger'],   "❌", 2)
 
         # ── Barra de filtros ──────────────────────────────────────────────────
         filtros = ctk.CTkFrame(
@@ -105,7 +107,7 @@ class HistorialAccesosView:
             filtros,
             textvariable=self.busqueda_var,
             font=("Segoe UI", 12),
-            width=270, height=36,
+            width=180, height=36,
             corner_radius=10,
             fg_color=COLORS['white'],
             border_color=COLORS['border'],

@@ -4,9 +4,10 @@ import tkinter as tk
 import customtkinter as ctk
 from PIL import Image
 
-from config import ASSETS_PATH, COLORS, LOGO_FILE
+from config import ASSETS_PATH, COLORS, ICON_FILE
 
-LOGO_PATH = r"C:\Users\Colibecas\Desktop\Sistema-de-Reconocimiento-Facial\assets\sentinelSystemIcono.ico"
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+LOGO_PATH = os.path.join(BASE_DIR, ASSETS_PATH, ICON_FILE)
 
 # Paleta light moderna
 _DARK_BG    = "#F0F4F8"   # fondo general gris muy claro

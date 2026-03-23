@@ -1,0 +1,11 @@
+from PIL import Image, ImageTk
+import os
+
+root = ctk.CTk()
+
+icon_path = "/home/sentinelsystem/Sistema-de-Reconocimiento-Facial/assets/sentinelSystemIcono.png"
+
+img = Image.open(icon_path)
+icon = ImageTk.PhotoImage(img)
+
+root.iconphoto(True, icon)
