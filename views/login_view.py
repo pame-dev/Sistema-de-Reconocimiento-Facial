@@ -5,6 +5,7 @@ import customtkinter as ctk
 from PIL import Image
 
 from config import ASSETS_PATH, COLORS, ICON_FILE
+from views.font_scale import FontScale
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LOGO_PATH = os.path.join(BASE_DIR, ASSETS_PATH, ICON_FILE)
@@ -211,7 +212,7 @@ class LoginView:
             height=46, corner_radius=10,
             fg_color=_ACCENT, hover_color=_ACCENT2,
             text_color="#FFFFFF",
-            font=("Segoe UI", 13, "bold"),
+            font=FontScale.fb(13),
             command=self.login,
         ).pack(padx=28, fill="x", pady=(20, 0))
 

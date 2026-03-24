@@ -7,6 +7,7 @@ from PIL import Image, ImageTk
 import os
 from datetime import datetime
 import sys
+from views.font_scale import FontScale
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import COLORS, get_db
@@ -20,9 +21,9 @@ from database.queries import (
 
 # ── Configuración de roles ───────────────────────────────────────────────────
 ROL_CONFIG = {
-    "alumno":   {"icono": "🎓", "titulo": "Alumno",   "desc": "Estudiante ",     "color": "#4A90D9"},
-    "maestro":  {"icono": "📚", "titulo": "Maestro",  "desc": "Docente ",     "color": "#27AE60"},
-    "personal": {"icono": "🏢", "titulo": "Personal", "desc": "administrativo", "color": "#E67E22"},
+    "alumno":   {"icono": "🎓", "titulo": "Estudiante",   "desc": " ",     "color": "#4A90D9"},
+    "maestro":  {"icono": "📚", "titulo": "Docente",  "desc": " ",     "color": "#27AE60"},
+    "personal": {"icono": "🏢", "titulo": "Personal", "desc": "", "color": "#E67E22"},
 }
 
 CAMPOS_POR_ROL = {
@@ -181,7 +182,7 @@ class NuevoRegistroView:
         ctk.CTkLabel(
             card,
             text=cfg["icono"],
-            font=("Segoe UI Emoji", 52),
+            font=("Segoe UI Emoji", 110),
         ).grid(row=0, column=0, pady=(28, 6))
 
         # Textos centrados
@@ -191,7 +192,7 @@ class NuevoRegistroView:
         ctk.CTkLabel(
             info,
             text=cfg["titulo"],
-            font=("Segoe UI", 16, "bold"),
+            font=("Segoe UI", 30, "bold"),
             text_color=color,
             wraplength=160,
             justify="center",
@@ -209,7 +210,7 @@ class NuevoRegistroView:
         # Botón siempre visible en la parte baja
         ctk.CTkButton(
             card,
-            text="✓",
+            text="✓ Seleccionar",
             fg_color=color,
             hover_color=self._darken(color),
             text_color=COLORS['white'],
@@ -249,7 +250,7 @@ class NuevoRegistroView:
 
         ctk.CTkButton(
             header,
-            text="← Cambiar rol",
+            text="← Regresar",
             fg_color="transparent",
             hover_color=COLORS['content_bg'],
             text_color=color,
@@ -310,7 +311,7 @@ class NuevoRegistroView:
             fg_color=color,
             hover_color=self._darken(color),
             text_color=COLORS['white'],
-            font=("Segoe UI", 13, "bold"),
+            font=FontScale.fb(13),
             corner_radius=10,
             height=42,
             command=self._validar_y_continuar
@@ -547,7 +548,7 @@ class NuevoRegistroView:
             fg_color=color,
             hover_color=self._darken(color),
             text_color=COLORS['white'],
-            font=("Segoe UI", 13, "bold"),
+            font=FontScale.fb(13),
             corner_radius=10,
             height=42,
             state="disabled",
@@ -652,7 +653,7 @@ class NuevoRegistroView:
             gray  = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2GRAY)
             caras = self.detector.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(60, 60))
             if len(caras) > 0:
-                cv2.putText(frame_rgb, "✓ Cara detectada", (10, 25),
+                cv2.putText(frame_rgb, "Seleccionar Cara detectada", (10, 25),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 220, 0), 2)
             else:
                 cv2.putText(frame_rgb, "Sin cara", (10, 25),

@@ -13,28 +13,44 @@ from views.informacion_escolar_view import InformacionEscolarView
 from views.historial_accesos_view import HistorialAccesosView
 from PIL import Image, ImageTk
 
-# ── Importar motor de reconocimiento ─────────────────────────────────────────
 sys.path.insert(0, os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "admin", "biometric_system")
 ))
 from reconocimiento import ReconocerFacial
 
+# ══════════════════════════════════════════════════════════════════════════════
+# SISTEMA DE ESCALA GLOBAL
+# Todas las vistas leen `FontScale.get()` para calcular sus fuentes.
+# Cuando cambia la escala, se recarga la vista actual.
+# ══════════════════════════════════════════════════════════════════════════════
+ZOOM_MIN  = 0.7
+ZOOM_MAX  = 2.0
+ZOOM_STEP = 0.1
 
+from views.font_scale import FontScale
+
+# ══════════════════════════════════════════════════════════════════════════════
+# MAIN VIEW
+# ══════════════════════════════════════════════════════════════════════════════
 class MainView:
     """Vista principal con header, menú lateral y área de contenido"""
 
     def __init__(self, parent, app):
         self.app          = app
+        self.parent       = parent
         self.menu_visible = False
         self.nav_buttons  = []
         self._active_btn  = None
+        self._vista_actual = None   # nombre de la vista activa para recargar
+        self.parent.winfo_toplevel().focus_force()
 
-        # Estado cámara
+        # Cámara
         self._cam_running = False
         self._cam_thread  = None
         self._cap         = None
         self._engine      = None
-        self._cam_photo   = None   # evitar garbage collection
+        self._cam_photo   = None
+        self._zoom_popover = None
 
         self.main_frame = ctk.CTkFrame(parent, fg_color=COLORS['background'])
         self.main_frame.pack(fill="both", expand=True)
@@ -47,8 +63,169 @@ class MainView:
         self.create_sidebar()
         self.create_content_area()
         self.show_home()
+        self._bind_zoom_keys()
 
-    # ── Header ────────────────────────────────────────────────────────────────
+        # ── Atajos de teclado ──────────────────────────────────────────────
+        # ZOOM IN
+    def _bind_zoom_keys(self):
+        root = self.parent.winfo_toplevel()
+
+        # ZOOM +
+        root.bind_all("<Control-plus>",        lambda e: self._zoom(ZOOM_STEP))
+        root.bind_all("<Control-equal>",       lambda e: self._zoom(ZOOM_STEP))
+        root.bind_all("<Control-Shift-equal>", lambda e: self._zoom(ZOOM_STEP))
+        root.bind_all("<Control-KP_Add>",      lambda e: self._zoom(ZOOM_STEP))
+
+        # ZOOM -
+        root.bind_all("<Control-minus>",       lambda e: self._zoom(-ZOOM_STEP))
+        root.bind_all("<Control-KP_Subtract>", lambda e: self._zoom(-ZOOM_STEP))
+
+        # RESET
+        root.bind_all("<Control-0>",           lambda e: self._zoom_reset())
+    # ══════════════════════════════════════════════════════════════════════════
+    # ZOOM  — cambia la escala y recarga la vista actual
+    # ══════════════════════════════════════════════════════════════════════════
+    def _zoom(self, delta: float):
+        nueva = round(FontScale.get() + delta, 2)
+        if not (ZOOM_MIN <= nueva <= ZOOM_MAX):
+            return
+        FontScale.set(nueva)
+        self._actualizar_btn_zoom()
+        self._recargar_vista()
+
+    def _zoom_reset(self):
+        if FontScale.get() == 1.0:
+            return
+        FontScale.set(1.0)
+        self._actualizar_btn_zoom()
+        self._recargar_vista()
+
+    def _zoom_rueda(self, event):
+        self._zoom(ZOOM_STEP if event.delta > 0 else -ZOOM_STEP)
+
+    def _actualizar_btn_zoom(self):
+        pct = round(FontScale.get() * 100)
+        try:
+            self._btn_zoom.configure(text=f"🔍 {pct}%")
+        except Exception:
+            pass
+        # sincronizar popover si está abierto
+        if self._zoom_popover and self._zoom_popover.winfo_exists():
+            try:
+                self._zoom_slider.set(pct)
+                self._zoom_pct_lbl.configure(text=f"{pct}%")
+            except Exception:
+                pass
+
+    def _recargar_vista(self):
+        """Recarga la vista activa para que se reconstruya con las nuevas fuentes."""
+        vistas = {
+            "home":              self.show_home,
+            "nuevo_registro":    self.show_nuevo_registro,
+            "info_escolar":      self.show_informacion_escolar,
+            "historial":         self.show_historial_accesos,
+            "pantalla_accesos":  self.show_pantalla_accesos,
+        }
+        fn = vistas.get(self._vista_actual, self.show_home)
+        fn()
+
+    # ── Popover azul ──────────────────────────────────────────────────────────
+    def _toggle_zoom_popover(self):
+        if self._zoom_popover and self._zoom_popover.winfo_exists():
+            self._zoom_popover.destroy()
+            self._zoom_popover = None
+            return
+
+        btn = self._btn_zoom
+        x   = btn.winfo_rootx()
+        y   = btn.winfo_rooty() + btn.winfo_height() + 6
+
+        pop = tk.Toplevel(self.main_frame)
+        pop.overrideredirect(True)
+        pop.geometry(f"230x170+{x}+{y}")
+        pop.configure(bg="#1e3a5f")          # azul oscuro
+        pop.attributes("-topmost", True)
+        self._zoom_popover = pop
+
+        pop.bind("<FocusOut>", lambda e: self._cerrar_popover())
+
+        # Borde redondeado simulado con padding
+        inner = tk.Frame(pop, bg="#1e3a5f")
+        inner.pack(fill="both", expand=True, padx=2, pady=2)
+
+        tk.Label(inner, text="Tamaño de interfaz", bg="#1e3a5f", fg="#93c5fd",
+                 font=("Segoe UI", 10, "bold")).pack(pady=(10, 2))
+
+        self._zoom_pct_lbl = tk.Label(
+            inner, text=f"{round(FontScale.get() * 100)}%",
+            bg="#1e3a5f", fg="#ffffff",
+            font=("Segoe UI", 26, "bold"))
+        self._zoom_pct_lbl.pack()
+
+        self._zoom_slider = tk.Scale(
+            inner,
+            from_=int(ZOOM_MIN * 100), to=int(ZOOM_MAX * 100),
+            orient="horizontal", resolution=10,
+            bg="#1e3a5f", fg="#93c5fd",
+            troughcolor="#1d4ed8",
+            highlightthickness=0, bd=0,
+            sliderrelief="flat",
+            activebackground="#60a5fa",
+            length=200,
+            showvalue=False,
+            command=self._zoom_desde_slider)
+        self._zoom_slider.set(round(FontScale.get() * 100))
+        self._zoom_slider.pack(padx=12, pady=(2, 6))
+
+        btn_row = tk.Frame(inner, bg="#1e3a5f")
+        btn_row.pack()
+
+        estilo = dict(
+            bg="#1d4ed8", fg="white", relief="flat",
+            font=("Segoe UI", 14, "bold"),
+            activebackground="#3b82f6", activeforeground="white",
+            cursor="hand2", bd=0, padx=14, pady=3,
+            width=2
+        )
+        tk.Button(btn_row, text="−",
+                  command=lambda: self._zoom(-ZOOM_STEP), **estilo).pack(side="left", padx=5)
+        tk.Button(btn_row, text="↺",
+                  command=self._zoom_reset, **estilo).pack(side="left", padx=5)
+        tk.Button(btn_row, text="+",
+                  command=lambda: self._zoom( ZOOM_STEP), **estilo).pack(side="left", padx=5)
+
+        pop.after(100, pop.focus_set)
+
+    def _cerrar_popover(self):
+        try:
+            if self._zoom_popover and self._zoom_popover.winfo_exists():
+                self._zoom_popover.destroy()
+        except Exception:
+            pass
+        self._zoom_popover = None
+
+    def _zoom_desde_slider(self, val):
+        nueva = round(int(val) / 100, 2)
+        if nueva == FontScale.get():
+            return
+        FontScale.set(nueva)
+        pct = round(FontScale.get() * 100)
+        try:
+            self._zoom_pct_lbl.configure(text=f"{pct}%")
+            self._btn_zoom.configure(text=f"🔍 {pct}%")
+        except Exception:
+            pass
+        # Recargar con debounce de 300 ms para no disparar en cada tick del slider
+        if hasattr(self, "_slider_job"):
+            try:
+                self.main_frame.after_cancel(self._slider_job)
+            except Exception:
+                pass
+        self._slider_job = self.main_frame.after(300, self._recargar_vista)
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # HEADER
+    # ══════════════════════════════════════════════════════════════════════════
     def create_header(self):
         header = ctk.CTkFrame(self.main_frame, fg_color=COLORS['header'],
                               corner_radius=0, height=HEADER_HEIGHT)
@@ -91,11 +268,25 @@ class MainView:
         self.lbl_reloj.pack(side="right", padx=(0, 16))
         self._actualizar_reloj()
 
+        # Botón zoom — azul
+        self._btn_zoom = ctk.CTkButton(
+            header,
+            text=f"🔍 {round(FontScale.get()*100)}%",
+            font=("Segoe UI", 11),
+            fg_color="#1d4ed8",
+            hover_color="#1e40af",
+            text_color="white",
+            width=82, height=28, corner_radius=8,
+            command=self._toggle_zoom_popover)
+        self._btn_zoom.pack(side="right", padx=(0, 8))
+
     def _actualizar_reloj(self):
         self.lbl_reloj.configure(text=datetime.now().strftime("%d/%m/%Y  %H:%M:%S"))
         self.main_frame.after(1000, self._actualizar_reloj)
 
-    # ── Sidebar ───────────────────────────────────────────────────────────────
+    # ══════════════════════════════════════════════════════════════════════════
+    # SIDEBAR
+    # ══════════════════════════════════════════════════════════════════════════
     def create_sidebar(self):
         self.sidebar = ctk.CTkFrame(self.body_frame, fg_color=COLORS['sidebar'],
                                     width=SIDEBAR_WIDTH, corner_radius=0)
@@ -151,7 +342,9 @@ class MainView:
             self.sidebar.pack_forget()
             self.menu_visible = False
 
-    # ── Content ───────────────────────────────────────────────────────────────
+    # ══════════════════════════════════════════════════════════════════════════
+    # CONTENT
+    # ══════════════════════════════════════════════════════════════════════════
     def create_content_area(self):
         self.content_frame = ctk.CTkFrame(self.body_frame,
                                            fg_color=COLORS['background'])
@@ -172,8 +365,11 @@ class MainView:
         for w in self.content_frame.winfo_children():
             w.destroy()
 
-    # ── Home ──────────────────────────────────────────────────────────────────
+    # ══════════════════════════════════════════════════════════════════════════
+    # HOME
+    # ══════════════════════════════════════════════════════════════════════════
     def show_home(self):
+        self._vista_actual = "home"
         self.clear_content()
 
         outer = ctk.CTkFrame(self.content_frame, fg_color="transparent")
@@ -183,9 +379,9 @@ class MainView:
         stats_row.pack(fill="x", pady=(0, 18))
         stats_row.grid_columnconfigure((0, 1, 2), weight=1, uniform="stat")
 
-        self._stat_total     = self._stat_card(stats_row, "Accesos",     "0", COLORS['primary'], "🔢", 0)
-        self._stat_aceptados = self._stat_card(stats_row, "Aceptados", "0", "#27AE60",          "✅", 1)
-        self._stat_denegados = self._stat_card(stats_row, "Denegados",   "0", COLORS['danger'],   "❌", 2)
+        self._stat_total     = self._stat_card(stats_row, "Accesos",   "0", COLORS['primary'], "🔢", 0)
+        self._stat_aceptados = self._stat_card(stats_row, "Aceptados", "0", "#27AE60",         "✅", 1)
+        self._stat_denegados = self._stat_card(stats_row, "Denegados", "0", COLORS['danger'],  "❌", 2)
         self._cargar_stats()
 
         card = ctk.CTkFrame(outer, fg_color=COLORS['card_bg'],
@@ -202,18 +398,18 @@ class MainView:
             self._home_logo = ctk.CTkImage(light_image=img, dark_image=img, size=(100, 90))
             ctk.CTkLabel(inner, image=self._home_logo, text="").pack(pady=(0, 12))
         except Exception:
-            ctk.CTkLabel(inner, text="🔐", font=("Segoe UI Emoji", 56)).pack(pady=(0, 12))
+            ctk.CTkLabel(inner, text="🔐", font=FontScale.fb(48)).pack(pady=(0, 12))
 
         ctk.CTkLabel(inner, text="Le da la Bienvenida al Sistema",
-                     font=("Segoe UI", 24, "bold"),
+                     font=FontScale.fb(24),
                      text_color=COLORS['text_dark']).pack()
         ctk.CTkLabel(inner, text="Seleccione una opción del menú para comenzar",
-                     font=("Segoe UI", 13),
+                     font=FontScale.f(13),
                      text_color=COLORS['text_gray']).pack(pady=(6, 22))
         ctk.CTkButton(inner, text="➕  Agregar nuevo usuario",
                       fg_color=COLORS['primary'], hover_color=COLORS['primary_dark'],
                       text_color=COLORS['white'],
-                      font=("Segoe UI", 13, "bold"),
+                      font=FontScale.fb(13),
                       corner_radius=10, height=42, width=260,
                       command=self.show_nuevo_registro).pack()
 
@@ -227,12 +423,12 @@ class MainView:
         top = ctk.CTkFrame(inner, fg_color="transparent")
         top.pack(fill="x")
         ctk.CTkLabel(top, text=titulo,
-                     font=("Segoe UI", 12, "bold"),
+                     font=FontScale.fb(12),
                      text_color=color, anchor="w").pack(side="left")
         ctk.CTkLabel(top, text=icono,
-                     font=("Segoe UI Emoji", 18)).pack(side="right")
+                     font=FontScale.f(18)).pack(side="right")
         lbl = ctk.CTkLabel(inner, text=valor,
-                           font=("Segoe UI", 34, "bold"),
+                           font=FontScale.fb(34),
                            text_color=COLORS['text_dark'], anchor="w")
         lbl.pack(anchor="w", pady=(4, 0))
         return lbl
@@ -256,34 +452,40 @@ class MainView:
         except Exception:
             pass
 
-    # ── Otras vistas ──────────────────────────────────────────────────────────
+    # ══════════════════════════════════════════════════════════════════════════
+    # OTRAS VISTAS
+    # ══════════════════════════════════════════════════════════════════════════
     def show_nuevo_registro(self):
+        self._vista_actual = "nuevo_registro"
         self.clear_content()
         NuevoRegistroView(self.content_frame)
 
     def show_informacion_escolar(self):
+        self._vista_actual = "info_escolar"
         self.clear_content()
         vista = InformacionEscolarView(self.content_frame)
         self.content_frame.update()
         vista.cargar_datos()
 
     def show_historial_accesos(self):
+        self._vista_actual = "historial"
         self.clear_content()
         vista = HistorialAccesosView(self.content_frame)
         self.content_frame.update()
         vista.cargar_datos()
 
-    # ── PANTALLA DE ACCESOS — colores claros ──────────────────────────────────
+    # ══════════════════════════════════════════════════════════════════════════
+    # PANTALLA DE ACCESOS
+    # ══════════════════════════════════════════════════════════════════════════
     def show_pantalla_accesos(self):
+        self._vista_actual = "pantalla_accesos"
         self.clear_content()
 
-        # Fondo blanco / gris claro
         outer = ctk.CTkFrame(self.content_frame, fg_color="#f0f4f8")
         outer.pack(fill="both", expand=True)
         outer.grid_rowconfigure(1, weight=1)
         outer.grid_columnconfigure(0, weight=1)
 
-        # ── Barra superior ────────────────────────────────────────────────────
         bar = ctk.CTkFrame(outer, fg_color="#ffffff",
                            border_color="#d0e4f7", border_width=1,
                            corner_radius=0, height=56)
@@ -291,46 +493,39 @@ class MainView:
         bar.grid_propagate(False)
         bar.grid_columnconfigure(3, weight=1)
 
-        # Logo + título
         logo_f = ctk.CTkFrame(bar, fg_color="transparent")
         logo_f.grid(row=0, column=0, padx=16, pady=10, sticky="w")
         ctk.CTkLabel(logo_f, text="🛡",
-                     font=("Segoe UI Emoji", 22),
+                     font=FontScale.f(22),
                      text_color="#1565c0").pack(side="left", padx=(0, 8))
         ctk.CTkLabel(logo_f, text="Reconocimiento Facial",
-                     font=("Segoe UI", 14, "bold"),
+                     font=FontScale.fb(14),
                      text_color="#1565c0").pack(side="left")
 
-        # Botones
         btns = ctk.CTkFrame(bar, fg_color="transparent")
         btns.grid(row=0, column=1, padx=(4, 0), pady=10, sticky="w")
 
         self._btn_iniciar = ctk.CTkButton(btns, text="▶ Iniciar",
                   fg_color="#16a34a", hover_color="#15803d",
-                  text_color="white",
-                  font=("Segoe UI", 12, "bold"),
+                  text_color="white", font=FontScale.fb(12),
                   width=90, height=32, corner_radius=8,
                   command=self._toggle_camera)
         self._btn_iniciar.pack(side="left", padx=4)
         self._anim_running = False
 
-        ctk.CTkButton(btns, text="⚡  Entrenar",
-                  fg_color="#1d4ed8", hover_color="#1e40af",
-                  text_color="white",
-                  font=("Segoe UI", 12, "bold"),
-                  width=90, height=32, corner_radius=8,
-                  command=self._train_model).pack(side="left", padx=4)
+        # ctk.CTkButton(btns, text="⚡  Entrenar",
+        #           fg_color="#1d4ed8", hover_color="#1e40af",
+        #           text_color="white", font=FontScale.fb(12),
+        #           width=90, height=32, corner_radius=8,
+        #           command=self._train_model).pack(side="left", padx=4)
 
-        # Badges de estado
         mid = ctk.CTkFrame(bar, fg_color="transparent")
         mid.grid(row=0, column=2, padx=(14, 0), pady=8, sticky="w")
-
         self._lbl_cam = ctk.CTkLabel(mid, text="⬤  Cámara apagada",
-                                      font=("Segoe UI", 10),
+                                      font=FontScale.f(10),
                                       text_color="#ef4444")
         self._lbl_cam.pack()
 
-        # ── Área de cámara ────────────────────────────────────────────────────
         cam_card = ctk.CTkFrame(outer, fg_color="#ffffff",
                                 border_color="#bfdbfe", border_width=2,
                                 corner_radius=12)
@@ -342,56 +537,62 @@ class MainView:
         self._cam_canvas.grid(row=0, column=0, sticky="nsew", padx=3, pady=3)
         self._cam_canvas.bind("<Configure>", lambda e: self._draw_placeholder())
 
-        # Barra inferior info
         info_bar = ctk.CTkFrame(cam_card, fg_color="#f8faff",
                                 corner_radius=0, height=30)
         info_bar.grid(row=1, column=0, sticky="ew")
         info_bar.grid_propagate(False)
 
         self._lbl_resultado = ctk.CTkLabel(info_bar, text="",
-                                            font=("Segoe UI", 11, "bold"),
+                                            font=FontScale.fb(11),
                                             text_color="#16a34a")
         self._lbl_resultado.pack(side="right", padx=14)
-
         self._lbl_fps = ctk.CTkLabel(info_bar, text="",
-                                      font=("Segoe UI", 9),
+                                      font=FontScale.f(9),
                                       text_color="#94a3b8")
         self._lbl_fps.pack(side="right", padx=8)
-
         ctk.CTkLabel(info_bar, text="LBPH  ·  640×480  ·  CLAHE + Bilateral",
-                     font=("Segoe UI", 9),
-                     text_color="#94a3b8").pack(side="left", padx=14)
+                     font=FontScale.f(9), text_color="#94a3b8").pack(side="left", padx=14)
 
-        # Iniciar motor
         self._engine = ReconocerFacial()
         self._engine.on_resultado = self._cb_resultado
         self._engine.on_status    = self._cb_status
         threading.Thread(target=self._init_engine, daemon=True).start()
 
-    # ── Motor ─────────────────────────────────────────────────────────────────
+    # ══════════════════════════════════════════════════════════════════════════
+    # MOTOR / CÁMARA
+    # ══════════════════════════════════════════════════════════════════════════
     def _init_engine(self):
         ok = self._engine.cargar_modelo()
         if ok:
             n = len(self._engine.nombres)
-            self.main_frame.after(0, lambda: self._lbl_status.configure(
+            self.main_frame.after(0, lambda: self._lbl_cam.configure(
                 text=f"⬤  Modelo listo · {n} usuarios", text_color="#16a34a"))
         else:
-            self.main_frame.after(0, lambda: self._lbl_status.configure(
+            self.main_frame.after(0, lambda: self._lbl_cam.configure(
                 text="⬤  Sin modelo — Entrena primero", text_color="#f59e0b"))
 
     def _train_model(self):
-        self._lbl_status.configure(text="⬤  Entrenando...", text_color="#f59e0b")
+        self._lbl_cam.configure(text="⬤  Entrenando...", text_color="#f59e0b")
 
-    # ── Animación del botón Iniciar ───────────────────────────────────────────
     def _anim_btn(self, step=0):
-        """Anima el botón con puntos giratorios mientras inicia."""
         if not self._anim_running:
             return
-        frames = ["▷  Iniciando·", "▷  Iniciando··", "▷  Iniciando···", "▷  Iniciando·"]
+
+        frames = [
+            "⏳ Iniciando",
+            "⏳ Iniciando.",
+            "⏳ Iniciando..",
+            "⏳ Iniciando..."
+        ]
+
         try:
-            self._btn_iniciar.configure(text=frames[step % 4], fg_color="#d97706")
+            self._btn_iniciar.configure(
+                text=frames[step % len(frames)],
+                fg_color="#f59e0b"  # naranja tipo loading
+            )
         except Exception:
             return
+
         self.main_frame.after(400, self._anim_btn, step + 1)
 
     def _toggle_camera(self):
@@ -400,36 +601,96 @@ class MainView:
         else:
             self._start_camera()
 
-    # ── Cámara ────────────────────────────────────────────────────────────────
     def _start_camera(self):
         if self._cam_running or not self._engine:
             return
 
-        # Iniciar animación en el botón
         self._anim_running = True
         self._btn_iniciar.configure(state="disabled")
         self._anim_btn()
 
+        # Simula pequeño tiempo de carga (opcional)
+        self.main_frame.after(800, self._abrir_camara)
+
+    def _abrir_camara(self):
         self._cap = cv2.VideoCapture(0)
+
         if not self._cap.isOpened():
-            self._lbl_cam.configure(text="⬤  Error: No se pudo abrir cámara",
-                                     text_color="#ef4444")
+            self._lbl_cam.configure(
+                text="⬤  Error: No se pudo abrir cámara",
+                text_color="#ef4444"
+            )
             self._anim_running = False
             self._btn_iniciar.configure(
-                text="▶  Iniciar", fg_color="#16a34a", state="normal")
+                text="▶ Iniciar",
+                fg_color="#16a34a",
+                state="normal"
+            )
             return
-        self._cap.set(cv2.CAP_PROP_FRAME_WIDTH,  640)
+
+        self._cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
         self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+
         self._cam_running = True
-        self._cam_thread  = threading.Thread(target=self._cam_loop, daemon=True)
+        self._cam_thread = threading.Thread(target=self._cam_loop, daemon=True)
         self._cam_thread.start()
 
-        # Detener animación y poner botón en estado "activo"
         self._anim_running = False
         self._btn_iniciar.configure(
-            text="⏹ Detener", fg_color="#dc2626",
-            hover_color="#b91c1c", state="normal")
-        self._lbl_cam.configure(text="⬤  Cámara en línea", text_color="#16a34a")
+            text="⏹ Detener",
+            fg_color="#dc2626",
+            hover_color="#b91c1c",
+            state="normal"
+        )
+
+        self._lbl_cam.configure(
+            text="⬤  Cámara en línea",
+            text_color="#16a34a"
+        )
+        if self._cam_running or not self._engine:
+            return
+
+            # 🔥 INICIAR ANIMACIÓN
+            self._anim_running = True
+            self._btn_iniciar.configure(state="disabled")
+            self._anim_btn()
+
+            self._cap = cv2.VideoCapture(0)
+
+            if not self._cap.isOpened():
+                self._lbl_cam.configure(
+                    text="⬤  Error: No se pudo abrir cámara",
+                    text_color="#ef4444"
+                )
+                self._anim_running = False
+                self._btn_iniciar.configure(
+                    text="▶ Iniciar",
+                    fg_color="#16a34a",
+                    state="normal"
+                )
+                return
+
+            self._cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+            self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+
+            self._cam_running = True
+            self._cam_thread = threading.Thread(target=self._cam_loop, daemon=True)
+            self._cam_thread.start()
+
+            # detener animación
+            self._anim_running = False
+
+            self._btn_iniciar.configure(
+                text="⏹ Detener",
+                fg_color="#dc2626",
+                hover_color="#b91c1c",
+                state="normal"
+            )
+
+            self._lbl_cam.configure(
+                text="⬤  Cámara en línea",
+                text_color="#16a34a"
+            )
 
     def _stop_camera(self):
         self._cam_running  = False
@@ -438,9 +699,8 @@ class MainView:
             self._cap.release()
             self._cap = None
         try:
-            self._btn_iniciar.configure(
-                text="▶  Iniciar", fg_color="#16a34a",
-                hover_color="#15803d", state="normal")
+            self._btn_iniciar.configure(text="▶  Iniciar", fg_color="#16a34a",
+                                        hover_color="#15803d", state="normal")
             self._lbl_cam.configure(text="⬤  Cámara apagada", text_color="#ef4444")
         except Exception:
             pass
@@ -457,16 +717,11 @@ class MainView:
             ret, frame = self._cap.read()
             if not ret:
                 break
-
             frame = self._engine.procesar_frame(frame)
-
-            now  = time.time()
-            fps  = 1.0 / max(now - prev, 1e-9)
-            prev = now
-
-            self.main_frame.after(0, lambda f=fps: self._lbl_fps.configure(
-                text=f"{f:.0f} fps"))
-
+            now   = time.time()
+            fps   = 1.0 / max(now - prev, 1e-9)
+            prev  = now
+            self.main_frame.after(0, lambda f=fps: self._lbl_fps.configure(text=f"{f:.0f} fps"))
             rgb   = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             img   = Image.fromarray(rgb)
             cw    = self._cam_canvas.winfo_width()  or 640
@@ -474,13 +729,12 @@ class MainView:
             img   = img.resize((cw, ch), Image.BILINEAR)
             photo = ImageTk.PhotoImage(img)
             self.main_frame.after(0, self._show_frame, photo)
-
         self._cam_running = False
 
     def _show_frame(self, photo):
         try:
             self._cam_canvas.delete("all")
-            self._cam_photo = photo           # evitar garbage collection
+            self._cam_photo = photo
             self._cam_canvas.create_image(0, 0, anchor="nw", image=photo)
         except Exception:
             pass
@@ -492,54 +746,39 @@ class MainView:
             self._cam_canvas.delete("all")
             w = self._cam_canvas.winfo_width()  or 600
             h = self._cam_canvas.winfo_height() or 400
-
-            # Fondo suave
             self._cam_canvas.configure(bg="#e8f0fe")
-
-            # Marco decorativo
-            self._cam_canvas.create_rectangle(
-                20, 20, w-20, h-20,
+            self._cam_canvas.create_rectangle(20, 20, w-20, h-20,
                 outline="#bfdbfe", width=2, dash=(8, 4))
-
-            # Esquinas
             sz = 20
             for (cx, cy), (dx, dy) in [
                 ((20, 20), (1, 1)), ((w-20, 20), (-1, 1)),
                 ((20, h-20), (1, -1)), ((w-20, h-20), (-1, -1))
             ]:
-                self._cam_canvas.create_line(
-                    cx, cy, cx+dx*sz, cy, fill="#1d4ed8", width=3)
-                self._cam_canvas.create_line(
-                    cx, cy, cx, cy+dy*sz, fill="#1d4ed8", width=3)
-
-            # Logo y texto
+                self._cam_canvas.create_line(cx, cy, cx+dx*sz, cy, fill="#1d4ed8", width=3)
+                self._cam_canvas.create_line(cx, cy, cx, cy+dy*sz, fill="#1d4ed8", width=3)
             try:
                 if not hasattr(self, "_placeholder_logo") or self._placeholder_logo is None:
                     logo_path = os.path.join(os.path.dirname(__file__), "..", "assets", "sentinelSystemIcono.png")
                     img = Image.open(logo_path).resize((100, 100), Image.LANCZOS)
                     self._placeholder_logo = ImageTk.PhotoImage(img)
-
                 self._cam_canvas.create_image(w//2, h//2 - 28, image=self._placeholder_logo)
                 self._cam_canvas.create_text(w//2, h//2 + 24,
-                    text="Sentinel System",
-                    font=("Segoe UI", 22, "bold"), fill="#1d4ed8")
+                    text="Sentinel System", font=("Segoe UI", 22, "bold"), fill="#1d4ed8")
             except Exception:
                 self._cam_canvas.create_text(w//2, h//2 - 22,
-                    text="🛡  Sentinel System",
-                    font=("Segoe UI", 22, "bold"), fill="#1d4ed8")
-
+                    text="🛡  Sentinel System", font=("Segoe UI", 22, "bold"), fill="#1d4ed8")
             self._cam_canvas.create_text(w//2, h//2 + 48,
                 text="Presiona  ▶ Iniciar  para comenzar",
                 font=("Segoe UI", 16), fill="#64748b")
         except Exception:
             pass
 
-    # ── Callbacks ─────────────────────────────────────────────────────────────
+    # ══════════════════════════════════════════════════════════════════════════
+    # CALLBACKS
+    # ══════════════════════════════════════════════════════════════════════════
     def _cb_resultado(self, nombre, confianza, tipo):
-        if tipo == "aceptado":
-            txt, color = f"✓  {nombre}  ({confianza:.1f})", "#16a34a"
-        else:
-            txt, color = f"✕  Desconocido  ({confianza:.1f})", "#dc2626"
+        txt   = f"✓  {nombre}  ({confianza:.1f})" if tipo == "aceptado" else f"✕  Desconocido  ({confianza:.1f})"
+        color = "#16a34a" if tipo == "aceptado" else "#dc2626"
         try:
             self.main_frame.after(0, lambda: self._lbl_resultado.configure(
                 text=txt, text_color=color))
@@ -548,25 +787,26 @@ class MainView:
 
     def _cb_status(self, texto):
         try:
-            self.main_frame.after(0, lambda: self._lbl_status.configure(
+            self.main_frame.after(0, lambda: self._lbl_cam.configure(
                 text=f"⬤  {texto}", text_color="#1d4ed8"))
         except Exception:
             pass
 
-    # ── Info card ─────────────────────────────────────────────────────────────
     def _info_card(self, icono, titulo, mensaje, color):
         card = ctk.CTkFrame(self.content_frame, fg_color=COLORS['card_bg'],
                             corner_radius=16, border_width=1,
                             border_color=COLORS['border'])
         card.place(relx=0.5, rely=0.5, anchor="center", width=480, height=260)
-        ctk.CTkLabel(card, text=icono, font=("Segoe UI Emoji", 48)).pack(pady=(24, 4))
+        ctk.CTkLabel(card, text=icono, font=FontScale.f(48)).pack(pady=(24, 4))
         ctk.CTkLabel(card, text=titulo,
-                     font=("Segoe UI", 20, "bold"), text_color=color).pack()
+                     font=FontScale.fb(20), text_color=color).pack()
         ctk.CTkLabel(card, text=mensaje,
-                     font=("Segoe UI", 12), text_color=COLORS['text_gray'],
+                     font=FontScale.f(12), text_color=COLORS['text_gray'],
                      wraplength=380, justify="center").pack(pady=8)
 
-    # ── Logout ────────────────────────────────────────────────────────────────
+    # ══════════════════════════════════════════════════════════════════════════
+    # LOGOUT
+    # ══════════════════════════════════════════════════════════════════════════
     def logout(self):
         self._stop_camera()
         self.app.show_login_view()
