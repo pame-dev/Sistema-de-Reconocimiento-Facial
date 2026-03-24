@@ -182,7 +182,7 @@ class NuevoRegistroView:
         ctk.CTkLabel(
             card,
             text=cfg["icono"],
-            font=("Segoe UI Emoji", 52),
+            font=("Segoe UI Emoji", 110),
         ).grid(row=0, column=0, pady=(28, 6))
 
         # Textos centrados
@@ -192,7 +192,7 @@ class NuevoRegistroView:
         ctk.CTkLabel(
             info,
             text=cfg["titulo"],
-            font=("Segoe UI", 16, "bold"),
+            font=("Segoe UI", 30, "bold"),
             text_color=color,
             wraplength=160,
             justify="center",
@@ -210,7 +210,7 @@ class NuevoRegistroView:
         # Botón siempre visible en la parte baja
         ctk.CTkButton(
             card,
-            text="✓",
+            text="✓ Seleccionar",
             fg_color=color,
             hover_color=self._darken(color),
             text_color=COLORS['white'],
@@ -250,7 +250,7 @@ class NuevoRegistroView:
 
         ctk.CTkButton(
             header,
-            text="← Cambiar rol",
+            text="← Regresar",
             fg_color="transparent",
             hover_color=COLORS['content_bg'],
             text_color=color,
@@ -653,7 +653,7 @@ class NuevoRegistroView:
             gray  = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2GRAY)
             caras = self.detector.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(60, 60))
             if len(caras) > 0:
-                cv2.putText(frame_rgb, "✓ Cara detectada", (10, 25),
+                cv2.putText(frame_rgb, "Seleccionar Cara detectada", (10, 25),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 220, 0), 2)
             else:
                 cv2.putText(frame_rgb, "Sin cara", (10, 25),

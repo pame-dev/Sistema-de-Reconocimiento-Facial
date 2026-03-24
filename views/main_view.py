@@ -513,11 +513,11 @@ class MainView:
         self._btn_iniciar.pack(side="left", padx=4)
         self._anim_running = False
 
-        ctk.CTkButton(btns, text="⚡  Entrenar",
-                  fg_color="#1d4ed8", hover_color="#1e40af",
-                  text_color="white", font=FontScale.fb(12),
-                  width=90, height=32, corner_radius=8,
-                  command=self._train_model).pack(side="left", padx=4)
+        # ctk.CTkButton(btns, text="⚡  Entrenar",
+        #           fg_color="#1d4ed8", hover_color="#1e40af",
+        #           text_color="white", font=FontScale.fb(12),
+        #           width=90, height=32, corner_radius=8,
+        #           command=self._train_model).pack(side="left", padx=4)
 
         mid = ctk.CTkFrame(bar, fg_color="transparent")
         mid.grid(row=0, column=2, padx=(14, 0), pady=8, sticky="w")
@@ -577,11 +577,22 @@ class MainView:
     def _anim_btn(self, step=0):
         if not self._anim_running:
             return
-        frames = ["▷  Iniciando·", "▷  Iniciando··", "▷  Iniciando···", "▷  Iniciando·"]
+
+        frames = [
+            "⏳ Iniciando",
+            "⏳ Iniciando.",
+            "⏳ Iniciando..",
+            "⏳ Iniciando..."
+        ]
+
         try:
-            self._btn_iniciar.configure(text=frames[step % 4], fg_color="#d97706")
+            self._btn_iniciar.configure(
+                text=frames[step % len(frames)],
+                fg_color="#f59e0b"  # naranja tipo loading
+            )
         except Exception:
             return
+
         self.main_frame.after(400, self._anim_btn, step + 1)
 
     def _toggle_camera(self):
@@ -593,25 +604,93 @@ class MainView:
     def _start_camera(self):
         if self._cam_running or not self._engine:
             return
+
         self._anim_running = True
         self._btn_iniciar.configure(state="disabled")
         self._anim_btn()
+
+        # Simula pequeño tiempo de carga (opcional)
+        self.main_frame.after(800, self._abrir_camara)
+
+    def _abrir_camara(self):
         self._cap = cv2.VideoCapture(0)
+
         if not self._cap.isOpened():
-            self._lbl_cam.configure(text="⬤  Error: No se pudo abrir cámara",
-                                     text_color="#ef4444")
+            self._lbl_cam.configure(
+                text="⬤  Error: No se pudo abrir cámara",
+                text_color="#ef4444"
+            )
             self._anim_running = False
-            self._btn_iniciar.configure(text="▶  Iniciar", fg_color="#16a34a", state="normal")
+            self._btn_iniciar.configure(
+                text="▶ Iniciar",
+                fg_color="#16a34a",
+                state="normal"
+            )
             return
-        self._cap.set(cv2.CAP_PROP_FRAME_WIDTH,  640)
+
+        self._cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
         self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+
         self._cam_running = True
-        self._cam_thread  = threading.Thread(target=self._cam_loop, daemon=True)
+        self._cam_thread = threading.Thread(target=self._cam_loop, daemon=True)
         self._cam_thread.start()
+
         self._anim_running = False
-        self._btn_iniciar.configure(text="⏹ Detener", fg_color="#dc2626",
-                                     hover_color="#b91c1c", state="normal")
-        self._lbl_cam.configure(text="⬤  Cámara en línea", text_color="#16a34a")
+        self._btn_iniciar.configure(
+            text="⏹ Detener",
+            fg_color="#dc2626",
+            hover_color="#b91c1c",
+            state="normal"
+        )
+
+        self._lbl_cam.configure(
+            text="⬤  Cámara en línea",
+            text_color="#16a34a"
+        )
+        if self._cam_running or not self._engine:
+            return
+
+            # 🔥 INICIAR ANIMACIÓN
+            self._anim_running = True
+            self._btn_iniciar.configure(state="disabled")
+            self._anim_btn()
+
+            self._cap = cv2.VideoCapture(0)
+
+            if not self._cap.isOpened():
+                self._lbl_cam.configure(
+                    text="⬤  Error: No se pudo abrir cámara",
+                    text_color="#ef4444"
+                )
+                self._anim_running = False
+                self._btn_iniciar.configure(
+                    text="▶ Iniciar",
+                    fg_color="#16a34a",
+                    state="normal"
+                )
+                return
+
+            self._cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+            self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+
+            self._cam_running = True
+            self._cam_thread = threading.Thread(target=self._cam_loop, daemon=True)
+            self._cam_thread.start()
+
+            # detener animación
+            self._anim_running = False
+
+            self._btn_iniciar.configure(
+                text="⏹ Detener",
+                fg_color="#dc2626",
+                hover_color="#b91c1c",
+                state="normal"
+            )
+
+            self._lbl_cam.configure(
+                text="⬤  Cámara en línea",
+                text_color="#16a34a"
+            )
 
     def _stop_camera(self):
         self._cam_running  = False
@@ -621,7 +700,7 @@ class MainView:
             self._cap = None
         try:
             self._btn_iniciar.configure(text="▶  Iniciar", fg_color="#16a34a",
-                                         hover_color="#15803d", state="normal")
+                                        hover_color="#15803d", state="normal")
             self._lbl_cam.configure(text="⬤  Cámara apagada", text_color="#ef4444")
         except Exception:
             pass
