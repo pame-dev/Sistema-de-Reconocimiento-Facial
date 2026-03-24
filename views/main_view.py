@@ -529,7 +529,7 @@ class MainView:
 
     # ── Motor / Cámara ────────────────────────────────────────────────────────
     def _init_engine(self):
-        ok = self._engine.cargar_modelo()
+        ok = self._engine.cargar_o_reentrenar() 
         n  = len(self._engine.nombres) if ok else 0
         try:
             if ok and self._lbl_cam.winfo_exists():
@@ -565,9 +565,48 @@ class MainView:
         self._anim_running = True
         self._btn_iniciar.configure(state="disabled")
         self._anim_btn()
-        self.main_frame.after(800, self._abrir_camara)
+        # Iniciar cámara en background mientras se muestra la animación
+        self._anim_cam_lista = False
+        self._mostrar_anim_camara()
+        threading.Thread(target=self._preinit_camara, daemon=True).start()
+
+    def _preinit_camara(self):
+        """Abre VideoCapture en background durante la animación."""
+        try:
+            cap = cv2.VideoCapture(0)
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH,  640)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+            self._cap_preinit = cap if cap.isOpened() else None
+        except Exception:
+            self._cap_preinit = None
+        self._anim_cam_lista = True
 
     def _abrir_camara(self):
+        # Reutilizar la cámara ya abierta durante la animación
+        if getattr(self, '_cap_preinit', None) and self._cap_preinit.isOpened():
+            self._cap = self._cap_preinit
+            self._cap_preinit = None
+        else:
+            self._cap = cv2.VideoCapture(0)
+            if not self._cap.isOpened():
+                self._lbl_cam.configure(text="⬤  Error: No se pudo abrir cámara",
+                                        text_color=self.colors['danger'])
+                self._anim_running = False
+                self._btn_iniciar.configure(text="▶ Iniciar",
+                                            fg_color="#16a34a", state="normal")
+                return
+            self._cap.set(cv2.CAP_PROP_FRAME_WIDTH,  640)
+            self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+
+        self._cam_running = True
+        self._cam_thread  = threading.Thread(target=self._cam_loop, daemon=True)
+        self._cam_thread.start()
+        self._anim_running = False
+        self._btn_iniciar.configure(text="⏹ Detener",
+                                    fg_color="#dc2626", hover_color="#b91c1c",
+                                    state="normal")
+        self._lbl_cam.configure(text="⬤  Cámara en línea",
+                                text_color=self.colors['primary'])
         self._cap = cv2.VideoCapture(0)
         if not self._cap.isOpened():
             self._lbl_cam.configure(text="⬤  Error: No se pudo abrir cámara",
@@ -713,6 +752,113 @@ class MainView:
         # Actualizar el fondo del frame principal y el content_frame
         self.main_frame.configure(fg_color=self.colors['background'])
         self.content_frame.configure(fg_color=self.colors['background'])
+
+    def _mostrar_anim_camara(self):
+        """Muestra animación de carga sobre el canvas mientras abre la cámara."""
+        c = self.colors
+        self._anim_cam_activa = True
+        self._anim_cam_radio  = 44
+        self._anim_cam_fase   = 0
+        self._anim_cam_scan   = 0.0
+        self._anim_cam_dots   = 0
+        self._anim_cam_prog   = 0.0
+        self._anim_cam_lista  = False
+        self._tick_anim_cam_ring()
+        self._tick_anim_cam_dots()
+        self._tick_anim_cam_prog()
+
+    def _tick_anim_cam_ring(self):
+        if not getattr(self, '_anim_cam_activa', False):
+            return
+        if self._anim_cam_fase == 0:
+            self._anim_cam_radio = min(50, self._anim_cam_radio + 1)
+            if self._anim_cam_radio >= 50:
+                self._anim_cam_fase = 1
+        else:
+            self._anim_cam_radio = max(42, self._anim_cam_radio - 1)
+            if self._anim_cam_radio <= 42:
+                self._anim_cam_fase = 0
+        self._anim_cam_scan = (self._anim_cam_scan + 0.06) % 1.0
+        self._dibujar_anim_camara()
+        self.main_frame.after(40, self._tick_anim_cam_ring)
+
+    def _tick_anim_cam_dots(self):
+        if not getattr(self, '_anim_cam_activa', False):
+            return
+        puntos = ["   ", "•  ", "•• ", "•••"]
+        self._anim_cam_dots_str = puntos[self._anim_cam_dots % 4]
+        self._anim_cam_dots += 1
+        self._dibujar_anim_camara()
+        self.main_frame.after(400, self._tick_anim_cam_dots)
+
+    def _tick_anim_cam_prog(self):
+        if not getattr(self, '_anim_cam_activa', False):
+            return
+        target = 0.88 if not getattr(self, '_anim_cam_lista', False) else 1.0
+        delta  = (target - self._anim_cam_prog) * 0.06
+        self._anim_cam_prog = min(target, self._anim_cam_prog + max(delta, 0.003))
+        self._dibujar_anim_camara()
+        if self._anim_cam_prog < 0.999:
+            self.main_frame.after(60, self._tick_anim_cam_prog)
+        else:
+            self._anim_cam_activa = False
+            self.main_frame.after(200, self._abrir_camara)
+
+    def _dibujar_anim_camara(self):
+        try:
+            cv = self._cam_canvas
+            cv.delete("all")
+            c  = self.colors
+            w  = cv.winfo_width()  or 640
+            h  = cv.winfo_height() or 480
+            cx, cy = w // 2, h // 2 - 40
+
+            color = self.colors['info']
+
+            # Anillo pulsante
+            r = self._anim_cam_radio
+            cv.create_oval(cx-r, cy-r, cx+r, cy+r, outline=color, width=2)
+
+            # Cuerpo de cámara
+            cv.create_rectangle(cx-22, cy-14, cx+22, cy+14,
+                                outline=color, width=2, fill="")
+            cv.create_oval(cx-9, cy-9, cx+9, cy+9,
+                        outline=color, width=1.5, fill="")
+            cv.create_oval(cx-4, cy-4, cx+4, cy+4,
+                        fill=color, outline="")
+            cv.create_rectangle(cx+14, cy-14, cx+22, cy-8,
+                                outline=color, width=1.5, fill="")
+
+            # Línea de escaneo
+            scan_y = cy - 12 + int(self._anim_cam_scan * 24)
+            cv.create_line(cx-18, scan_y, cx+18, scan_y, fill=color, width=1)
+
+            # Texto
+            dots = getattr(self, '_anim_cam_dots_str', '   ')
+            cv.create_text(cx, cy + 60,
+                        text=f"Iniciando cámara {dots}",
+                        font=("Segoe UI", 14, "bold"),
+                        fill=color)
+
+            # Barra de progreso
+            bar_w  = 220
+            bar_h  = 6
+            bar_x  = cx - bar_w // 2
+            bar_y  = cy + 90
+            prog   = self._anim_cam_prog
+            cv.create_rectangle(bar_x, bar_y, bar_x + bar_w, bar_y + bar_h,
+                                fill=c['cam_bg'], outline=c['cam_border'], width=1)
+            if prog > 0:
+                cv.create_rectangle(bar_x, bar_y,
+                                    bar_x + int(bar_w * prog), bar_y + bar_h,
+                                    fill=color, outline="")
+
+            cv.create_text(cx, bar_y + 22,
+                        text="Preparando captura biométrica...",
+                        font=("Segoe UI", 10),
+                        fill=c['text_gray'])
+        except Exception:
+            pass
 
     # ── Logout ────────────────────────────────────────────────────────────────
     def logout(self):
