@@ -10,7 +10,7 @@ import sys
 from views.font_scale import FontScale
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import COLORS, get_db
+from config import COLORS, get_colors, toggle_theme, get_db
 from database.queries import (
     sp_insertar_usuario,
     sp_insertar_alumno,
@@ -100,8 +100,9 @@ TOTAL_FOTOS = sum(p["fotos"] for p in POSTURAS)  # 480
 
 class NuevoRegistroView:
     def __init__(self, parent):
+        self.colors = get_colors()
         self.parent    = parent
-        self.container = ctk.CTkFrame(parent, fg_color=COLORS['background'])
+        self.container = ctk.CTkFrame(parent, fg_color=self.colors['background'])
         self.container.pack(fill="both", expand=True, padx=30, pady=30)
 
         self.camara        = None
@@ -140,14 +141,14 @@ class NuevoRegistroView:
             outer,
             text="📝 Nuevo Registro de Usuario",
             font=("Segoe UI", 22, "bold"),
-            text_color=COLORS['text_dark']
+            text_color=self.colors['text_dark']
         ).pack(pady=(20, 4))
 
         ctk.CTkLabel(
             outer,
             text="Selecciona el tipo de usuario que deseas registrar",
             font=("Segoe UI", 12),
-            text_color=COLORS['text_gray']
+            text_color=self.colors['text_gray']
         ).pack(pady=(0, 16))
 
         # Frame de tarjetas que se adapta al ancho disponible
@@ -173,7 +174,7 @@ class NuevoRegistroView:
         outer.grid_columnconfigure(0, weight=1)
 
         # Contenido blanco/card interior
-        card = ctk.CTkFrame(outer, fg_color=COLORS['card_bg'], corner_radius=12)
+        card = ctk.CTkFrame(outer, fg_color=self.colors['card_bg'], corner_radius=12)
         card.grid(row=0, column=0, padx=3, pady=3, sticky="nsew")
         card.grid_rowconfigure(1, weight=1)   # el espacio vacío se expande
         card.grid_columnconfigure(0, weight=1)
@@ -202,7 +203,7 @@ class NuevoRegistroView:
             info,
             text=cfg["desc"],
             font=("Segoe UI", 11),
-            text_color=COLORS['text_gray'],
+            text_color=self.colors['text_gray'],
             wraplength=160,
             justify="center",
         ).pack(pady=(4, 0))
@@ -213,7 +214,7 @@ class NuevoRegistroView:
             text="✓ Seleccionar",
             fg_color=color,
             hover_color=self._darken(color),
-            text_color=COLORS['white'],
+            text_color=self.colors['white'],
             font=("Segoe UI", 12, "bold"),
             corner_radius=10,
             height=38,
@@ -264,14 +265,14 @@ class NuevoRegistroView:
             badge,
             text=f"  {cfg['icono']}  {cfg['titulo']}  ",
             font=("Segoe UI", 11, "bold"),
-            text_color=COLORS['white']
+            text_color=self.colors['white']
         ).pack(padx=6, pady=4)
 
         ctk.CTkLabel(
             header,
             text="Paso 1/2 — Datos personales",
             font=("Segoe UI", 12),
-            text_color=COLORS['text_gray']
+            text_color=self.colors['text_gray']
         ).pack(side="left", padx=10)
 
         ttk.Separator(self.container, orient="horizontal").pack(fill="x", pady=(0, 15))
@@ -284,7 +285,7 @@ class NuevoRegistroView:
 
         form_frame = ctk.CTkFrame(
             scroll,
-            fg_color=COLORS['card_bg'],
+            fg_color=self.colors['card_bg'],
             corner_radius=14,
             border_width=1,
             border_color=COLORS['border'],
@@ -310,7 +311,7 @@ class NuevoRegistroView:
             text="Continuar → Captura de fotos",
             fg_color=color,
             hover_color=self._darken(color),
-            text_color=COLORS['white'],
+            text_color=self.colors['white'],
             font=FontScale.fb(13),
             corner_radius=10,
             height=42,
@@ -345,7 +346,7 @@ class NuevoRegistroView:
         ctk.CTkLabel(
             frame,
             text=label_text + (" *" if required else ""),
-            text_color=COLORS['text_dark'],
+            text_color=self.colors['text_dark'],
             font=("Segoe UI", 11),
             anchor="w"
         ).pack(anchor="w", pady=(0, 4))
@@ -414,7 +415,7 @@ class NuevoRegistroView:
             header,
             text="Paso 2/2 — Captura biométrica",
             font=("Segoe UI", 12),
-            text_color=COLORS['text_gray']
+            text_color=self.colors['text_gray']
         ).pack(side="left", padx=15)
 
         ttk.Separator(self.container, orient="horizontal").pack(fill="x", pady=(0, 10))
@@ -438,7 +439,7 @@ class NuevoRegistroView:
 
         self.panel_guia = ctk.CTkFrame(
             body,
-            fg_color=COLORS['card_bg'],
+            fg_color=self.colors['card_bg'],
             width=280,
             corner_radius=12,
             border_width=1,
@@ -450,7 +451,7 @@ class NuevoRegistroView:
 
         cam_panel = ctk.CTkFrame(
             body,
-            fg_color=COLORS['card_bg'],
+            fg_color=self.colors['card_bg'],
             corner_radius=12,
             border_width=1,
             border_color=COLORS['border']
@@ -468,7 +469,7 @@ class NuevoRegistroView:
             text="📷 Iniciar Cámara",
             fg_color=color,
             hover_color=self._darken(color),
-            text_color=COLORS['white'],
+            text_color=self.colors['white'],
             font=("Segoe UI", 11, "bold"),
             corner_radius=10,
             height=36,
@@ -479,9 +480,9 @@ class NuevoRegistroView:
         self.btn_tomar = ctk.CTkButton(
             ctrl,
             text="📸 Tomar fotos de esta postura",
-            fg_color=COLORS['header'],
+            fg_color=self.colors['header'],
             hover_color=COLORS['header_hover'],
-            text_color=COLORS['white'],
+            text_color=self.colors['white'],
             font=("Segoe UI", 11, "bold"),
             corner_radius=10,
             height=36,
@@ -493,9 +494,9 @@ class NuevoRegistroView:
         self.btn_repetir = ctk.CTkButton(
             ctrl,
             text="🔁 Repetir postura",
-            fg_color=COLORS['accent'],
+            fg_color=self.colors['accent'],
             hover_color="#D97706",
-            text_color=COLORS['white'],
+            text_color=self.colors['white'],
             font=("Segoe UI", 11, "bold"),
             corner_radius=10,
             height=36,
@@ -507,9 +508,9 @@ class NuevoRegistroView:
         self.btn_detener = ctk.CTkButton(
             ctrl,
             text="⏹ Detener",
-            fg_color=COLORS['danger'],
+            fg_color=self.colors['danger'],
             hover_color=COLORS['danger_dark'],
-            text_color=COLORS['white'],
+            text_color=self.colors['white'],
             font=("Segoe UI", 11, "bold"),
             corner_radius=10,
             height=36,
@@ -525,7 +526,7 @@ class NuevoRegistroView:
             pos_prog,
             text="Fotos de esta postura: 0 / 80",
             font=("Segoe UI", 11),
-            text_color=COLORS['text_dark']
+            text_color=self.colors['text_dark']
         )
         self.lbl_postura_prog.pack(side="left", padx=5)
 
@@ -547,7 +548,7 @@ class NuevoRegistroView:
             text="💾 Guardar Usuario",
             fg_color=color,
             hover_color=self._darken(color),
-            text_color=COLORS['white'],
+            text_color=self.colors['white'],
             font=FontScale.fb(13),
             corner_radius=10,
             height=42,
@@ -596,7 +597,7 @@ class NuevoRegistroView:
             self.panel_guia,
             text=postura["instruccion"],
             font=("Segoe UI", 11),
-            text_color=COLORS['text_dark'],
+            text_color=self.colors['text_dark'],
             wraplength=220,
             justify="center"
         ).pack(pady=8)
@@ -768,7 +769,7 @@ class NuevoRegistroView:
 
         self.btn_tomar.configure(
             text="📸 Tomar fotos de esta postura",
-            fg_color=COLORS['header'],
+            fg_color=self.colors['header'],
             command=self._iniciar_rafaga,
             state="normal"
         )
@@ -796,7 +797,7 @@ class NuevoRegistroView:
         color = ROL_CONFIG[self.rol_actual]["color"]
         self.btn_tomar.configure(
             text="📸 Tomar fotos de esta postura",
-            fg_color=COLORS['header'],
+            fg_color=self.colors['header'],
             command=self._iniciar_rafaga,
             state="normal"
         )
