@@ -463,102 +463,166 @@ class InformacionEscolarView:
             messagebox.showwarning("Atención", "Selecciona un usuario primero")
             return
 
-        c      = self.colors
-        u      = self.usuario_seleccionado
-        partes = u['nombre'].split()
-        color  = ROL_COLOR.get(u.get('rol', ''), COLORS['primary'])
+        c     = self.colors
+        u     = self.usuario_seleccionado
+        color = ROL_COLOR.get(u.get('rol', ''), COLORS['primary'])
 
-        win = ctk.CTkToplevel(self.parent)
-        win.title("Editar Usuario")
-        win.geometry("500x600")
-        win.configure(fg_color=c['background'])
-        win.grab_set()
+        def _val(key):
+            v = u.get(key, '')
+            return '' if v in ('—', None) else str(v)
 
-        wh = ctk.CTkFrame(win, fg_color=color, corner_radius=0, height=54)
-        wh.pack(fill="x")
-        wh.pack_propagate(False)
-        ctk.CTkLabel(wh, text=f"  ✏️  Editar  —  {u['nombre']} ({u['rol']})",
-                     font=FontScale.fb(13), text_color="white").pack(side="left", padx=16, pady=14)
-
-        form = ctk.CTkFrame(win, fg_color="transparent")
-        form.pack(padx=28, fill="x", pady=16)
-
+        # ── Variables compartidas ─────────────────────────────────────────────
         vars_ = {
-            'nombre':    tk.StringVar(value=partes[0] if partes else ''),
-            'paterno':   tk.StringVar(value=partes[1] if len(partes) > 1 else ''),
-            'materno':   tk.StringVar(value=partes[2] if len(partes) > 2 else ''),
-            'matricula': tk.StringVar(value=u['matricula'] if u['matricula'] != '—' else ''),
-            'telefono':  tk.StringVar(value=u['telefono']  if u['telefono']  != '—' else ''),
+            'nombre':    tk.StringVar(value=_val('nombre')),
+            'paterno':   tk.StringVar(value=_val('apellido_paterno')),
+            'materno':   tk.StringVar(value=_val('apellido_materno')),
+            'matricula': tk.StringVar(value=_val('matricula')),
+            'telefono':  tk.StringVar(value=_val('telefono')),
             'rol':       tk.StringVar(value=u['rol']),
-            'carrera':   tk.StringVar(value=u['carrera']   if u['carrera']   != '—' else ''),
-            'grado':     tk.StringVar(value=u['grado']     if u['grado']     != '—' else ''),
-            'grupo':     tk.StringVar(value=u['grupo']     if u['grupo']     != '—' else ''),
+            # específicos — se rellenan/vacían al cambiar rol
+            'facultad':  tk.StringVar(value=_val('facultad')),
+            'carrera':   tk.StringVar(value=_val('carrera')),
+            'grado':     tk.StringVar(value=_val('grado')),
+            'grupo':     tk.StringVar(value=_val('grupo')),
+            'materia':   tk.StringVar(value=_val('materia')),
+            'puesto':    tk.StringVar(value=_val('puesto')),
+            'area':      tk.StringVar(value=_val('area')),
         }
         originales = {k: v.get() for k, v in vars_.items()}
 
-        def campo(lbl, var, row, state="normal"):
-            ctk.CTkLabel(form, text=lbl, text_color=c['text_gray'],
-                         font=("Segoe UI", 10), anchor="w"
-                         ).grid(row=row, column=0, sticky="w", pady=4)
-            e = ctk.CTkEntry(form, textvariable=var, font=("Segoe UI", 11),
-                             width=270, height=34, corner_radius=8,
+        # ── Ventana ───────────────────────────────────────────────────────────
+        win = ctk.CTkToplevel(self.parent)
+        win.title("Editar Usuario")
+        win.geometry("520x660")
+        win.configure(fg_color=c['background'])
+        win.grab_set()
+        win.resizable(False, False)
+
+        # Header con color de rol
+        wh = ctk.CTkFrame(win, fg_color=color, corner_radius=0, height=54)
+        wh.pack(fill="x")
+        wh.pack_propagate(False)
+
+        icono_rol = ROL_ICONO.get(u['rol'], '👤')
+        nombre_completo = f"{_val('nombre')} {_val('apellido_paterno')}".strip()
+        ctk.CTkLabel(wh,
+            text=f"  {icono_rol}  Editar — {nombre_completo}",
+            font=FontScale.fb(13), text_color="white"
+        ).pack(side="left", padx=16, pady=14)
+
+        # ── Scroll principal ──────────────────────────────────────────────────
+        scroll_outer = ctk.CTkScrollableFrame(win, fg_color="transparent")
+        scroll_outer.pack(fill="both", expand=True, padx=0, pady=0)
+
+        # ── Sección: Datos personales ─────────────────────────────────────────
+        def section_header(parent, texto, sec_color):
+            f = ctk.CTkFrame(parent, fg_color="transparent")
+            f.pack(fill="x", padx=20, pady=(14, 4))
+            ctk.CTkLabel(f, text=texto,
+                         font=("Segoe UI", 11, "bold"),
+                         text_color=sec_color).pack(side="left")
+            ctk.CTkFrame(f, fg_color=COLORS['border'],
+                         height=1, corner_radius=0).pack(side="left", fill="x", expand=True, padx=(8, 0))
+
+        def make_entry(parent, label_text, var):
+            """Crea una fila label + entry y devuelve el CTkEntry."""
+            row = ctk.CTkFrame(parent, fg_color="transparent")
+            row.pack(fill="x", padx=20, pady=4)
+            ctk.CTkLabel(row, text=label_text,
+                         font=("Segoe UI", 10),
+                         text_color=c['text_gray'],
+                         width=130, anchor="w").pack(side="left")
+            e = ctk.CTkEntry(row, textvariable=var,
+                             font=("Segoe UI", 11), height=34,
+                             corner_radius=8,
                              border_color=COLORS['border'],
                              fg_color=c['content_bg'],
                              text_color=c['text_dark'])
-            if state == "disabled":
-                e.configure(state="disabled")
-            e.grid(row=row, column=1, sticky="w", padx=(10, 0), pady=4)
+            e.pack(side="left", fill="x", expand=True)
             return e
 
-        campo("Nombre:",      vars_['nombre'],    0)
-        campo("Apellido P.:", vars_['paterno'],   1)
-        campo("Apellido M.:", vars_['materno'],   2)
-        campo("Matrícula:",   vars_['matricula'], 3)
-        campo("Teléfono:",    vars_['telefono'],  4)
+        section_header(scroll_outer, "Datos personales", color)
+        make_entry(scroll_outer, "Nombre *",           vars_['nombre'])
+        make_entry(scroll_outer, "Apellido Paterno *", vars_['paterno'])
+        make_entry(scroll_outer, "Apellido Materno",   vars_['materno'])
+        make_entry(scroll_outer, "Matrícula",          vars_['matricula'])
+        make_entry(scroll_outer, "Teléfono",           vars_['telefono'])
 
-        ctk.CTkLabel(form, text="Rol:", text_color=c['text_gray'],
-                     font=("Segoe UI", 10), anchor="w"
-                     ).grid(row=5, column=0, sticky="w", pady=4)
-        combo_rol = ttk.Combobox(form, textvariable=vars_['rol'],
-                                 values=["alumno", "maestro", "personal"],
-                                 state="readonly", width=28, font=("Segoe UI", 11),
-                                 style='Dark.TCombobox')
-        combo_rol.grid(row=5, column=1, sticky="w", padx=(10, 0), pady=4)
+        # Rol — combobox
+        rol_row = ctk.CTkFrame(scroll_outer, fg_color="transparent")
+        rol_row.pack(fill="x", padx=20, pady=4)
+        ctk.CTkLabel(rol_row, text="Rol",
+                     font=("Segoe UI", 10),
+                     text_color=c['text_gray'],
+                     width=130, anchor="w").pack(side="left")
+        combo_rol = ttk.Combobox(rol_row, textvariable=vars_['rol'],
+                                  values=["alumno", "maestro", "personal"],
+                                  state="readonly", width=24,
+                                  font=("Segoe UI", 11),
+                                  style='Dark.TCombobox')
+        combo_rol.pack(side="left")
 
-        e_carrera = campo("Carrera/Materia:", vars_['carrera'], 6)
-        e_grado   = campo("Grado:",           vars_['grado'],   7)
-        e_grupo   = campo("Grupo/Área:",      vars_['grupo'],   8)
+        # ── Sección dinámica (se destruye y recrea al cambiar rol) ────────────
+        self._sec_rol_frame = ctk.CTkFrame(scroll_outer, fg_color="transparent")
+        self._sec_rol_frame.pack(fill="x")
 
-        def actualizar_campos(*_):
+        def construir_seccion_rol(*_):
+            # Limpiar sección anterior
+            for w in self._sec_rol_frame.winfo_children():
+                w.destroy()
+
             rol = vars_['rol'].get()
-            e_carrera.configure(state="normal" if rol in ("alumno","maestro") else "disabled")
-            e_grado.configure(  state="normal" if rol in ("alumno","maestro") else "disabled")
-            e_grupo.configure(  state="normal" if rol == "alumno" else "disabled")
 
-        combo_rol.bind("<<ComboboxSelected>>", actualizar_campos)
-        actualizar_campos()
+            TITULOS = {
+                'alumno':   ("🎓  Información académica",   "#4A90D9"),
+                'maestro':  ("📚  Información docente",     "#27AE60"),
+                'personal': ("🏢  Información laboral",     "#E67E22"),
+            }
+            titulo, col_sec = TITULOS.get(rol, ("Datos adicionales", color))
+            section_header(self._sec_rol_frame, titulo, col_sec)
 
-        btn_row = ctk.CTkFrame(win, fg_color="transparent")
-        btn_row.pack(pady=12)
+            if rol == 'alumno':
+                make_entry(self._sec_rol_frame, "Facultad",  vars_['facultad'])
+                make_entry(self._sec_rol_frame, "Carrera",   vars_['carrera'])
+                make_entry(self._sec_rol_frame, "Grado",     vars_['grado'])
+                make_entry(self._sec_rol_frame, "Grupo",     vars_['grupo'])
+
+            elif rol == 'maestro':
+                make_entry(self._sec_rol_frame, "Grado que imparte", vars_['grado'])
+                make_entry(self._sec_rol_frame, "Materia",           vars_['materia'])
+
+            elif rol == 'personal':
+                make_entry(self._sec_rol_frame, "Puesto", vars_['puesto'])
+                make_entry(self._sec_rol_frame, "Área",   vars_['area'])
+
+        combo_rol.bind("<<ComboboxSelected>>", construir_seccion_rol)
+        construir_seccion_rol()   # construir con el rol actual
+
+        # ── Botones ───────────────────────────────────────────────────────────
+        sep = ctk.CTkFrame(win, fg_color=COLORS['border'], height=1, corner_radius=0)
+        sep.pack(fill="x", pady=(8, 0))
+
+        btn_row = ctk.CTkFrame(win, fg_color=c['card_bg'])
+        btn_row.pack(fill="x", padx=20, pady=12)
 
         btn_guardar = ctk.CTkButton(btn_row, text="💾  Guardar",
                       fg_color=c['primary'], hover_color=COLORS['primary_dark'],
                       text_color="#ffffff", font=("Segoe UI", 12, "bold"),
                       corner_radius=10, height=38, state="disabled",
                       command=lambda: self._guardar_edicion(u['id'], vars_, win))
-        btn_guardar.pack(side="left", padx=6)
+        btn_guardar.pack(side="left", padx=(0, 8))
 
         ctk.CTkButton(btn_row, text="🔁  Retomar fotos",
                       fg_color=c['accent'], hover_color="#D97706",
                       text_color="#ffffff", font=("Segoe UI", 12, "bold"),
                       corner_radius=10, height=38,
-                      command=lambda: self._retomar_fotos(u, win)).pack(side="left", padx=6)
+                      command=lambda: self._retomar_fotos(u, win)).pack(side="left", padx=(0, 8))
 
         ctk.CTkButton(btn_row, text="Cancelar",
                       fg_color=c['content_bg'], hover_color=COLORS['border'],
                       text_color=c['text_dark'], font=("Segoe UI", 12, "bold"),
                       corner_radius=10, height=38,
-                      command=win.destroy).pack(side="left", padx=6)
+                      command=win.destroy).pack(side="left")
 
         def detectar_cambios(*_):
             changed = any(v.get() != originales[k] for k, v in vars_.items())
@@ -568,17 +632,14 @@ class InformacionEscolarView:
             v.trace_add("write", detectar_cambios)
 
     def _guardar_edicion(self, user_id, vars_, ventana):
-        import sqlite3 as _sqlite3
+        g = lambda k: vars_[k].get().strip()
 
-        nombre    = vars_['nombre'].get().strip()
-        paterno   = vars_['paterno'].get().strip()
-        materno   = vars_['materno'].get().strip()
-        matricula = vars_['matricula'].get().strip()
-        telefono  = vars_['telefono'].get().strip()
-        rol       = vars_['rol'].get().strip()
-        carrera   = vars_['carrera'].get().strip()
-        grado     = vars_['grado'].get().strip()
-        grupo     = vars_['grupo'].get().strip()
+        nombre    = g('nombre')
+        paterno   = g('paterno')
+        materno   = g('materno')
+        matricula = g('matricula')
+        telefono  = g('telefono')
+        rol       = g('rol')
 
         if not nombre or not paterno:
             messagebox.showwarning("Campos obligatorios", "Nombre y apellido paterno son obligatorios")
@@ -590,12 +651,12 @@ class InformacionEscolarView:
 
             cursor.execute("""
                 UPDATE usuarios SET
-                    nombreUsuario = ?,
+                    nombreUsuario          = ?,
                     apellidoPaternoUsuario = ?,
                     apellidoMaternoUsuario = ?,
-                    matriculaUsuario = ?,
-                    telefonoUsuario = ?,
-                    rolUsuario = ?
+                    matriculaUsuario       = ?,
+                    telefonoUsuario        = ?,
+                    rolUsuario             = ?
                 WHERE idUsuario = ?
             """, (nombre, paterno, materno, matricula, telefono, rol, user_id))
 
@@ -605,19 +666,24 @@ class InformacionEscolarView:
 
             if rol == "alumno":
                 cursor.execute("""
-                    INSERT INTO alumnos (fkIdUsuario, gradoAlumno, grupoAlumno, carreraAlumno)
-                    VALUES (?, ?, ?, ?)
-                """, (user_id, grado, grupo, carrera))
+                    INSERT INTO alumnos
+                        (fkIdUsuario, facultadAlumno, carreraAlumno, gradoAlumno, grupoAlumno)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (user_id, g('facultad'), g('carrera'), g('grado'), g('grupo')))
+
             elif rol == "maestro":
                 cursor.execute("""
-                    INSERT INTO maestros (fkIdUsuario, gradoImpartidoMaestro, materiaImpartidaMaestro)
+                    INSERT INTO maestros
+                        (fkIdUsuario, gradoImpartidoMaestro, materiaImpartidaMaestro)
                     VALUES (?, ?, ?)
-                """, (user_id, grado, carrera))
+                """, (user_id, g('grado'), g('materia')))
+
             elif rol == "personal":
                 cursor.execute("""
-                    INSERT INTO personal_escolar (fkIdUsuario, areaPersonalEscolar)
-                    VALUES (?, ?)
-                """, (user_id, grupo))
+                    INSERT INTO personal_escolar
+                        (fkIdUsuario, puestoPersonalEscolar, areaPersonalEscolar)
+                    VALUES (?, ?, ?)
+                """, (user_id, g('puesto'), g('area')))
 
             conn.commit()
             conn.close()
@@ -627,6 +693,7 @@ class InformacionEscolarView:
 
         except Exception as e:
             messagebox.showerror("Error", f"No se pudo actualizar:\n{e}")
+
 
     def _retomar_fotos(self, usuario, ventana_actual):
         try:
