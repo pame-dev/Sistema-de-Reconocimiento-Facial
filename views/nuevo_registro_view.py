@@ -76,7 +76,7 @@ POSTURAS = [
     },
     {
         "id":          "perfil_izq",
-        "titulo":      "Perfil izquierdo",
+        "titulo":      "Voltea a tu izquierda",
         "instruccion": "Gira la cabeza completamente\nhacia tu izquierda (~60°)",
         "imagen":      "assets/posturas/postura_perfil_izq.png",
         "icono":       "🙂",
@@ -84,7 +84,7 @@ POSTURAS = [
     },
     {
         "id":          "perfil_der",
-        "titulo":      "Perfil derecho",
+        "titulo":      "Voltea a tu derecha",
         "instruccion": "Gira la cabeza completamente\nhacia tu derecha (~60°)",
         "imagen":      "assets/posturas/postura_perfil_der.png",
         "icono":       "🙂",
