@@ -100,6 +100,7 @@ class ReconocerFacial:
 
             img = cv2.resize(img, (250, 250))
             img = self.preprocesar(img)
+            img = np.uint8(img)   
 
             if idx < 5:
                 cv2.imwrite(f"debug_fotos/foto_{idx}_user{user_id}_PROCESADA.jpg", img)
@@ -111,6 +112,92 @@ class ReconocerFacial:
 
         print(f"  Total: {len(set(labels))} usuarios, {len(faces)} imágenes")
         return faces, labels
+    def _contar_usuarios_bd(self):
+        """Retorna el número de usuarios con biometría en la BD."""
+        conn = self.get_db()
+        if not conn:
+            return 0
+        try:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT COUNT(DISTINCT fkIdUsuario) 
+                FROM biometria 
+                WHERE encodeBiometria IS NOT NULL
+            """)
+            return cursor.fetchone()[0]
+        except Exception:
+            return 0
+        finally:
+            conn.close()
+
+    def cargar_o_reentrenar(self):
+        usuarios_bd   = self._contar_usuarios_bd()
+        modelo_existe = os.path.exists(self.model_path) and os.path.exists(self.names_path)
+
+        if modelo_existe:
+            try:
+                self.recognizer.read(self.model_path)
+                with open(self.names_path, 'rb') as f:
+                    self.nombres = pickle.load(f)
+                usuarios_modelo = len(self.nombres)
+                print(f"✅ Modelo cargado · {usuarios_modelo} usuarios en modelo · {usuarios_bd} en BD")
+
+                if usuarios_bd <= usuarios_modelo:
+                    if self.on_status:
+                        self.on_status(f"Modelo listo · {usuarios_modelo} usuarios")
+                    return True
+
+                # Hay usuarios nuevos → reentrenar
+                print(f"🔄 Reentrenando — {usuarios_bd - usuarios_modelo} usuario(s) nuevo(s)...")
+                if self.on_status:
+                    self.on_status(f"Actualizando modelo...")
+                return self.entrenar()
+
+            except Exception as e:
+                # Modelo corrupto → borrar y reentrenar
+                print(f"⚠️  Modelo corrupto ({e}) — eliminando y reentrenando...")
+                try:
+                    os.remove(self.model_path)
+                except Exception:
+                    pass
+                try:
+                    os.remove(self.names_path)
+                except Exception:
+                    pass
+
+        # No existe modelo o fue eliminado por corrupción → entrenar desde cero
+        print("🔄 Entrenando modelo desde cero...")
+        if self.on_status:
+            self.on_status("Entrenando modelo...")
+        return self.entrenar()
+        """
+        Carga el modelo si está actualizado.
+        Si hay usuarios nuevos desde el último entrenamiento, reentrena.
+        """
+        usuarios_bd     = self._contar_usuarios_bd()
+        usuarios_modelo = len(self.nombres)  # 0 si no se ha cargado nada
+
+        # Intentar cargar modelo existente primero
+        modelo_existe = os.path.exists(self.model_path) and os.path.exists(self.names_path)
+
+        if modelo_existe:
+            self.recognizer.read(self.model_path)
+            with open(self.names_path, 'rb') as f:
+                self.nombres = pickle.load(f)
+            usuarios_modelo = len(self.nombres)
+            print(f"✅ Modelo cargado · {usuarios_modelo} usuarios en modelo · {usuarios_bd} en BD")
+
+        # Reentrenar si hay usuarios nuevos o no hay modelo
+        if not modelo_existe or usuarios_bd > usuarios_modelo:
+            razon = "no existe modelo" if not modelo_existe else f"{usuarios_bd - usuarios_modelo} usuario(s) nuevo(s)"
+            print(f"🔄 Reentrenando — {razon}...")
+            if self.on_status:
+                self.on_status(f"Actualizando modelo — {razon}...")
+            return self.entrenar()
+
+        if self.on_status:
+            self.on_status(f"Modelo listo · {usuarios_modelo} usuarios")
+        return True
 
     def entrenar(self):
         print("🔄 Cargando datos desde la base de datos...")
@@ -222,6 +309,7 @@ class ReconocerFacial:
                 rostro = gray[y:y+h, x:x+w]
                 rostro = cv2.resize(rostro, (250, 250))
                 rostro = self.preprocesar(rostro)
+                rostro = np.uint8(rostro)   # ← fix del compareHist error
 
                 label_raw, conf_raw = self.recognizer.predict(rostro)
 
@@ -265,7 +353,8 @@ class ReconocerFacial:
         print("="*55)
 
         print("🔄 Entrenando modelo...")
-        if not self.entrenar():
+        if not self.cargar_o_reentrenar():
+            print("❌ No se pudo cargar ni reentrenar el modelo")
             return
 
         cap = cv2.VideoCapture(0)
