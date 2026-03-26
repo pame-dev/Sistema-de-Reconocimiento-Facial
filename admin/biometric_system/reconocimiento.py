@@ -9,11 +9,11 @@ from collections import Counter
 
 class ReconocerFacial:
     def __init__(self, db_path='database/sistema_biometrico.db'):
-        self.db_path = db_path
-        self.project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        self.db_path       = db_path
+        self.project_root  = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         self.artifacts_dir = os.path.join(self.project_root, 'database')
-        self.model_path = os.path.join(self.artifacts_dir, 'modelo_entrenado.yml')
-        self.names_path = os.path.join(self.artifacts_dir, 'nombres.pkl')
+        self.model_path    = os.path.join(self.artifacts_dir, 'modelo_entrenado.yml')
+        self.names_path    = os.path.join(self.artifacts_dir, 'nombres.pkl')
 
         self.recognizer = cv2.face.LBPHFaceRecognizer_create(
             radius=2, neighbors=8, grid_x=8, grid_y=8
@@ -22,19 +22,32 @@ class ReconocerFacial:
             cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
         )
 
-        self.nombres             = {}
-        self.umbral_confianza    = 60
-        self._votos              = []
-        self._frames_votar       = 10
-        self._ultimo_registro    = {}
-        self._cooldown_segundos  = 30
-        self._frame_counter      = 0
-        self._procesar_cada      = 2
-        self._ultimo_resultado   = []
+        self.nombres            = {}
+        self.umbral_confianza   = 80
+        self._votos             = []
+        self._frames_votar      = 10
+        self._ultimo_registro   = {}
+        self._cooldown_segundos = 30
+        self._frame_counter     = 0
+        self._procesar_cada     = 2
+        self._ultimo_resultado  = []
 
-        # ── Nuevos: callbacks y contadores para la GUI ────────────────────────
-        self.on_resultado    = None   # fn(nombre, confianza, tipo)
-        self.on_status       = None   # fn(texto)
+        # Estado del overlay en el frame
+        self._overlay_texto     = ""       # "ACEPTADO" / "DENEGADO" / ""
+        self._overlay_color     = (0, 0, 0)
+        self._overlay_frames    = 0        # cuántos frames mostrar el overlay
+        self._overlay_duracion  = 40       # frames que dura el overlay (~1.3 s a 30 fps)
+
+        # Detección de ausencia de cara
+        self._frames_sin_cara   = 0
+        self._umbral_sin_cara   = 90       # ~3 s a 30 fps antes de avisar ausencia
+        self._cara_presente     = False
+
+        # Callbacks
+        self.on_resultado   = None   # (nombre, confianza, tipo)
+        self.on_status      = None   # (texto)
+        self.on_sin_cara    = None   # () — disparado cuando no hay cara N frames seguidos
+
         self.total_aceptados = 0
         self.total_denegados = 0
 
@@ -49,11 +62,9 @@ class ReconocerFacial:
             return None
 
     def preprocesar(self, img_gris):
-        img = cv2.equalizeHist(img_gris)
         clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-        img = clahe.apply(img)
-        img = cv2.bilateralFilter(img, d=9, sigmaColor=75, sigmaSpace=75)
-        img = cv2.normalize(img, None, 0, 255, cv2.NORM_MINMAX)
+        img   = clahe.apply(img_gris)
+        img   = cv2.bilateralFilter(img, d=9, sigmaColor=75, sigmaSpace=75)
         return img
 
     def preparar_datos(self):
@@ -74,8 +85,7 @@ class ReconocerFacial:
         conn.close()
 
         faces, labels = [], []
-        self.nombres = {}
-        os.makedirs("debug_fotos", exist_ok=True)
+        self.nombres  = {}
         print(f"📸 Procesando {len(resultados)} registros biométricos...")
 
         for idx, row in enumerate(resultados):
@@ -90,38 +100,27 @@ class ReconocerFacial:
             nparr = np.frombuffer(imagen_bytes, np.uint8)
             img   = cv2.imdecode(nparr, cv2.IMREAD_GRAYSCALE)
             if img is None:
-                print(f"  ⚠️  idx {idx}: imdecode devolvió None")
                 continue
 
-            if idx < 5:
-                ruta = f"debug_fotos/foto_{idx}_user{user_id}_ORIGINAL.jpg"
-                cv2.imwrite(ruta, img)
-                print(f"  💾 {ruta} — shape: {img.shape}, min: {img.min()}, max: {img.max()}")
-
-            img = cv2.resize(img, (250, 250))
+            img = cv2.resize(img, (200, 200))
             img = self.preprocesar(img)
-            img = np.uint8(img)   
-
-            if idx < 5:
-                cv2.imwrite(f"debug_fotos/foto_{idx}_user{user_id}_PROCESADA.jpg", img)
+            img = np.uint8(img)
 
             faces.append(img)
             labels.append(user_id)
-            if idx < 10:
-                print(f"  ✓ {nombre_completo}")
 
         print(f"  Total: {len(set(labels))} usuarios, {len(faces)} imágenes")
         return faces, labels
+
     def _contar_usuarios_bd(self):
-        """Retorna el número de usuarios con biometría en la BD."""
         conn = self.get_db()
         if not conn:
             return 0
         try:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT COUNT(DISTINCT fkIdUsuario) 
-                FROM biometria 
+                SELECT COUNT(DISTINCT fkIdUsuario)
+                FROM biometria
                 WHERE encodeBiometria IS NOT NULL
             """)
             return cursor.fetchone()[0]
@@ -132,7 +131,8 @@ class ReconocerFacial:
 
     def cargar_o_reentrenar(self):
         usuarios_bd   = self._contar_usuarios_bd()
-        modelo_existe = os.path.exists(self.model_path) and os.path.exists(self.names_path)
+        modelo_existe = (os.path.exists(self.model_path)
+                         and os.path.exists(self.names_path))
 
         if modelo_existe:
             try:
@@ -147,85 +147,45 @@ class ReconocerFacial:
                         self.on_status(f"Modelo listo · {usuarios_modelo} usuarios")
                     return True
 
-                # Hay usuarios nuevos → reentrenar
                 print(f"🔄 Reentrenando — {usuarios_bd - usuarios_modelo} usuario(s) nuevo(s)...")
                 if self.on_status:
-                    self.on_status(f"Actualizando modelo...")
+                    self.on_status("Actualizando modelo...")
                 return self.entrenar()
 
             except Exception as e:
-                # Modelo corrupto → borrar y reentrenar
-                print(f"⚠️  Modelo corrupto ({e}) — eliminando y reentrenando...")
-                try:
-                    os.remove(self.model_path)
-                except Exception:
-                    pass
-                try:
-                    os.remove(self.names_path)
-                except Exception:
-                    pass
+                print(f"⚠️  Modelo corrupto ({e}) — reentrenando...")
+                for p in (self.model_path, self.names_path):
+                    try:
+                        os.remove(p)
+                    except Exception:
+                        pass
 
-        # No existe modelo o fue eliminado por corrupción → entrenar desde cero
         print("🔄 Entrenando modelo desde cero...")
         if self.on_status:
             self.on_status("Entrenando modelo...")
         return self.entrenar()
-        """
-        Carga el modelo si está actualizado.
-        Si hay usuarios nuevos desde el último entrenamiento, reentrena.
-        """
-        usuarios_bd     = self._contar_usuarios_bd()
-        usuarios_modelo = len(self.nombres)  # 0 si no se ha cargado nada
-
-        # Intentar cargar modelo existente primero
-        modelo_existe = os.path.exists(self.model_path) and os.path.exists(self.names_path)
-
-        if modelo_existe:
-            self.recognizer.read(self.model_path)
-            with open(self.names_path, 'rb') as f:
-                self.nombres = pickle.load(f)
-            usuarios_modelo = len(self.nombres)
-            print(f"✅ Modelo cargado · {usuarios_modelo} usuarios en modelo · {usuarios_bd} en BD")
-
-        # Reentrenar si hay usuarios nuevos o no hay modelo
-        if not modelo_existe or usuarios_bd > usuarios_modelo:
-            razon = "no existe modelo" if not modelo_existe else f"{usuarios_bd - usuarios_modelo} usuario(s) nuevo(s)"
-            print(f"🔄 Reentrenando — {razon}...")
-            if self.on_status:
-                self.on_status(f"Actualizando modelo — {razon}...")
-            return self.entrenar()
-
-        if self.on_status:
-            self.on_status(f"Modelo listo · {usuarios_modelo} usuarios")
-        return True
 
     def entrenar(self):
-        print("🔄 Cargando datos desde la base de datos...")
         if self.on_status:
             self.on_status("Cargando datos...")
-
         faces, labels = self.preparar_datos()
         if len(faces) == 0:
             print("❌ No hay datos para entrenar.")
             return False
 
-        print(f"🔄 Entrenando con {len(faces)} imágenes de {len(set(labels))} usuarios...")
         if self.on_status:
             self.on_status(f"Entrenando {len(set(labels))} usuarios...")
-
         self.recognizer.train(faces, np.array(labels))
         os.makedirs(self.artifacts_dir, exist_ok=True)
         self.recognizer.save(self.model_path)
-
         with open(self.names_path, 'wb') as f:
             pickle.dump(self.nombres, f)
-
         print(f"✅ Modelo entrenado con {len(set(labels))} usuarios")
         return True
 
-    # ── NUEVO: carga modelo ya guardado sin reentrenar ────────────────────────
     def cargar_modelo(self):
-        if os.path.exists(self.model_path) and os.path.exists(self.names_path):
+        if (os.path.exists(self.model_path)
+                and os.path.exists(self.names_path)):
             self.recognizer.read(self.model_path)
             with open(self.names_path, 'rb') as f:
                 self.nombres = pickle.load(f)
@@ -269,7 +229,8 @@ class ReconocerFacial:
         try:
             cursor.execute("""
                 INSERT INTO accesos
-                    (fkIdUsuario, estado_acceso, confianzaAcceso, umbralConfianzaUsado, fechaHoraIntentoAcceso)
+                    (fkIdUsuario, estado_acceso, confianzaAcceso,
+                     umbralConfianzaUsado, fechaHoraIntentoAcceso)
                 VALUES (?, ?, ?, ?, ?)
             """, (user_id, estado, confianza, self.umbral_confianza,
                   datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
@@ -277,13 +238,17 @@ class ReconocerFacial:
 
             key = user_id if user_id is not None else "desconocido"
             self._ultimo_registro[key] = datetime.now()
-            print(f"📝 Acceso registrado: {estado} — Confianza: {confianza:.1f}")
 
-            # ── Actualizar contadores y notificar GUI ─────────────────────────
             if estado == "aceptado":
                 self.total_aceptados += 1
+                self._overlay_texto  = "ACCESO PERMITIDO"
+                self._overlay_color  = (30, 200, 60)    # BGR verde
             else:
                 self.total_denegados += 1
+                self._overlay_texto  = "ACCESO DENEGADO"
+                self._overlay_color  = (40, 40, 220)    # BGR rojo
+
+            self._overlay_frames = self._overlay_duracion
 
             if self.on_resultado:
                 nombre = self.nombres.get(user_id, "Desconocido")
@@ -294,65 +259,147 @@ class ReconocerFacial:
         finally:
             conn.close()
 
-    # ── NUEVO: procesa un frame y devuelve el frame anotado ───────────────────
+    def _recortar_rostro_seguro(self, img_gris, x, y, w, h):
+        """Recorta con margen, valida y preprocesa. Devuelve array listo o None."""
+        fh, fw = img_gris.shape[:2]
+
+        # Añadir 10% de margen sin salirse del frame
+        pad_x = int(w * 0.10)
+        pad_y = int(h * 0.10)
+        x1 = max(0, x - pad_x)
+        y1 = max(0, y - pad_y)
+        x2 = min(fw, x + w + pad_x)
+        y2 = min(fh, y + h + pad_y)
+
+        if x2 <= x1 or y2 <= y1:
+            return None
+
+        rostro = img_gris[y1:y2, x1:x2]
+
+        if rostro.size == 0 or rostro.shape[0] < 10 or rostro.shape[1] < 10:
+            return None
+
+        rostro = cv2.resize(rostro, (200, 200))
+        rostro = self.preprocesar(rostro)
+        rostro = np.uint8(rostro)
+
+        # Verificación final de shape y tipo
+        if rostro.shape != (200, 200):
+            return None
+        if rostro.dtype != np.uint8:
+            rostro = rostro.astype(np.uint8)
+
+        return rostro
+
     def procesar_frame(self, frame):
         self._frame_counter += 1
 
         if self._frame_counter % self._procesar_cada == 0:
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            gray      = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             faces_det = self.detector.detectMultiScale(
                 gray, scaleFactor=1.1, minNeighbors=5, minSize=(80, 80)
             )
             self._ultimo_resultado = []
 
-            for (x, y, w, h) in faces_det:
-                rostro = gray[y:y+h, x:x+w]
-                rostro = cv2.resize(rostro, (250, 250))
-                rostro = self.preprocesar(rostro)
-                rostro = np.uint8(rostro)   # ← fix del compareHist error
+            if len(faces_det) > 0:
+                # Hay cara — resetear contador de ausencia
+                self._frames_sin_cara = 0
+                self._cara_presente   = True
 
-                label_raw, conf_raw = self.recognizer.predict(rostro)
+                for (x, y, w, h) in faces_det:
+                    rostro = self._recortar_rostro_seguro(gray, x, y, w, h)
 
-                nombre_debug = self.nombres.get(label_raw, f"ID:{label_raw}")
-                pasa = conf_raw < self.umbral_confianza
-                print(f"🔍 {'✅' if pasa else '❌'} {nombre_debug} | conf: {conf_raw:.1f} | umbral: {self.umbral_confianza}")
+                    if rostro is None:
+                        # Recorte inválido — ignorar esta cara
+                        continue
 
-                label, confianza = self._votar(label_raw, conf_raw)
+                    try:
+                        label_raw, conf_raw = self.recognizer.predict(rostro)
+                    except cv2.error as e:
+                        print(f"⚠️  predict falló (frame ignorado): {e}")
+                        continue
+                    except Exception as e:
+                        print(f"⚠️  predict error inesperado: {e}")
+                        continue
 
-                if label is None:
-                    self._ultimo_resultado.append((x, y, w, h, "Analizando...", 0, (255, 165, 0)))
-                    continue
+                    label, confianza = self._votar(label_raw, conf_raw)
 
-                if label == "Desconocido":
-                    nombre, color = "Desconocido", (0, 0, 255)
-                    self.registrar_acceso(None, "denegado", conf_raw)
-                    print(f"🚫 Resultado final: Desconocido ({conf_raw:.1f})")
-                else:
-                    nombre = self.nombres.get(label, "Desconocido")
-                    color  = (0, 255, 0)
-                    self.registrar_acceso(label, "aceptado", confianza)
-                    print(f"✅ Resultado final: {nombre} ({confianza:.1f})")
+                    if label is None:
+                        # Aún acumulando votos — rectángulo naranja
+                        self._ultimo_resultado.append(
+                            (x, y, w, h, None, 0, (0, 165, 255)))
+                        continue
 
-                self._ultimo_resultado.append((x, y, w, h, nombre, confianza or 0, color))
+                    if label == "Desconocido":
+                        self.registrar_acceso(None, "denegado", conf_raw)
+                        self._ultimo_resultado.append(
+                            (x, y, w, h, "Desconocido", conf_raw, (40, 40, 220)))
+                    else:
+                        nombre = self.nombres.get(label, "Desconocido")
+                        self.registrar_acceso(label, "aceptado", confianza)
+                        self._ultimo_resultado.append(
+                            (x, y, w, h, nombre, confianza or 0, (30, 200, 60)))
 
-        # Dibujar sobre el frame
+            else:
+                # Sin cara
+                self._cara_presente    = False
+                self._frames_sin_cara += 1
+                self._votos = []   # Limpiar votos acumulados
+
+                if (self._frames_sin_cara >= self._umbral_sin_cara
+                        and self.on_sin_cara):
+                    self.on_sin_cara()
+                    self._frames_sin_cara = 0   # reset para no disparar en loop
+
+        # ── Dibujar rectángulos (sin nombre ni confianza) ─────────────────────
         for (x, y, w, h, nombre, conf, color) in self._ultimo_resultado:
             cv2.rectangle(frame, (x, y), (x+w, y+h), color, 2)
-            texto = f"{nombre} ({conf:.1f})" if conf else nombre
-            (tw, th), _ = cv2.getTextSize(texto, cv2.FONT_HERSHEY_DUPLEX, 0.6, 1)
-            cv2.rectangle(frame, (x, y-th-10), (x+tw+8, y), (0, 0, 0), -1)
-            cv2.putText(frame, texto, (x+4, y-6),
-                        cv2.FONT_HERSHEY_DUPLEX, 0.6, color, 1)
+            # Pequeños marcadores de esquina en lugar del borde completo
+            sz = 14
+            cv2.line(frame, (x, y),      (x+sz, y),      color, 3)
+            cv2.line(frame, (x, y),      (x, y+sz),      color, 3)
+            cv2.line(frame, (x+w, y),    (x+w-sz, y),    color, 3)
+            cv2.line(frame, (x+w, y),    (x+w, y+sz),    color, 3)
+            cv2.line(frame, (x, y+h),    (x+sz, y+h),    color, 3)
+            cv2.line(frame, (x, y+h),    (x, y+h-sz),    color, 3)
+            cv2.line(frame, (x+w, y+h),  (x+w-sz, y+h),  color, 3)
+            cv2.line(frame, (x+w, y+h),  (x+w, y+h-sz),  color, 3)
+
+        # ── Overlay ACEPTADO / DENEGADO ───────────────────────────────────────
+        if self._overlay_frames > 0:
+            self._dibujar_overlay(frame)
+            self._overlay_frames -= 1
 
         return frame
 
-    # ── Modo consola original (sin cambios) ───────────────────────────────────
+    def _dibujar_overlay(self, frame):
+        """Banner grande en la parte inferior del frame."""
+        h, w = frame.shape[:2]
+        texto  = self._overlay_texto
+        color  = self._overlay_color   # BGR
+        alpha  = min(1.0, self._overlay_frames / 8)   # fade-out suave al final
+
+        # Fondo semitransparente
+        overlay = frame.copy()
+        bar_h   = 56
+        cv2.rectangle(overlay, (0, h - bar_h), (w, h), color, -1)
+        cv2.addWeighted(overlay, alpha * 0.55, frame, 1 - alpha * 0.55, 0, frame)
+
+        # Texto centrado
+        font  = cv2.FONT_HERSHEY_DUPLEX
+        scale = 1.1
+        thick = 2
+        (tw, th), _ = cv2.getTextSize(texto, font, scale, thick)
+        tx = (w - tw) // 2
+        ty = h - bar_h + th + (bar_h - th) // 2
+        cv2.putText(frame, texto, (tx, ty), font, scale, (255, 255, 255), thick, cv2.LINE_AA)
+
+    # ─────────────────────────────────────────────────────────────────────────
     def iniciar(self):
         print("="*55)
         print("🚀 SISTEMA DE RECONOCIMIENTO FACIAL — Sentinel System")
         print("="*55)
 
-        print("🔄 Entrenando modelo...")
         if not self.cargar_o_reentrenar():
             print("❌ No se pudo cargar ni reentrenar el modelo")
             return
@@ -376,10 +423,9 @@ class ReconocerFacial:
 
             frame = self.procesar_frame(frame)
 
-            cv2.putText(frame, f"Umbral: {self.umbral_confianza}  |  +/-  para ajustar",
+            cv2.putText(frame,
+                        f"Umbral: {self.umbral_confianza}  |  +/- para ajustar",
                         (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.52, (255, 255, 0), 2)
-            cv2.putText(frame, f"Votos: {len(self._votos)}/{self._frames_votar}",
-                        (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (200, 200, 200), 1)
 
             cv2.imshow('Reconocimiento Facial — Sentinel System', frame)
 
