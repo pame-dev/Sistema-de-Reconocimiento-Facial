@@ -825,6 +825,7 @@ class NuevoRegistroView:
                     and (ahora - self._ultima_captura) >= CAPTURE_DELAY):
 
                 rostro = frame[y:y+h, x:x+w]
+                rostro = cv2.cvtColor(rostro, cv2.COLOR_BGR2GRAY)  
                 rostro = cv2.resize(rostro, (200, 200))
                 _, buf = cv2.imencode('.jpg', rostro,
                                       [cv2.IMWRITE_JPEG_QUALITY, 90])
