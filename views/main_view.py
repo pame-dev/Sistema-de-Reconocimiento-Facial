@@ -775,11 +775,21 @@ class MainView:
             ret, frame = self._cap.read()
             if not ret:
                 break
+
+            # Recortar frame al centro — solo el área del rostro
+            h_f, w_f = frame.shape[:2]
+            margen_x = int(w_f * 0.15)
+            margen_y = int(h_f * 0.10)
+            frame = frame[margen_y:h_f - margen_y, margen_x:w_f - margen_x]
+
             frame = self._engine.procesar_frame(frame)
             rgb   = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             img   = Image.fromarray(rgb)
-            cw    = self._cam_canvas.winfo_width()  or 640
-            ch    = self._cam_canvas.winfo_height() or 480
+            try:
+                cw = self._cam_canvas.winfo_width()  or 640
+                ch = self._cam_canvas.winfo_height() or 480
+            except Exception:
+                break
             img   = img.resize((cw, ch), Image.BILINEAR)
             photo = ImageTk.PhotoImage(img)
             self.main_frame.after(0, self._show_frame, photo)
