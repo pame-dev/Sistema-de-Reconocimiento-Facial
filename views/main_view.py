@@ -656,12 +656,12 @@ class MainView:
 
     # ── Reset panel cuando no hay cara ────────────────────────────────────────
     def _programar_reset_por_ausencia(self):
-        """Programa limpiar el panel 5 s después de que desaparece la cara."""
         if self._sin_cara_job:
             try:
                 self.main_frame.after_cancel(self._sin_cara_job)
             except Exception:
                 pass
+        # Solo resetear después de 3 segundos sin cara
         self._sin_cara_job = self.main_frame.after(5000, self._limpiar_panel_resultado)
 
     def _cancelar_reset_por_ausencia(self):
@@ -875,8 +875,7 @@ class MainView:
             pass
 
     def _cb_sin_cara(self):
-        """Llamado por el motor cuando no detecta cara por N frames seguidos.
-        Programa el reset del panel a 5 segundos."""
+        """Solo resetear el panel si el último acceso fue aceptado."""
         self.main_frame.after(0, self._programar_reset_por_ausencia)
 
     # ── Obtener datos completos del usuario desde la BD ───────────────────────

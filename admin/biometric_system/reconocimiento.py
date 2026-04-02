@@ -2,11 +2,10 @@ import cv2
 import numpy as np
 import sqlite3
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 import pickle
 from collections import Counter
 
-# ── MediaPipe (opcional — se activa solo si está instalado) ───────────────────
 try:
     import mediapipe as mp
     _mp_face = mp.solutions.face_detection
@@ -18,12 +17,6 @@ except ImportError:
 
 
 class ReconocerFacial:
-    """
-    Sistema de reconocimiento facial con detección híbrida:
-      - Detección:    MediaPipe FaceDetection (primario) + Haar Cascade (fallback)
-      - Reconocimiento: LBPH con votación por mayoría
-      - BD:           SQLite con tabla de accesos
-    """
 
     def __init__(self, db_path='database/sistema_biometrico.db',
                  usar_mediapipe=True):
@@ -38,13 +31,10 @@ class ReconocerFacial:
         self.recognizer = cv2.face.LBPHFaceRecognizer_create(
             radius=2, neighbors=8, grid_x=8, grid_y=8
         )
-
-        # ── Detector Haar (fallback) ──────────────────────────────────────────
         self._haar = cv2.CascadeClassifier(
             cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
         )
 
-        # ── Detector MediaPipe (primario) ─────────────────────────────────────
         self._usar_mp     = usar_mediapipe and _MP_DISPONIBLE
         self._mp_detector = None
         if self._usar_mp:
@@ -59,21 +49,33 @@ class ReconocerFacial:
         self.umbral_confianza   = 80
         self._UMBRAL_MIN        = 10
         self._votos             = []
-        self._frames_votar      = 7       # reducido de 10 — más permisivo
+        self._frames_votar      = 7
         self._ultimo_registro   = {}
-        self._cooldown_segundos = 15      # reducido de 30
+        self._cooldown_segundos = 15
         self._frame_counter     = 0
         self._procesar_cada     = 2
         self._ultimo_resultado  = []
 
-        self._overlay_texto   = ""
-        self._overlay_color   = (0, 0, 0)
-        self._overlay_frames  = 0
+        self._overlay_texto    = ""
+        self._overlay_color    = (0, 0, 0)
+        self._overlay_frames   = 0
         self._overlay_duracion = 40
 
         self._frames_sin_cara = 0
-        self._umbral_sin_cara = 90
+        self._umbral_sin_cara = 150
         self._cara_presente   = False
+
+        # Estado explícito: None | "aceptado" | "denegado"
+        self._ultimo_tipo = None
+
+        # ── Tolerancia para pasar de "aceptado" → "denegado" ─────────────────
+        # Cuando estando aceptado el sistema vota "Desconocido", se inicia un
+        # temporizador. Solo se deniega si pasan _tolerancia_segundos continuos
+        # sin reconocer al usuario. Si en ese lapso vuelve a reconocerlo,
+        # el temporizador se cancela y sigue aceptado.
+        # En sentido contrario (denegado → reconocido) el cambio es inmediato.
+        self._desconocido_desde   = None  # datetime de inicio de la racha sin reconocer
+        self._tolerancia_segundos = 5.0   # segundos antes de forzar denegación
 
         self.on_resultado = None
         self.on_status    = None
@@ -95,10 +97,9 @@ class ReconocerFacial:
             return None
 
     # ─────────────────────────────────────────────────────────────────────────
-    # Detección de cara — híbrido MediaPipe + Haar
+    # Detección
     # ─────────────────────────────────────────────────────────────────────────
     def _detectar_caras(self, frame_bgr, frame_gray):
-        """Intenta MediaPipe primero, Haar como fallback."""
         if self._usar_mp and self._mp_detector is not None:
             caras = self._detectar_mp(frame_bgr)
             if caras:
@@ -106,7 +107,6 @@ class ReconocerFacial:
         return self._detectar_haar(frame_gray)
 
     def _detectar_mp(self, frame_bgr):
-        """MediaPipe FaceDetection con filtro de zona y ratio de aspecto."""
         h_f, w_f = frame_bgr.shape[:2]
         frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
         frame_rgb.flags.writeable = False
@@ -131,22 +131,18 @@ class ReconocerFacial:
 
             if w < 60 or h_b < 60:
                 continue
-
             cx = x + w // 2
             cy = y + h_b // 2
             if not (zona_x1 < cx < zona_x2 and zona_y1 < cy < zona_y2):
                 continue
-
             ratio = w / h_b
             if not (0.5 < ratio < 1.6):
                 continue
-
             caras.append((x, y, w, h_b))
 
         return caras
 
     def _detectar_haar(self, frame_gray):
-        """Haar Cascade con filtro de zona y ratio de aspecto."""
         h_f, w_f = frame_gray.shape[:2]
         margen_x = int(w_f * 0.20)
         margen_y = int(h_f * 0.15)
@@ -179,7 +175,6 @@ class ReconocerFacial:
         return img
 
     def _recortar_rostro_seguro(self, img_gris, x, y, w, h):
-        """Recorta con margen y valida. Devuelve array listo o None."""
         fh, fw = img_gris.shape[:2]
         pad_x = int(w * 0.10)
         pad_y = int(h * 0.10)
@@ -204,20 +199,14 @@ class ReconocerFacial:
         return rostro
 
     def _es_cara_real(self, rostro_gray):
-        """
-        Rechaza fotos impresas y pantallas usando varianza de Laplaciano.
-        Una cara real tiene más textura que una imagen plana.
-        Ajusta el umbral si rechaza tu cara real (bájalo) o deja pasar fotos (súbelo).
-        """
         laplacian = cv2.Laplacian(rostro_gray, cv2.CV_64F)
         varianza  = laplacian.var()
         return varianza > 18.0
 
     # ─────────────────────────────────────────────────────────────────────────
-    # Entrenamiento y carga del modelo
+    # Entrenamiento
     # ─────────────────────────────────────────────────────────────────────────
     def _ids_en_bd(self):
-        """Retorna el conjunto de user_id ACTIVOS con biometría en la BD."""
         conn = self.get_db()
         if not conn:
             return set()
@@ -237,7 +226,6 @@ class ReconocerFacial:
             conn.close()
 
     def _ids_en_modelo(self):
-        """Retorna el conjunto de IDs del último entrenamiento."""
         if not os.path.exists(self.ids_hash_path):
             return set()
         try:
@@ -309,7 +297,6 @@ class ReconocerFacial:
                 self.on_status("Sin datos — registra usuarios primero")
             return False
 
-        # Si los IDs difieren, borrar modelo antes de cargarlo
         if archivos_ok and ids_bd != ids_modelo:
             nuevos     = ids_bd - ids_modelo
             eliminados = ids_modelo - ids_bd
@@ -330,7 +317,6 @@ class ReconocerFacial:
                 with open(self.names_path, 'rb') as f:
                     self.nombres = pickle.load(f)
 
-                # Verificación extra: IDs del modelo vs BD
                 ids_nombres = set(self.nombres.keys())
                 if ids_nombres != ids_bd:
                     print("🔄 Modelo desincronizado con BD — reentrenando...")
@@ -390,7 +376,7 @@ class ReconocerFacial:
         return False
 
     # ─────────────────────────────────────────────────────────────────────────
-    # Votación y acceso
+    # Votación
     # ─────────────────────────────────────────────────────────────────────────
     def _votar(self, label, confianza):
         self._votos.append((label, confianza))
@@ -400,7 +386,6 @@ class ReconocerFacial:
             return None, None
 
         labels_validos = [l for l, c in self._votos if c < self.umbral_confianza]
-        # Reducido de 0.7 a 0.55 — más permisivo
         if len(labels_validos) < int(self._frames_votar * 0.55):
             return "Desconocido", None
 
@@ -437,17 +422,21 @@ class ReconocerFacial:
 
             key = user_id if user_id is not None else "desconocido"
             self._ultimo_registro[key] = datetime.now()
+            self._ultimo_tipo = estado
 
             if estado == "aceptado":
-                self.total_aceptados   += 1
-                self._overlay_texto     = "ACCESO PERMITIDO"
-                self._overlay_color     = (30, 200, 60)
-                self._overlay_frames    = self._overlay_duracion  # ~40 frames
+                self.total_aceptados += 1
+                self._overlay_texto   = "ACCESO PERMITIDO"
+                self._overlay_color   = (30, 200, 60)
+                self._overlay_frames  = self._overlay_duracion
+                self._ultimo_registro.pop("desconocido", None)
             else:
-                self.total_denegados   += 1
-                self._overlay_texto     = "ACCESO DENEGADO"
-                self._overlay_color     = (40, 40, 220)
-                self._overlay_frames    = 60                       # desaparece rápido
+                self.total_denegados += 1
+                self._overlay_texto   = "ACCESO DENEGADO"
+                self._overlay_color   = (40, 40, 220)
+                self._overlay_frames  = 8
+                self._votos = []
+                self._ultimo_registro["desconocido"] = datetime.now() - timedelta(seconds=13)
 
             if self.on_resultado:
                 nombre = self.nombres.get(user_id, "Desconocido")
@@ -478,11 +467,12 @@ class ReconocerFacial:
                     if rostro is None:
                         continue
 
-                    # Rechazar fotos y pantallas
                     if not self._es_cara_real(rostro):
                         self._ultimo_resultado.append(
                             (x, y, w, h, None, 0, (128, 128, 128)))
                         continue
+
+                    label_anterior = self._votos[-1][0] if self._votos else None
 
                     try:
                         label_raw, conf_raw = self.recognizer.predict(rostro)
@@ -493,18 +483,51 @@ class ReconocerFacial:
                         print(f"⚠️  predict error inesperado: {e}")
                         continue
 
+                    if label_anterior is not None and label_raw != label_anterior:
+                        self._votos = []
+
                     label, confianza = self._votar(label_raw, conf_raw)
 
                     if label is None:
+                        # Aún acumulando votos — naranja, sin cambiar panel
                         self._ultimo_resultado.append(
                             (x, y, w, h, None, 0, (0, 165, 255)))
                         continue
 
                     if label == "Desconocido":
-                        self.registrar_acceso(None, "denegado", conf_raw)
-                        self._ultimo_resultado.append(
-                            (x, y, w, h, "Desconocido", conf_raw, (40, 40, 220)))
+                        if self._ultimo_tipo == "aceptado":
+                            # ── Tolerancia de 5 s antes de denegar ──────────────
+                            ahora = datetime.now()
+                            if self._desconocido_desde is None:
+                                # Primera vez que no lo reconoce — arrancar temporizador
+                                self._desconocido_desde = ahora
+
+                            transcurrido = (ahora - self._desconocido_desde).total_seconds()
+
+                            if transcurrido >= self._tolerancia_segundos:
+                                # Se agotó la tolerancia — denegar
+                                self._desconocido_desde = None
+                                self._ultimo_tipo = None
+                                self._votos = []
+                                self.registrar_acceso(None, "denegado", conf_raw)
+                                self._ultimo_resultado.append(
+                                    (x, y, w, h, "Desconocido", conf_raw, (40, 40, 220)))
+                            else:
+                                # Aún dentro de la tolerancia — borde amarillo de advertencia
+                                self._ultimo_resultado.append(
+                                    (x, y, w, h, None, 0, (0, 200, 255)))
+                        else:
+                            # Sin estado aceptado previo — denegar directamente
+                            self._desconocido_desde = None
+                            self.registrar_acceso(None, "denegado", conf_raw)
+                            self._ultimo_resultado.append(
+                                (x, y, w, h, "Desconocido", conf_raw, (40, 40, 220)))
+
                     else:
+                        # ── Reconocido: aceptar siempre de forma inmediata ──────
+                        # Esto aplica también cuando venía de estado "denegado",
+                        # el cambio a permitido es instantáneo sin esperas.
+                        self._desconocido_desde = None
                         nombre = self.nombres.get(label, "Desconocido")
                         self.registrar_acceso(label, "aceptado", confianza)
                         self._ultimo_resultado.append(
@@ -514,9 +537,12 @@ class ReconocerFacial:
                 self._cara_presente    = False
                 self._frames_sin_cara += 1
                 self._votos = []
+                # Al perder la cara se cancela el temporizador de tolerancia
+                self._desconocido_desde = None
 
                 if (self._frames_sin_cara >= self._umbral_sin_cara
                         and self.on_sin_cara):
+                    self._ultimo_tipo = None
                     self.on_sin_cara()
                     self._frames_sin_cara = 0
 
@@ -533,7 +559,7 @@ class ReconocerFacial:
             cv2.line(frame, (x+w,   y+h),  (x+w-sz, y+h),  color, 3)
             cv2.line(frame, (x+w,   y+h),  (x+w,    y+h-sz), color, 3)
 
-        # ── Overlay ACEPTADO / DENEGADO ───────────────────────────────────────
+        # ── Overlay ───────────────────────────────────────────────────────────
         if self._overlay_frames > 0:
             self._dibujar_overlay(frame)
             self._overlay_frames -= 1
@@ -541,7 +567,6 @@ class ReconocerFacial:
         return frame
 
     def _dibujar_overlay(self, frame):
-        """Banner en la parte inferior del frame."""
         h, w   = frame.shape[:2]
         texto  = self._overlay_texto
         color  = self._overlay_color
