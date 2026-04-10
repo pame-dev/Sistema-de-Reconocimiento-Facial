@@ -123,13 +123,13 @@ class NuevoRegistroView:
         self._guardando       = False
 
         self.detector_frontal = cv2.CascadeClassifier(
-            cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+            cv2.data.haarcascades # + 'haarcascade_frontalface_default.xml'
         )
         self.detector_alt = cv2.CascadeClassifier(
-            cv2.data.haarcascades + 'haarcascade_frontalface_alt2.xml'
+            cv2.data.haarcascades #+ 'haarcascade_frontalface_alt2.xml'
         )
         self.detector_perfil = cv2.CascadeClassifier(
-            cv2.data.haarcascades + 'haarcascade_profileface.xml'
+            cv2.data.haarcascades #+ 'haarcascade_profileface.xml'
         )
 
         self.modo_retomar_fotos = False
