@@ -598,20 +598,17 @@ class ReconocerFacial:
             print("❌ No se pudo cargar ni reentrenar el modelo")
             return
 
-        #pipeline = (
-        #    "libcamerasrc ! "
-        #    "video/x-raw,format=NV12,width=640,height=480,framerate=30/1 ! "
-        #    "videoconvert ! "
-        #    "video/x-raw,format=BGR ! "
-        #    "appsink drop=1 sync=false"
-        #)
+        pipeline = (
+            "libcamerasrc ! "
+            "video/x-raw,format=NV12,width=640,height=480,framerate=30/1 ! "
+            "videoconvert ! "
+            "video/x-raw,format=BGR ! "
+            "appsink drop=1 sync=false"
+        )
 
-        #cap = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
+        cap = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
         #cap = cv2.VideoCapture(0, cv2.CAP_V4L2)
-        cap = cv2.VideoCapture(0)
-
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        #cap = cv2.VideoCapture(0)
 
         if not cap.isOpened():
             print("❌ No se pudo abrir la cámara")
