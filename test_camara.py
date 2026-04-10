@@ -5,10 +5,12 @@ def main():
 
     pipeline = (
         "libcamerasrc ! "
-        "video/x-raw, width=640, height=480, framerate=30/1 ! "
-        "videoconvert ! appsink"
+        "video/x-raw,format=NV12,width=640,height=480,framerate=30/1 ! "
+        "videoconvert ! "
+        "video/x-raw,format=BGR ! "
+        "appsink drop=1 sync=false"
     )
-
+    
     cap = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
 
     if not cap.isOpened():
@@ -26,8 +28,8 @@ def main():
         ret, frame = cap.read()
 
         if not ret:
-            print("❌ No se pudo leer frame")
-            break
+            print("⚠️ esperando frames...")
+            continue
 
         cv2.imshow("Camara IMX708 - Raspberry Pi 5", frame)
 
