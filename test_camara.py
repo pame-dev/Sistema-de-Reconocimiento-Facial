@@ -1,21 +1,43 @@
-from picamera2 import Picamera2
 import cv2
 
-picam2 = Picamera2()
-config = picam2.create_preview_configuration(main={"size": (640, 480)})
-picam2.configure(config)
-picam2.start()
+def main():
+    print("🚀 Probando cámara IMX708 (Raspberry Pi 5)...")
 
-print("Presiona 'q' para salir")
+    pipeline = (
+        "libcamerasrc ! "
+        "video/x-raw, width=640, height=480, framerate=30/1 ! "
+        "videoconvert ! appsink"
+    )
 
-while True:
-    frame = picam2.capture_array()
-    # Convertir RGB a BGR para OpenCV
-    frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-    cv2.imshow("Prueba Camara CSI", frame)
-    
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
+    cap = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
 
-cv2.destroyAllWindows()
-picam2.stop()
+    if not cap.isOpened():
+        print("❌ No se pudo abrir la cámara")
+        print("👉 Posibles causas:")
+        print("   - OpenCV sin soporte GStreamer")
+        print("   - GStreamer no instalado")
+        print("   - Pipeline incorrecto")
+        return
+
+    print("✅ Cámara abierta correctamente")
+    print("Presiona ESC para salir")
+
+    while True:
+        ret, frame = cap.read()
+
+        if not ret:
+            print("❌ No se pudo leer frame")
+            break
+
+        cv2.imshow("Camara IMX708 - Raspberry Pi 5", frame)
+
+        key = cv2.waitKey(1) & 0xFF
+        if key == 27:  # ESC
+            break
+
+    cap.release()
+    cv2.destroyAllWindows()
+    print("👋 Prueba terminada")
+
+if __name__ == "__main__":
+    main()
