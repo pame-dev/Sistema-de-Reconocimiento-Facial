@@ -1,45 +1,50 @@
+from picamera2 import Picamera2
 import cv2
+import time
+
 
 def main():
-    print("🚀 Probando cámara IMX708 (Raspberry Pi 5)...")
+    print("🚀 Iniciando prueba con Picamera2...")
 
-    pipeline = (
-        "libcamerasrc ! "
-        "video/x-raw,format=NV12,width=640,height=480,framerate=30/1 ! "
-        "videoconvert ! "
-        "video/x-raw,format=BGR ! "
-        "appsink drop=1 sync=false"
-    )
-    
-    cap = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
+    try:
+        picam2 = Picamera2()
 
-    if not cap.isOpened():
-        print("❌ No se pudo abrir la cámara")
-        print("👉 Posibles causas:")
-        print("   - OpenCV sin soporte GStreamer")
-        print("   - GStreamer no instalado")
-        print("   - Pipeline incorrecto")
-        return
+        # Configuración (puedes cambiar resolución si quieres)
+        config = picam2.create_preview_configuration(
+            main={"format": "BGR888", "size": (640, 480)}
+        )
 
-    print("✅ Cámara abierta correctamente")
-    print("Presiona ESC para salir")
+        picam2.configure(config)
 
-    while True:
-        ret, frame = cap.read()
+        print("⏳ Iniciando cámara...")
+        picam2.start()
 
-        if not ret:
-            print("⚠️ esperando frames...")
-            continue
+        # Pequeño delay para estabilizar
+        time.sleep(2)
 
-        cv2.imshow("Camara IMX708 - Raspberry Pi 5", frame)
+        print("✅ Cámara iniciada correctamente")
+        print("Presiona ESC para salir")
 
-        key = cv2.waitKey(1) & 0xFF
-        if key == 27:  # ESC
-            break
+        while True:
+            frame = picam2.capture_array()
 
-    cap.release()
-    cv2.destroyAllWindows()
-    print("👋 Prueba terminada")
+            # (Opcional) efecto espejo
+            frame = cv2.flip(frame, 1)
+
+            cv2.imshow("Test Picamera2", frame)
+
+            key = cv2.waitKey(1) & 0xFF
+            if key == 27:  # ESC
+                break
+
+        print("🛑 Cerrando cámara...")
+        picam2.stop()
+        cv2.destroyAllWindows()
+        print("👋 Test finalizado")
+
+    except Exception as e:
+        print("❌ Error:", e)
+
 
 if __name__ == "__main__":
     main()

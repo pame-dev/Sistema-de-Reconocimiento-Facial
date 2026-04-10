@@ -607,8 +607,6 @@ class ReconocerFacial:
         )
 
         cap = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
-        #cap = cv2.VideoCapture(0, cv2.CAP_V4L2)
-        #cap = cv2.VideoCapture(0)
 
         if not cap.isOpened():
             print("❌ No se pudo abrir la cámara")
