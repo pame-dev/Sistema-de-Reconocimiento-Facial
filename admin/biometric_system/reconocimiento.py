@@ -592,63 +592,63 @@ class ReconocerFacial:
     # Modo standalone
     # ─────────────────────────────────────────────────────────────────────────
     def iniciar(self):
-    print("="*55)
-    print("🚀 SISTEMA DE RECONOCIMIENTO FACIAL — Sentinel System")
-    print("="*55)
+        print("="*55)
+        print("🚀 SISTEMA DE RECONOCIMIENTO FACIAL — Sentinel System")
+        print("="*55)
 
-    if not self.cargar_o_reentrenar():
-        print("❌ No se pudo cargar ni reentrenar el modelo")
-        return
+        if not self.cargar_o_reentrenar():
+            print("❌ No se pudo cargar ni reentrenar el modelo")
+            return
 
-    picam2 = Picamera2()
-    config = picam2.create_preview_configuration(
-        main={"format": "RGB888", "size": (640, 480)}
-    )
-    picam2.configure(config)
-    picam2.start()
-    time.sleep(2)
-    print("📷 Picamera2 iniciada correctamente")
+        picam2 = Picamera2()
+        config = picam2.create_preview_configuration(
+            main={"format": "RGB888", "size": (640, 480)}
+        )
+        picam2.configure(config)
+        picam2.start()
+        time.sleep(2)
+        print("📷 Picamera2 iniciada correctamente")
 
-    detector_str = "MediaPipe+Haar" if self._usar_mp else "Haar"
-    print(f"🎥 Cámara iniciada · Umbral: {self.umbral_confianza} · Detector: {detector_str}")
-    print("q → salir  |  + → subir umbral  |  - → bajar umbral  |  m → toggle MediaPipe")
-    print("="*55)
+        detector_str = "MediaPipe+Haar" if self._usar_mp else "Haar"
+        print(f"🎥 Cámara iniciada · Umbral: {self.umbral_confianza} · Detector: {detector_str}")
+        print("q → salir  |  + → subir umbral  |  - → bajar umbral  |  m → toggle MediaPipe")
+        print("="*55)
 
-    try:
-        while True:
-            # ✅ Picamera2 en lugar de cap.read()
-            frame = picam2.capture_array()
-            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+        try:
+            while True:
+                # ✅ Picamera2 en lugar de cap.read()
+                frame = picam2.capture_array()
+                frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
-            frame = self.procesar_frame(frame)
-            cv2.putText(frame,
-                        f"Umbral: {self.umbral_confianza}  [{detector_str}]  +/- ajustar",
-                        (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.52, (255, 255, 0), 2)
-            cv2.imshow('Reconocimiento Facial — Sentinel System', frame)
+                frame = self.procesar_frame(frame)
+                cv2.putText(frame,
+                            f"Umbral: {self.umbral_confianza}  [{detector_str}]  +/- ajustar",
+                            (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.52, (255, 255, 0), 2)
+                cv2.imshow('Reconocimiento Facial — Sentinel System', frame)
 
-            key = cv2.waitKey(1) & 0xFF
-            if key == ord('q'):
-                break
-            elif key in (ord('+'), ord('='), 43, 61):
-                self.umbral_confianza += 5
-                self._votos = []
-                print(f"🎯 Umbral subido → {self.umbral_confianza}")
-            elif key in (ord('-'), ord('_'), 45, 95):
-                self.umbral_confianza = max(self._UMBRAL_MIN,
-                                            self.umbral_confianza - 5)
-                self._votos = []
-                print(f"🎯 Umbral bajado → {self.umbral_confianza}")
-            elif key == ord('m'):
-                if _MP_DISPONIBLE:
-                    self._usar_mp = not self._usar_mp
-                    print(f"🔄 MediaPipe → {'ON' if self._usar_mp else 'OFF (solo Haar)'}")
-    finally:
-        # ✅ Siempre cerrar limpiamente
-        picam2.stop()
-        cv2.destroyAllWindows()
-        print("👋 Sistema cerrado")
+                key = cv2.waitKey(1) & 0xFF
+                if key == ord('q'):
+                    break
+                elif key in (ord('+'), ord('='), 43, 61):
+                    self.umbral_confianza += 5
+                    self._votos = []
+                    print(f"🎯 Umbral subido → {self.umbral_confianza}")
+                elif key in (ord('-'), ord('_'), 45, 95):
+                    self.umbral_confianza = max(self._UMBRAL_MIN,
+                                                self.umbral_confianza - 5)
+                    self._votos = []
+                    print(f"🎯 Umbral bajado → {self.umbral_confianza}")
+                elif key == ord('m'):
+                    if _MP_DISPONIBLE:
+                        self._usar_mp = not self._usar_mp
+                        print(f"🔄 MediaPipe → {'ON' if self._usar_mp else 'OFF (solo Haar)'}")
+        finally:
+            # ✅ Siempre cerrar limpiamente
+            picam2.stop()
+            cv2.destroyAllWindows()
+            print("👋 Sistema cerrado")
 
 
-if __name__ == "__main__":
-    reconocedor = ReconocerFacial()
-    reconocedor.iniciar()
+    if __name__ == "__main__":
+        reconocedor = ReconocerFacial()
+        reconocedor.iniciar()
