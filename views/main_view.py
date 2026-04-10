@@ -7,6 +7,7 @@ import threading
 import time
 import cv2
 from datetime import datetime
+from picamera2 import Picamera2
 from config import COLORS, get_colors, toggle_theme, SIDEBAR_WIDTH, HEADER_HEIGHT, get_db
 from views.nuevo_registro_view import NuevoRegistroView
 from views.informacion_escolar_view import InformacionEscolarView
@@ -718,28 +719,38 @@ class MainView:
 
     def _preinit_camara(self):
         try:
-            cap = cv2.VideoCapture(0)
-            cap.set(cv2.CAP_PROP_FRAME_WIDTH,  640)
-            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-            self._cap_preinit = cap if cap.isOpened() else None
+            picam2 = Picamera2()
+            config = picam2.create_preview_configuration(
+                main={"format": "RGB888", "size": (640, 480)}
+            )
+            picam2.configure(config)
+            picam2.start()
+            time.sleep(1)
+            self._cap_preinit = picam2
         except Exception:
             self._cap_preinit = None
         self._anim_cam_lista = True
 
     def _abrir_camara(self):
-        if getattr(self, '_cap_preinit', None) and self._cap_preinit.isOpened():
+        if getattr(self, '_cap_preinit', None):
             self._cap = self._cap_preinit
             self._cap_preinit = None
         else:
-            self._cap = cv2.VideoCapture(0)
-            if not self._cap.isOpened():
+            try:
+                picam2 = Picamera2()
+                config = picam2.create_preview_configuration(
+                    main={"format": "RGB888", "size": (640, 480)}
+                )
+                picam2.configure(config)
+                picam2.start()
+                time.sleep(1)
+                self._cap = picam2
+            except Exception as e:
                 self._lbl_cam.configure(text="⬤  Error: No se pudo abrir cámara",
                                         text_color=self.colors['danger'])
                 self._anim_running = False
                 self._btn_iniciar.configure(text="▶  Iniciar", fg_color="#16a34a", state="normal")
                 return
-            self._cap.set(cv2.CAP_PROP_FRAME_WIDTH,  640)
-            self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
         self._cam_running = True
         self._cam_thread  = threading.Thread(target=self._cam_loop, daemon=True)
@@ -754,7 +765,10 @@ class MainView:
         self._cam_running  = False
         self._anim_running = False
         if self._cap:
-            self._cap.release()
+            try:
+                self._cap.stop()
+            except Exception:
+                pass
             self._cap = None
         try:
             self._btn_iniciar.configure(text="▶  Iniciar", fg_color="#16a34a",
@@ -770,10 +784,12 @@ class MainView:
 
     def _cam_loop(self):
         while self._cam_running:
-            if not self._cap or not self._cap.isOpened():
+            if not self._cap:
                 break
-            ret, frame = self._cap.read()
-            if not ret:
+            try:
+                frame = self._cap.capture_array()
+                frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+            except Exception:
                 break
 
             # Recortar frame al centro — solo el área del rostro

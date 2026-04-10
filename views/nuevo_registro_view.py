@@ -3,6 +3,7 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 import customtkinter as ctk
 import cv2
+from picamera2 import Picamera2
 from PIL import Image, ImageTk
 import os
 import time
@@ -416,10 +417,14 @@ class NuevoRegistroView:
 
     def _init_camara_bg(self):
         try:
-            cap = cv2.VideoCapture(0)
-            cap.set(cv2.CAP_PROP_FRAME_WIDTH,  640)
-            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-            self._camara_preinit = cap if cap.isOpened() else None
+            picam2 = Picamera2()
+            config = picam2.create_preview_configuration(
+                main={"format": "RGB888", "size": (640, 480)}
+            )
+            picam2.configure(config)
+            picam2.start()
+            time.sleep(1)
+            self._camara_preinit = picam2
         except Exception:
             self._camara_preinit = None
         self._camara_lista = True
@@ -582,17 +587,18 @@ class NuevoRegistroView:
     # ── Cámara ────────────────────────────────────────────────────────────────
     def _iniciar_camara_auto(self):
         try:
-            if getattr(self, '_camara_preinit', None) and self._camara_preinit.isOpened():
+            if getattr(self, '_camara_preinit', None):
                 self.camara = self._camara_preinit
                 self._camara_preinit = None
             else:
-                self.camara = cv2.VideoCapture(0)
-                if not self.camara.isOpened():
-                    self._set_estado("❌  No se pudo abrir la cámara",
-                                     "Verifica que la cámara esté conectada", "danger")
-                    return
-                self.camara.set(cv2.CAP_PROP_FRAME_WIDTH,  640)
-                self.camara.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+                picam2 = Picamera2()
+                config = picam2.create_preview_configuration(
+                    main={"format": "RGB888", "size": (640, 480)}
+                )
+                picam2.configure(config)
+                picam2.start()
+                time.sleep(1)
+                self.camara = picam2
 
             self.capturando   = True
             self._auto_activo = True
@@ -705,8 +711,10 @@ class NuevoRegistroView:
         if self._guardando:
             return
 
-        ret, frame = self.camara.read()
-        if not ret:
+        try:
+            frame = self.camara.capture_array()
+            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+        except Exception:
             self.video_label.after(30, self._actualizar_video)
             return
 
@@ -952,7 +960,10 @@ class NuevoRegistroView:
         self.capturando   = False
         self._auto_activo = False
         if self.camara:
-            self.camara.release()
+            try:
+                self.camara.stop()
+            except Exception:
+                pass
             self.camara = None
 
     def _detener_camara(self):
@@ -973,4 +984,7 @@ class NuevoRegistroView:
 
     def __del__(self):
         if self.camara:
-            self.camara.release()
+            try:
+                self.camara.stop()
+            except Exception:
+                pass
