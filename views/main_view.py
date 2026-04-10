@@ -408,6 +408,7 @@ class MainView:
     # OTRAS VISTAS
     # ══════════════════════════════════════════════════════════════════════════
     def show_nuevo_registro(self):
+        self._stop_camera()  # liberar cámara antes de abrir registro
         self._vista_actual = "nuevo_registro"
         self.clear_content()
         NuevoRegistroView(self.content_frame)

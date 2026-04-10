@@ -416,17 +416,8 @@ class NuevoRegistroView:
             self.container.after(300, self._mostrar_captura)
 
     def _init_camara_bg(self):
-        try:
-            picam2 = Picamera2()
-            config = picam2.create_preview_configuration(
-                main={"format": "RGB888", "size": (640, 480)}
-            )
-            picam2.configure(config)
-            picam2.start()
-            time.sleep(1)
-            self._camara_preinit = picam2
-        except Exception:
-            self._camara_preinit = None
+        # No preinit — la cámara se abre solo cuando se necesita en _iniciar_camara_auto
+        self._camara_preinit = None
         self._camara_lista = True
 
     # ═════════════════════════════════════════════════════════════════════════
