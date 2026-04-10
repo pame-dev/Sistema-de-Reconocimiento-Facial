@@ -11,7 +11,7 @@ def main():
 
         # Configuración (puedes cambiar resolución si quieres)
         config = picam2.create_preview_configuration(
-            main={"format": "BGR888", "size": (640, 480)}
+            main={"format": "RGB888", "size": (640, 480)}
         )
 
         picam2.configure(config)
@@ -27,6 +27,8 @@ def main():
 
         while True:
             frame = picam2.capture_array()
+
+            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
             # (Opcional) efecto espejo
             frame = cv2.flip(frame, 1)
