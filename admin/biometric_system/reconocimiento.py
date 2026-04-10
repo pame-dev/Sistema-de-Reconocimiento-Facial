@@ -598,18 +598,24 @@ class ReconocerFacial:
             print("❌ No se pudo cargar ni reentrenar el modelo")
             return
 
-        cap = cv2.VideoCapture(0, cv2.CAP_V4L2) #se usa CAP_V4L2 para mejorar compatibilidad con cámaras en Linux/Raspberry Pi
+        #pipeline = (
+        #    "libcamerasrc ! "
+        #    "video/x-raw,format=NV12,width=640,height=480,framerate=30/1 ! "
+        #    "videoconvert ! "
+        #    "video/x-raw,format=BGR ! "
+        #    "appsink drop=1 sync=false"
+        #)
+
+        #cap = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
+        #cap = cv2.VideoCapture(0, cv2.CAP_V4L2)
+        cap = cv2.VideoCapture(0)
+
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
         if not cap.isOpened():
             print("❌ No se pudo abrir la cámara")
             return
-
-
-        # configuraciones de la camara de la raspberry para mejorar la detección y reducir la latencia
-        cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M','J','P','G'))
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH,  640)
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-        cap.set(cv2.CAP_PROP_FPS, 30)
 
         detector_str = "MediaPipe+Haar" if self._usar_mp else "Haar"
         print(f"🎥 Cámara iniciada · Umbral: {self.umbral_confianza} · Detector: {detector_str}")
@@ -619,7 +625,8 @@ class ReconocerFacial:
         while True:
             ret, frame = cap.read()
             if not ret:
-                break
+                print("⚠️ esperando frames...")
+                continue
 
             frame = self.procesar_frame(frame)
             cv2.putText(frame,
