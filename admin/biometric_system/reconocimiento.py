@@ -8,9 +8,9 @@ from collections import Counter
 
 try:
     import mediapipe as mp
-    _mp_face = mp.solutions.face_detection
-    _MP_DISPONIBLE = True
-except ImportError:
+    _mp_face = getattr(mp, "solutions", None)
+    _MP_DISPONIBLE = _mp_face is not None
+except Exception:
     _MP_DISPONIBLE = False
     print("⚠️  mediapipe no instalado. Usando solo Haar Cascade.")
     print("   Instala con: pip install mediapipe")

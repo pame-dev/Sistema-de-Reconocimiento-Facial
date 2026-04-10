@@ -9,6 +9,7 @@ __pycache__/
 venv/
 env/
 .venv/
+.env_mp/
 .venv_mp/
 
 # ── Base de datos ─────────────────────────────────────────────────────────────
