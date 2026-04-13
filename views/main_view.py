@@ -7,7 +7,7 @@ import threading
 import time
 import cv2
 from datetime import datetime
-from picamera2 import Picamera2
+from camera import Camera
 from config import COLORS, get_colors, toggle_theme, SIDEBAR_WIDTH, HEADER_HEIGHT, get_db
 from views.nuevo_registro_view import NuevoRegistroView
 from views.informacion_escolar_view import InformacionEscolarView
@@ -716,58 +716,48 @@ class MainView:
         self._anim_btn()
         self._anim_cam_lista = False
         self._mostrar_anim_camara()
-        threading.Thread(target=self._preinit_camara, daemon=True).start()
-
-    def _preinit_camara(self):
-        try:
-            picam2 = Picamera2()
-            config = picam2.create_preview_configuration(
-                main={"format": "RGB888", "size": (640, 480)}
-            )
-            picam2.configure(config)
-            picam2.start()
-            time.sleep(1)
-            self._cap_preinit = picam2
-        except Exception:
-            self._cap_preinit = None
-        self._anim_cam_lista = True
 
     def _abrir_camara(self):
-        if getattr(self, '_cap_preinit', None):
-            self._cap = self._cap_preinit
-            self._cap_preinit = None
-        else:
-            try:
-                picam2 = Picamera2()
-                config = picam2.create_preview_configuration(
-                    main={"format": "RGB888", "size": (640, 480)}
-                )
-                picam2.configure(config)
-                picam2.start()
-                time.sleep(1)
-                self._cap = picam2
-            except Exception as e:
-                self._lbl_cam.configure(text="⬤  Error: No se pudo abrir cámara",
-                                        text_color=self.colors['danger'])
-                self._anim_running = False
-                self._btn_iniciar.configure(text="▶  Iniciar", fg_color="#16a34a", state="normal")
-                return
+        try:
+            self._cap = Camera()
+            self._cap.start()
+
+        except Exception:
+            self._lbl_cam.configure(
+                text="⬤  Error: No se pudo abrir cámara",
+                text_color=self.colors['danger']
+            )
+            self._anim_running = False
+            self._btn_iniciar.configure(
+                text="▶  Iniciar", fg_color="#16a34a", state="normal"
+            )
+            return
 
         self._cam_running = True
         self._cam_thread  = threading.Thread(target=self._cam_loop, daemon=True)
         self._cam_thread.start()
+
         self._anim_running = False
-        self._btn_iniciar.configure(text="⏹  Detener",
-                                    fg_color="#dc2626", hover_color="#b91c1c", state="normal")
-        self._lbl_cam.configure(text="⬤  Cámara en línea",
-                                text_color=self.colors['primary'])
+        self._btn_iniciar.configure(
+            text="⏹  Detener",
+            fg_color="#dc2626",
+            hover_color="#b91c1c",
+            state="normal"
+        )
+
+        self._lbl_cam.configure(
+            text="⬤  Cámara en línea",
+            text_color=self.colors['primary']
+        )
 
     def _stop_camera(self):
         self._cam_running  = False
         self._anim_running = False
         if self._cap:
             try:
-                self._cap.stop()
+                if self._cap:
+                    self._cap.stop()
+                    self._cap = None
             except Exception:
                 pass
             self._cap = None
@@ -788,8 +778,9 @@ class MainView:
             if not self._cap:
                 break
             try:
-                frame = self._cap.capture_array()
-                frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+                frame = self._cap.read()
+                if frame is None:
+                    continue
             except Exception:
                 break
 
