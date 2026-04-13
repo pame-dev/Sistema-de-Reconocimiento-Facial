@@ -5,8 +5,12 @@ import os
 from datetime import datetime, timedelta
 import pickle
 from collections import Counter
-from picamera2 import Picamera2
 import time
+try:
+    from picamera2 import Picamera2
+    USE_PICAMERA = True
+except ImportError:
+    USE_PICAMERA = False
 
 try:
     import mediapipe as mp
@@ -596,18 +600,31 @@ class ReconocerFacial:
         print("🚀 SISTEMA DE RECONOCIMIENTO FACIAL — Sentinel System")
         print("="*55)
 
+        # ── INICIAR CÁMARA ─────────────────────────────────────
+        if USE_PICAMERA:
+            picam2 = Picamera2()
+            config = picam2.create_preview_configuration(
+                main={"format": "RGB888", "size": (640, 480)}
+            )
+            picam2.configure(config)
+            picam2.start()
+            self.camara = picam2
+            self.usando_picamera = True
+            time.sleep(2)
+            print("📷 Picamera2 iniciada correctamente")
+        else:
+            cap = cv2.VideoCapture(0)
+            if not cap.isOpened():
+                print("❌ No se pudo abrir la cámara")
+                return
+            self.camara = cap
+            self.usando_picamera = False
+            print("📷 Cámara (OpenCV) iniciada correctamente")
+
+        # ── CARGAR EL MODELO ─────────────────────
         if not self.cargar_o_reentrenar():
             print("❌ No se pudo cargar ni reentrenar el modelo")
             return
-
-        picam2 = Picamera2()
-        config = picam2.create_preview_configuration(
-            main={"format": "RGB888", "size": (640, 480)}
-        )
-        picam2.configure(config)
-        picam2.start()
-        time.sleep(2)
-        print("📷 Picamera2 iniciada correctamente")
 
         detector_str = "MediaPipe+Haar" if self._usar_mp else "Haar"
         print(f"🎥 Cámara iniciada · Umbral: {self.umbral_confianza} · Detector: {detector_str}")
@@ -616,17 +633,25 @@ class ReconocerFacial:
 
         try:
             while True:
-                # ✅ Picamera2 en lugar de cap.read()
-                frame = picam2.capture_array()
-                frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+                # ── CAPTURA DE FRAME ─────────────────────────────
+                if self.usando_picamera:
+                    frame = self.camara.capture_array()
+                    frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+                else:
+                    ret, frame = self.camara.read()
+                    if not ret:
+                        continue
 
                 frame = self.procesar_frame(frame)
+
                 cv2.putText(frame,
                             f"Umbral: {self.umbral_confianza}  [{detector_str}]  +/- ajustar",
                             (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.52, (255, 255, 0), 2)
+
                 cv2.imshow('Reconocimiento Facial — Sentinel System', frame)
 
                 key = cv2.waitKey(1) & 0xFF
+
                 if key == ord('q'):
                     break
                 elif key in (ord('+'), ord('='), 43, 61):
@@ -642,9 +667,18 @@ class ReconocerFacial:
                     if _MP_DISPONIBLE:
                         self._usar_mp = not self._usar_mp
                         print(f"🔄 MediaPipe → {'ON' if self._usar_mp else 'OFF (solo Haar)'}")
+
         finally:
-            # ✅ Siempre cerrar limpiamente
-            picam2.stop()
+            # ── CERRAR CÁMARA ─────────────────────────────────
+            if self.camara:
+                try:
+                    if self.usando_picamera:
+                        self.camara.stop()
+                    else:
+                        self.camara.release()
+                except Exception:
+                    pass
+
             cv2.destroyAllWindows()
             print("👋 Sistema cerrado")
 
