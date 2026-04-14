@@ -714,7 +714,9 @@ class MainView:
         self._anim_running = True
         self._btn_iniciar.configure(state="disabled")
         self._anim_btn()
-        self._anim_cam_lista = False
+        # Evita quedar atascado en "cargando": siempre permitimos
+        # que la barra de progreso llegue a 100% para abrir la cámara.
+        self._anim_cam_lista = True
         self._mostrar_anim_camara()
 
     def _abrir_camara(self):
@@ -1038,7 +1040,7 @@ class MainView:
     def _tick_anim_cam_prog(self):
         if not getattr(self, '_anim_cam_activa', False):
             return
-        target = 0.88 if not getattr(self, '_anim_cam_lista', False) else 1.0
+        target = 1.0
         delta  = (target - self._anim_cam_prog) * 0.06
         self._anim_cam_prog = min(target, self._anim_cam_prog + max(delta, 0.003))
         self._dibujar_anim_camara()
