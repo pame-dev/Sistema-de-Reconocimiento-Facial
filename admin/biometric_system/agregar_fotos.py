@@ -3,6 +3,8 @@ import sqlite3
 import cv2
 import numpy as np
 import os
+import time
+from picamera2 import Picamera2
 
 def agregar_fotos_usuario():
     """Agrega más fotos a un usuario existente"""
@@ -51,12 +53,14 @@ def agregar_fotos_usuario():
     print(f"\n📸 Agregando fotos para: {nombre_completo}")
     
     # Iniciar cámara
-    cap = cv2.VideoCapture(0)
-    
-    if not cap.isOpened():
-        print("❌ Error: No se pudo abrir la cámara")
-        conn.close()
-        return
+    picam2 = Picamera2()
+    config = picam2.create_preview_configuration(
+        main={"format": "RGB888", "size": (640, 480)}
+    )
+    picam2.configure(config)
+    picam2.start()
+    time.sleep(1)
+    cap = picam2
     
     print("\n🎯 INSTRUCCIONES PARA MEJOR RECONOCIMIENTO:")
     print("   1. Toma fotos desde DIFERENTES ÁNGULOS:")
@@ -78,9 +82,8 @@ def agregar_fotos_usuario():
     fotos_agregadas = 0
     
     while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
+        frame = cap.capture_array()
+        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
         
         h, w = frame.shape[:2]
         
@@ -125,7 +128,7 @@ def agregar_fotos_usuario():
         elif key == ord('q'):
             break
     
-    cap.release()
+    cap.stop()
     cv2.destroyAllWindows()
     
     # Mostrar resumen
