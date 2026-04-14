@@ -1,4 +1,5 @@
 #archivo para poder usar la camara de la raspberry y tambien la de windows
+import os
 
 try:
     from picamera2 import Picamera2
@@ -22,7 +23,14 @@ class Camera:
             self.cap.configure(config)
             self.cap.start()
         else:
-            self.cap = cv2.VideoCapture(0)
+            # En Windows, CAP_DSHOW suele abrir más rápido y con menos bloqueos.
+            if os.name == "nt" and hasattr(cv2, "CAP_DSHOW"):
+                self.cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+            else:
+                self.cap = cv2.VideoCapture(0)
+
+            if not self.cap or not self.cap.isOpened():
+                raise RuntimeError("No se pudo abrir la cámara")
 
     def read(self):
         if not self.cap:
