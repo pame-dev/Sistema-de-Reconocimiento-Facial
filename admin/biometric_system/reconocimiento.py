@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import sqlite3
 import os
+import threading
 from datetime import datetime, timedelta
 import pickle
 from collections import Counter
@@ -20,6 +21,11 @@ except Exception:
     _MP_DISPONIBLE = False
     print("⚠️  mediapipe no instalado. Usando solo Haar Cascade.")
     print("   Instala con: pip install mediapipe")
+
+try:
+    from test_cerradura import ejecutar_cerradura as ejecutar_test_cerradura
+except Exception:
+    ejecutar_test_cerradura = None
 
 
 class ReconocerFacial:
@@ -99,6 +105,7 @@ class ReconocerFacial:
 
         self.total_aceptados = 0
         self.total_denegados = 0
+        self._cerradura_en_proceso = False
 
     # ─────────────────────────────────────────────────────────────────────────
     # Base de datos
@@ -446,6 +453,7 @@ class ReconocerFacial:
                 self._overlay_color   = (30, 200, 60)
                 self._overlay_frames  = self._overlay_duracion
                 self._ultimo_registro.pop("desconocido", None)
+                self._abrir_cerradura()
             else:
                 self.total_denegados += 1
                 self._overlay_texto   = "ACCESO DENEGADO"
@@ -462,6 +470,25 @@ class ReconocerFacial:
             print(f"❌ Error registrando acceso: {e}")
         finally:
             conn.close()
+
+    def _abrir_cerradura(self):
+        if self._cerradura_en_proceso:
+            return
+        if ejecutar_test_cerradura is None:
+            print("⚠️  test_cerradura no está disponible.")
+            return
+
+        self._cerradura_en_proceso = True
+
+        def _run():
+            try:
+                ejecutar_test_cerradura(8)
+            except Exception as e:
+                print(f"⚠️  Error ejecutando la cerradura: {e}")
+            finally:
+                self._cerradura_en_proceso = False
+
+        threading.Thread(target=_run, daemon=True).start()
 
     # ─────────────────────────────────────────────────────────────────────────
     # Loop principal
