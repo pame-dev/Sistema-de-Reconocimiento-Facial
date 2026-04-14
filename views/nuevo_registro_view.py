@@ -146,6 +146,7 @@ class NuevoRegistroView:
     # PANTALLA 1 — Selección de rol
     # ═════════════════════════════════════════════════════════════════════════
     def _mostrar_seleccion_rol(self):
+        self.valores_form = {}
         self._limpiar_container()
         outer = ctk.CTkFrame(self.container, fg_color="transparent")
         outer.pack(fill="both", expand=True)
@@ -261,6 +262,12 @@ class NuevoRegistroView:
                       text_color=self.colors['white'],
                       font=FontScale.fb(13), corner_radius=10, height=42,
                       command=self._validar_y_continuar).pack(pady=20)
+        
+        if hasattr(self, 'valores_form') and self.valores_form:
+            for key, entry in self.entries.items():
+                if key in self.valores_form:
+                    entry.delete(0, "end")
+                    entry.insert(0, self.valores_form[key])
 
     def _section_label(self, parent, text, color):
         frame = ctk.CTkFrame(parent, fg_color="transparent")
@@ -439,9 +446,11 @@ class NuevoRegistroView:
         header = ctk.CTkFrame(self.container, fg_color="transparent")
         header.pack(fill="x", pady=(0, 8))
         ctk.CTkButton(header, text="← Volver al formulario",
-                      fg_color="transparent", hover_color=COLORS['content_bg'],
-                      text_color=color, font=("Segoe UI", 11, "bold"),
-                      command=self._volver_formulario).pack(side="left")
+              fg_color='#16A34A', hover_color="#15803D",
+              text_color="#ffffff",
+              font=("Segoe UI", 15, "bold"),
+              corner_radius=8, height=32,
+              command=self._volver_formulario).pack(side="left")
         ctk.CTkLabel(header, text="Paso 2/2 — Captura biométrica automática",
                      font=("Segoe UI", 12), text_color=c['text_gray']).pack(side="left", padx=15)
 
@@ -495,13 +504,21 @@ class NuevoRegistroView:
         self.lbl_sub_estado.pack(pady=(0, 6))
 
         self._btn_pausar = ctk.CTkButton(cam_panel, text="⏸ Pausar",
-                                          fg_color=c['accent'], hover_color="#D97706",
-                                          text_color="#ffffff",
-                                          font=("Segoe UI", 11, "bold"),
-                                          corner_radius=8, height=32, width=110,
-                                          command=self._toggle_pausa)
-        self._btn_pausar.pack(side="right", padx=8, pady=(0, 8))
+                                  fg_color=c['accent'], hover_color="#D97706",
+                                  text_color="#ffffff",
+                                  font=("Segoe UI", 11, "bold"),
+                                  corner_radius=8, height=32, width=110,
+                                  command=self._toggle_pausa)
+        self._btn_pausar.pack(side="right", padx=(0, 8), pady=(0, 8))
         self._pausado = False
+
+
+        self._btn_cancelar = ctk.CTkButton(cam_panel, text="✕ Cancelar",
+              fg_color="#DC2626", hover_color="#B91C1C",
+              text_color="#ffffff",
+              font=("Segoe UI", 11, "bold"),
+              corner_radius=8, height=32, width=110,
+              command=self._mostrar_seleccion_rol).pack(side="right", padx=(0, 4), pady=(0, 8))
 
         self._construir_panel_guia(color)
         self._iniciar_camara_auto()
