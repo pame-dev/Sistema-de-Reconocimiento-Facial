@@ -44,10 +44,20 @@ class ReconocerFacial:
         self._usar_mp     = usar_mediapipe and _MP_DISPONIBLE
         self._mp_detector = None
         if self._usar_mp:
-            self._mp_detector = _mp_face.FaceDetection(
-                model_selection=0, min_detection_confidence=0.6
-            )
-            print("✅ MediaPipe FaceDetection activado")
+            # mediapipe expone FaceDetection bajo mp.solutions.face_detection
+            # en versiones actuales; usamos fallback por compatibilidad.
+            detector_cls = getattr(_mp_face, "FaceDetection", None)
+            if detector_cls is None and hasattr(_mp_face, "face_detection"):
+                detector_cls = getattr(_mp_face.face_detection, "FaceDetection", None)
+
+            if detector_cls is not None:
+                self._mp_detector = detector_cls(
+                    model_selection=0, min_detection_confidence=0.6
+                )
+                print("✅ MediaPipe FaceDetection activado")
+            else:
+                self._usar_mp = False
+                print("⚠️  MediaPipe no tiene FaceDetection disponible. Usando Haar Cascade.")
         else:
             print("ℹ️  Usando Haar Cascade como único detector")
 
@@ -683,6 +693,6 @@ class ReconocerFacial:
             print("👋 Sistema cerrado")
 
 
-    if __name__ == "__main__":
-        reconocedor = ReconocerFacial()
-        reconocedor.iniciar()
+if __name__ == "__main__":
+    reconocedor = ReconocerFacial()
+    reconocedor.iniciar()
