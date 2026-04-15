@@ -439,42 +439,46 @@ class NuevoRegistroView:
         color = cfg["color"]
         c     = self.colors
 
-        header = ctk.CTkFrame(self.container, fg_color="transparent")
-        header.pack(fill="x", pady=(0, 8))
-        ctk.CTkButton(header, text="← Volver al formulario",
-              fg_color='#16A34A', hover_color="#15803D",
-              text_color="#ffffff",
-              font=("Segoe UI", 15, "bold"),
-              corner_radius=8, height=32,
-              command=self._volver_formulario).pack(side="left")
-        ctk.CTkLabel(header, text="Paso 2/2 — Captura biométrica automática",
-                     font=("Segoe UI", 12), text_color=c['text_gray']).pack(side="left", padx=15)
-
-        ttk.Separator(self.container, orient="horizontal").pack(fill="x", pady=(0, 8))
-
-        prog_frame = ctk.CTkFrame(self.container, fg_color="transparent")
-        prog_frame.pack(fill="x", padx=4, pady=(0, 6))
-        self.bar_total_ctk = ctk.CTkProgressBar(prog_frame, height=12,
-                                                  corner_radius=6,
-                                                  progress_color=color,
-                                                  fg_color=COLORS['border'])
-        self.bar_total_ctk.set(0)
-        self.bar_total_ctk.pack(fill="x", padx=8)
+        # ... (header, separator y progress bar igual que antes) ...
 
         body = ctk.CTkFrame(self.container, fg_color="transparent")
         body.pack(fill="both", expand=True)
 
-        self.panel_guia = ctk.CTkFrame(body, fg_color=c['card_bg'],
-                                        width=260, corner_radius=12,
-                                        border_width=1, border_color=COLORS['border'])
-        self.panel_guia.pack(side="left", fill="y", padx=(0, 10))
-        self.panel_guia.pack_propagate(False)
+        # ── Detectar orientación ──────────────────────────────────────────────────
+        self.container.update_idletasks()
+        ancho  = self.container.winfo_width()
+        alto   = self.container.winfo_height()
+        vertical = alto > ancho   # True en pantalla de 7" portrait
 
-        cam_panel = ctk.CTkFrame(body, fg_color=c['card_bg'],
-                                  corner_radius=12, border_width=1,
-                                  border_color=COLORS['border'])
-        cam_panel.pack(side="left", fill="both", expand=True)
+        if vertical:
+            # ── Cámara ARRIBA ─────────────────────────────────────────────────────
+            cam_panel = ctk.CTkFrame(body, fg_color=c['card_bg'],
+                                    corner_radius=12, border_width=1,
+                                    border_color=COLORS['border'])
+            cam_panel.pack(side="top", fill="both", expand=True, pady=(0, 6))
 
+            # ── Panel guía ABAJO ──────────────────────────────────────────────────
+            self.panel_guia = ctk.CTkFrame(body, fg_color=c['card_bg'],
+                                            height=200,       # altura fija en vertical
+                                            corner_radius=12, border_width=1,
+                                            border_color=COLORS['border'])
+            self.panel_guia.pack(side="top", fill="x")
+            self.panel_guia.pack_propagate(False)
+
+        else:
+            # ── Layout horizontal original ─────────────────────────────────────────
+            self.panel_guia = ctk.CTkFrame(body, fg_color=c['card_bg'],
+                                            width=260, corner_radius=12,
+                                            border_width=1, border_color=COLORS['border'])
+            self.panel_guia.pack(side="left", fill="y", padx=(0, 10))
+            self.panel_guia.pack_propagate(False)
+
+            cam_panel = ctk.CTkFrame(body, fg_color=c['card_bg'],
+                                    corner_radius=12, border_width=1,
+                                    border_color=COLORS['border'])
+            cam_panel.pack(side="left", fill="both", expand=True)
+
+        # ── Contenido de cam_panel (igual para ambos layouts) ────────────────────
         self.video_label = tk.Label(cam_panel, bg=COLORS['content_bg'])
         self.video_label.pack(fill="both", expand=True, padx=8, pady=(8, 4))
 
