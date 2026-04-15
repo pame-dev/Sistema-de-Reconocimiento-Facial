@@ -14,6 +14,7 @@ from views.informacion_escolar_view import InformacionEscolarView
 from views.historial_accesos_view import HistorialAccesosView
 from PIL import Image, ImageTk
 from tkinter import messagebox
+from idiomas import t, cambiar_idioma
 
 sys.path.insert(0, os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "admin", "biometric_system")
@@ -214,13 +215,13 @@ class MainView:
             ctk.CTkLabel(title_frame, image=self._header_logo, text="").pack(side="left", padx=(0, 8))
         except Exception:
             pass
-        ctk.CTkLabel(title_frame, text="Sentinel System — Panel Principal",
-                     font=("Segoe UI", 18, "bold"), text_color=c['white']).pack(side="left")
+        ctk.CTkLabel(title_frame, text=t("titulo"),
+             font=("Segoe UI", 18, "bold"), text_color=c['white']).pack(side="left")
 
-        ctk.CTkButton(header, text="← Salir", font=("Segoe UI", 12, "bold"),
-                      fg_color=c['danger'], hover_color=COLORS['danger_dark'],
-                      text_color=c['white'], width=90, height=34, corner_radius=8,
-                      command=self.logout).pack(side="right", padx=(0, 12))
+        ctk.CTkButton(header, text=t("salir"), font=("Segoe UI", 12, "bold"),
+              fg_color=c['danger'], hover_color=COLORS['danger_dark'],
+              text_color=c['white'], width=90, height=34, corner_radius=8,
+              command=self.logout).pack(side="right", padx=(0, 12))
 
         self.lbl_reloj = ctk.CTkLabel(header, text="", font=("Segoe UI", 12),
                                        text_color=c['white'])
@@ -261,18 +262,17 @@ class MainView:
                            corner_radius=0, height=48)
         mh.pack(fill="x")
         mh.pack_propagate(False)
-        ctk.CTkLabel(mh, text="  NAVEGACIÓN", font=("Segoe UI", 11, "bold"),
+        ctk.CTkLabel(mh, text=f"  {t('navegacion')}", font=("Segoe UI", 11, "bold"),
                      text_color=c['white'], anchor="w").pack(fill="both", expand=True, padx=16)
 
-        ctk.CTkLabel(self.sidebar, text="", height=8).pack()
-        for icono, texto, cmd in [
-            ("🏠", "Inicio",               self.show_home),
-            ("➕", "Nuevo Registro",       self.show_nuevo_registro),
-            ("📚", "Información Escolar",  self.show_informacion_escolar),
-            ("📊", "Historial de Accesos", self.show_historial_accesos),
-            ("🔐", "Pantalla de Accesos",  self.show_pantalla_accesos),
+        for icono, clave, cmd in [
+            ("🏠", "inicio", self.show_home),
+            ("➕", "nuevo", self.show_nuevo_registro),
+            ("📚", "info", self.show_informacion_escolar),
+            ("📊", "historial", self.show_historial_accesos),
+            ("🔐", "pantalla", self.show_pantalla_accesos),
         ]:
-            self._create_menu_button(icono, texto, cmd)
+            self._create_menu_button(icono, t(clave), cmd)
 
         ctk.CTkFrame(self.sidebar, fg_color=c['header_hover'],
                      height=1, corner_radius=0).pack(fill="x", padx=16, pady=14)
@@ -359,11 +359,11 @@ class MainView:
         except Exception:
             ctk.CTkLabel(inner, text="🔐", font=FontScale.fb(48)).pack(pady=(0, 12))
 
-        ctk.CTkLabel(inner, text="Le da la Bienvenida al Sistema",
+        ctk.CTkLabel(inner, text=t("bienvenida"),
                      font=FontScale.fb(24), text_color=c['text_dark']).pack()
-        ctk.CTkLabel(inner, text="Seleccione una opción del menú para comenzar",
+        ctk.CTkLabel(inner, text=t("seleccion"),
                      font=FontScale.f(13), text_color=c['text_gray']).pack(pady=(6, 22))
-        ctk.CTkButton(inner, text="➕  Agregar nuevo usuario",
+        ctk.CTkButton(inner, text=t("agregar"),
                       fg_color=c['primary'], hover_color=COLORS['primary_dark'],
                       text_color="#ffffff", font=FontScale.fb(13),
                       corner_radius=10, height=42, width=260,
@@ -456,12 +456,12 @@ class MainView:
         logo_f.pack(side="left", padx=16, pady=8)
         ctk.CTkLabel(logo_f, text="🛡", font=("Segoe UI Emoji", 20),
                      text_color=c['info']).pack(side="left", padx=(0, 8))
-        ctk.CTkLabel(logo_f, text="Control de Accesos",
+        ctk.CTkLabel(logo_f, text=t("control_accesos"),
                      font=("Segoe UI", 14, "bold"),
                      text_color=c['info']).pack(side="left")
 
         self._btn_iniciar = ctk.CTkButton(
-            bar, text="▶  Iniciar",
+            bar, text=t("iniciar"),
             fg_color="#16a34a", hover_color="#15803d",
             text_color="white", font=("Segoe UI", 12, "bold"),
             width=100, height=32, corner_radius=8,
@@ -520,10 +520,10 @@ class MainView:
         inner.place(relx=0.5, rely=0.5, anchor="center")
         ctk.CTkLabel(inner, text="👤", font=("Segoe UI Emoji", 52),
                      text_color="#cbd5e1").pack(pady=(0, 10))
-        ctk.CTkLabel(inner, text="Esperando reconocimiento",
+        ctk.CTkLabel(inner, text=t("esperando"),
                      font=("Segoe UI", 14, "bold"),
                      text_color=self.colors['text_gray']).pack()
-        ctk.CTkLabel(inner, text="Colócate frente a la cámara",
+        ctk.CTkLabel(inner, text=t("colocate"),
                      font=("Segoe UI", 10),
                      text_color=self.colors['text_light']).pack(pady=(6, 0))
 
@@ -742,14 +742,14 @@ class MainView:
 
         self._anim_running = False
         self._btn_iniciar.configure(
-            text="⏹  Detener",
+            text=t("detener"),
             fg_color="#dc2626",
             hover_color="#b91c1c",
             state="normal"
         )
 
         self._lbl_cam.configure(
-            text="⬤  Cámara en línea",
+            text=t("camara_on"),
             text_color=self.colors['primary']
         )
 
@@ -768,7 +768,7 @@ class MainView:
         try:
             self._btn_iniciar.configure(text="▶  Iniciar", fg_color="#16a34a",
                                          hover_color="#15803d", state="normal")
-            self._lbl_cam.configure(text="⬤  Cámara apagada",
+            self._lbl_cam.configure(text=t("camara_off"),
                                      text_color=self.colors['danger'])
         except Exception:
             pass
@@ -861,7 +861,7 @@ class MainView:
                 self._cam_canvas.create_text(w//2, h//2 - 22,
                     text="🛡  Sentinel System", font=("Segoe UI", 22, "bold"), fill=c['info'])
             self._cam_canvas.create_text(w//2, h//2 + 48,
-                text="Presiona  ▶ Iniciar  para comenzar",
+                text=t("presiona_iniciar"),
                 font=("Segoe UI", 16), fill=c['text_gray'])
         except Exception:
             pass
@@ -1090,7 +1090,7 @@ class MainView:
 
             dots = self._anim_cam_dots_str
             cv2canvas.create_text(cx, cy + 60,
-                text=f"Iniciando cámara {dots}",
+                text=f"{t('iniciando_camara')} {dots}",
                 font=("Segoe UI", 14, "bold"), fill=color)
 
             bar_w = 220
@@ -1103,7 +1103,7 @@ class MainView:
                     bar_x + int(bar_w * self._anim_cam_prog),
                     bar_y + 6, fill=color, outline="")
             cv2canvas.create_text(cx, bar_y + 22,
-                text="Preparando reconocimiento facial...",
+                text=t("preparando"),
                 font=("Segoe UI", 10), fill=c['text_gray'])
         except Exception:
             pass
@@ -1119,9 +1119,11 @@ class MainView:
         self.content_frame.configure(fg_color=self.colors['background'])
 
     def traducir_app(self):
-        messagebox.showinfo("En desarrollo", "La función de traducción está en desarrollo 🚧")
+        cambiar_idioma()
+        self._recargar_vista()
 
     def logout(self):
-        if messagebox.askyesno("Confirmar salida", "¿Estás seguro de que deseas salir?"):
+        if messagebox.askyesno(t("confirmar_salida"), t("seguro_salir")):
             self._stop_camera()
             self.app.show_login_view()
+    
