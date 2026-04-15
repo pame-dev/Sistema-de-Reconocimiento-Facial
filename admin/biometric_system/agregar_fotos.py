@@ -3,8 +3,14 @@ import sqlite3
 import cv2
 import numpy as np
 import os
-import time
-from picamera2 import Picamera2
+import sys
+
+_PROJECT_ROOT = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
+
+from camera import Camera
 
 def agregar_fotos_usuario():
     """Agrega más fotos a un usuario existente"""
@@ -52,15 +58,14 @@ def agregar_fotos_usuario():
     
     print(f"\n📸 Agregando fotos para: {nombre_completo}")
     
-    # Iniciar cámara
-    picam2 = Picamera2()
-    config = picam2.create_preview_configuration(
-        main={"format": "RGB888", "size": (640, 480)}
-    )
-    picam2.configure(config)
-    picam2.start()
-    time.sleep(1)
-    cap = picam2
+    # Iniciar cámara (wrapper unificado Raspberry/Windows)
+    try:
+        cap = Camera()
+        cap.start()
+    except Exception as e:
+        print(f"❌ No se pudo abrir la cámara: {e}")
+        conn.close()
+        return
     
     print("\n🎯 INSTRUCCIONES PARA MEJOR RECONOCIMIENTO:")
     print("   1. Toma fotos desde DIFERENTES ÁNGULOS:")
@@ -81,55 +86,57 @@ def agregar_fotos_usuario():
     
     fotos_agregadas = 0
     
-    while True:
-        frame = cap.capture_array()
-        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+    try:
+        while True:
+            frame = cap.read()
+            if frame is None:
+                continue
         
-        h, w = frame.shape[:2]
+            h, w = frame.shape[:2]
         
-        # Dibujar guía para el rostro
-        cv2.rectangle(frame, (w//4, h//4), (3*w//4, 3*h//4), (255, 255, 0), 2)
+            # Dibujar guía para el rostro
+            cv2.rectangle(frame, (w//4, h//4), (3*w//4, 3*h//4), (255, 255, 0), 2)
         
-        # Mostrar información
-        cv2.putText(frame, f"Fotos agregadas: {fotos_agregadas}", (10, 30),
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-        cv2.putText(frame, f"Usuario: {nombre_completo}", (10, 60),
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-        cv2.putText(frame, "Presiona ESPACIO para capturar", (10, 90),
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
-        cv2.putText(frame, "Presiona Q para terminar", (10, 120),
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+            # Mostrar información
+            cv2.putText(frame, f"Fotos agregadas: {fotos_agregadas}", (10, 30),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+            cv2.putText(frame, f"Usuario: {nombre_completo}", (10, 60),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+            cv2.putText(frame, "Presiona ESPACIO para capturar", (10, 90),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+            cv2.putText(frame, "Presiona Q para terminar", (10, 120),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
         
-        cv2.imshow('Agregar Fotos - Reconocimiento Facial', frame)
+            cv2.imshow('Agregar Fotos - Reconocimiento Facial', frame)
         
-        key = cv2.waitKey(1) & 0xFF
+            key = cv2.waitKey(1) & 0xFF
         
-        if key == ord(' '):  # ESPACIO
-            # Extraer solo la región del rostro (mejor para entrenamiento)
-            rostro = frame[h//4:3*h//4, w//4:3*w//4]
+            if key == ord(' '):  # ESPACIO
+                # Extraer solo la región del rostro (mejor para entrenamiento)
+                rostro = frame[h//4:3*h//4, w//4:3*w//4]
             
-            # Redimensionar a tamaño estándar
-            rostro = cv2.resize(rostro, (200, 200))
+                # Redimensionar a tamaño estándar
+                rostro = cv2.resize(rostro, (200, 200))
             
-            # Convertir a bytes
-            _, buffer = cv2.imencode('.jpg', rostro)
-            imagen_bytes = buffer.tobytes()
+                # Convertir a bytes
+                _, buffer = cv2.imencode('.jpg', rostro)
+                imagen_bytes = buffer.tobytes()
             
-            # Guardar en BD
-            cursor.execute("""
-                INSERT INTO biometria (fkIdUsuario, encodeBiometria)
-                VALUES (?, ?)
-            """, (user_id, imagen_bytes))
+                # Guardar en BD
+                cursor.execute("""
+                    INSERT INTO biometria (fkIdUsuario, encodeBiometria)
+                    VALUES (?, ?)
+                """, (user_id, imagen_bytes))
             
-            conn.commit()
-            fotos_agregadas += 1
-            print(f"✅ Foto {fotos_agregadas} agregada")
+                conn.commit()
+                fotos_agregadas += 1
+                print(f"✅ Foto {fotos_agregadas} agregada")
             
-        elif key == ord('q'):
-            break
-    
-    cap.stop()
-    cv2.destroyAllWindows()
+            elif key == ord('q'):
+                break
+    finally:
+        cap.stop()
+        cv2.destroyAllWindows()
     
     # Mostrar resumen
     cursor.execute("SELECT COUNT(*) FROM biometria WHERE fkIdUsuario = ?", (user_id,))

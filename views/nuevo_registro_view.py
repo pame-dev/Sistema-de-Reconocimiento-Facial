@@ -10,11 +10,7 @@ from datetime import datetime
 import sys
 import threading
 from views.font_scale import FontScale
-try:
-    from picamera2 import Picamera2
-    USE_PICAMERA = True
-except ImportError:
-    USE_PICAMERA = False
+from camera import Camera
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import COLORS, get_colors, toggle_theme, get_db
@@ -599,25 +595,9 @@ class NuevoRegistroView:
     # ── Cámara ────────────────────────────────────────────────────────────────
     def _iniciar_camara_auto(self):
         try:
-            if USE_PICAMERA:
-                # 🟢 Raspberry Pi
-                picam2 = Picamera2()
-                config = picam2.create_preview_configuration(
-                    main={"format": "RGB888", "size": (640, 480)}
-                )
-                picam2.configure(config)
-                picam2.start()
-                time.sleep(1)
-                self.camara = picam2
-                self.usando_picamera = True
-
-            else:
-                # 🟡 PC / Laptop (OpenCV)
-                cap = cv2.VideoCapture(0)
-                if not cap.isOpened():
-                    raise Exception("No se pudo abrir la cámara")
-                self.camara = cap
-                self.usando_picamera = False
+            self.camara = Camera()
+            self.camara.start()
+            time.sleep(1)
 
             self.capturando = True
             self._auto_activo = True
@@ -732,14 +712,10 @@ class NuevoRegistroView:
             return
 
         try:
-            if self.usando_picamera:
-                frame = self.camara.capture_array()
-                frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-            else:
-                ret, frame = self.camara.read()
-                if not ret:
-                    self.video_label.after(30, self._actualizar_video)
-                    return
+            frame = self.camara.read()
+            if frame is None:
+                self.video_label.after(30, self._actualizar_video)
+                return
         except Exception:
             self.video_label.after(30, self._actualizar_video)
             return
@@ -987,12 +963,10 @@ class NuevoRegistroView:
         self._auto_activo = False
         if self.camara:
             try:
-                if getattr(self, "usando_picamera", False):
-                    self.camara.stop()
-                else:
-                    self.camara.release()
+                self.camara.stop()
             except Exception:
                 pass
+            self.camara = None
 
     def _detener_camara(self):
         self._detener_camara_silencio()
