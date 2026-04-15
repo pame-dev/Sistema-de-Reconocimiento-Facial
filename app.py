@@ -9,7 +9,7 @@ from views.main_view import MainView
 class SentinelApp:
     """Clase principal que maneja la aplicación y navegación entre vistas"""
     
-    def __init__(self, root):
+    def __init__(self, root):  
         self.root = root
         self.root.title("Sentinel System")
         self.root.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
