@@ -43,6 +43,7 @@ class MainView:
         self._cap          = None
         self._engine       = None
         self._cam_photo    = None
+        self._frame_pending = False
         self._zoom_popover = None
 
         # Estado pantalla accesos
@@ -755,6 +756,7 @@ class MainView:
     def _stop_camera(self):
         self._cam_running  = False
         self._anim_running = False
+        self._frame_pending = False
         if self._cap:
             try:
                 if self._cap:
@@ -776,13 +778,25 @@ class MainView:
             pass
 
     def _cam_loop(self):
+        sin_frame_count = 0
         while self._cam_running:
             if not self._cap:
                 break
             try:
                 frame = self._cap.read()
                 if frame is None:
+                    sin_frame_count += 1
+                    if sin_frame_count == 45:
+                        self.main_frame.after(
+                            0,
+                            lambda: self._lbl_cam.configure(
+                                text="⬤  Esperando señal de cámara...",
+                                text_color=self.colors['accent']
+                            )
+                        )
+                    time.sleep(0.02)
                     continue
+                sin_frame_count = 0
             except Exception:
                 break
 
@@ -793,25 +807,29 @@ class MainView:
             frame = frame[margen_y:h_f - margen_y, margen_x:w_f - margen_x]
 
             frame = self._engine.procesar_frame(frame)
-            rgb   = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            img   = Image.fromarray(rgb)
-            try:
-                cw = self._cam_canvas.winfo_width()  or 640
-                ch = self._cam_canvas.winfo_height() or 480
-            except Exception:
-                break
-            img   = img.resize((cw, ch), Image.BILINEAR)
-            photo = ImageTk.PhotoImage(img)
-            self.main_frame.after(0, self._show_frame, photo)
+
+            # En Linux/Raspberry Tk exige crear PhotoImage en el hilo principal.
+            if not self._frame_pending:
+                self._frame_pending = True
+                self.main_frame.after(0, self._show_frame, frame.copy())
         self._cam_running = False
 
-    def _show_frame(self, photo):
+    def _show_frame(self, frame_bgr):
         try:
+            rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
+            img = Image.fromarray(rgb)
+            cw = self._cam_canvas.winfo_width() or 640
+            ch = self._cam_canvas.winfo_height() or 480
+            img = img.resize((cw, ch), Image.BILINEAR)
+            photo = ImageTk.PhotoImage(img)
+
             self._cam_canvas.delete("all")
             self._cam_photo = photo
             self._cam_canvas.create_image(0, 0, anchor="nw", image=photo)
         except Exception:
             pass
+        finally:
+            self._frame_pending = False
 
     def _draw_placeholder(self):
         if self._cam_running:
