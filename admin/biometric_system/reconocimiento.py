@@ -2,16 +2,19 @@ import cv2
 import numpy as np
 import sqlite3
 import os
+import sys
 import threading
 from datetime import datetime, timedelta
 import pickle
 from collections import Counter
 import time
-try:
-    from picamera2 import Picamera2
-    USE_PICAMERA = True
-except ImportError:
-    USE_PICAMERA = False
+
+_PROJECT_ROOT = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
+
+from camera import Camera
 
 try:
     import mediapipe as mp
@@ -638,25 +641,14 @@ class ReconocerFacial:
         print("="*55)
 
         # ── INICIAR CÁMARA ─────────────────────────────────────
-        if USE_PICAMERA:
-            picam2 = Picamera2()
-            config = picam2.create_preview_configuration(
-                main={"format": "RGB888", "size": (640, 480)}
-            )
-            picam2.configure(config)
-            picam2.start()
-            self.camara = picam2
-            self.usando_picamera = True
-            time.sleep(2)
-            print("📷 Picamera2 iniciada correctamente")
-        else:
-            cap = cv2.VideoCapture(0)
-            if not cap.isOpened():
-                print("❌ No se pudo abrir la cámara")
-                return
-            self.camara = cap
-            self.usando_picamera = False
-            print("📷 Cámara (OpenCV) iniciada correctamente")
+        try:
+            self.camara = Camera()
+            self.camara.start()
+            time.sleep(1)
+            print("📷 Cámara iniciada correctamente")
+        except Exception as e:
+            print(f"❌ No se pudo abrir la cámara: {e}")
+            return
 
         # ── CARGAR EL MODELO ─────────────────────
         if not self.cargar_o_reentrenar():
@@ -671,13 +663,9 @@ class ReconocerFacial:
         try:
             while True:
                 # ── CAPTURA DE FRAME ─────────────────────────────
-                if self.usando_picamera:
-                    frame = self.camara.capture_array()
-                    frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-                else:
-                    ret, frame = self.camara.read()
-                    if not ret:
-                        continue
+                frame = self.camara.read()
+                if frame is None:
+                    continue
 
                 frame = self.procesar_frame(frame)
 
@@ -709,10 +697,7 @@ class ReconocerFacial:
             # ── CERRAR CÁMARA ─────────────────────────────────
             if self.camara:
                 try:
-                    if self.usando_picamera:
-                        self.camara.stop()
-                    else:
-                        self.camara.release()
+                    self.camara.stop()
                 except Exception:
                     pass
 
