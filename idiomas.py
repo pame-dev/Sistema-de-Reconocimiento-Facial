@@ -143,7 +143,24 @@ TEXTOS = {
         "error": "Error",
         "error_guardar": "Ocurrió un error al guardar:",
         "fotos_actualizadas": "Fotos actualizadas",
-        "se_actualizaron_fotos": "Se actualizaron {} fotos correctamente"
+        "se_actualizaron_fotos": "Se actualizaron {} fotos correctamente",
+        "registro_intentos": "Registro de todos los intentos de acceso al sistema",
+        "limpiar": "Limpiar",
+        "accesos": "Accesos",
+        "aceptados": "Aceptados",
+        "denegados": "Denegados",
+        "placeholder_usuario": "Nombre de usuario...",
+        "estado": "Estado",
+        "todos": "Todos",
+        "aceptado": "Aceptado",
+        "denegado": "Denegado",
+        "registros": "Registros",
+        "usuario": "Usuario",
+        "fecha_hora": "Fecha y Hora",
+        "confianza": "Confianza",
+        "umbral": "Umbral",
+        "pregunta_limpiar_historial": "¿Estás seguro de que quieres eliminar TODO el historial?\n\nEsta acción no se puede deshacer.",
+        "historial_eliminado": "Historial eliminado correctamente."
     },
     "en": {
         "titulo": "Sentinel System — Main Panel",
@@ -287,7 +304,24 @@ TEXTOS = {
         "error": "Error",
         "error_guardar": "An error occurred while saving:",
         "fotos_actualizadas": "Photos updated",
-        "se_actualizaron_fotos": "{} photos were updated successfully"
+        "se_actualizaron_fotos": "{} photos were updated successfully",
+        "registro_intentos": "Record of all system access attempts",
+        "limpiar": "Clear",
+        "accesos": "Accesses",
+        "aceptados": "Accepted",
+        "denegados": "Denied",
+        "placeholder_usuario": "Username...",
+        "estado": "Status",
+        "todos": "All",
+        "aceptado": "Accepted",
+        "denegado": "Denied",
+        "registros": "Records",
+        "usuario": "User",
+        "fecha_hora": "Date and Time",
+        "confianza": "Confidence",
+        "umbral": "Threshold",
+        "pregunta_limpiar_historial": "Are you sure you want to delete ALL history?\n\nThis action cannot be undone.",
+        "historial_eliminado": "History deleted successfully."
     }
 }
 
