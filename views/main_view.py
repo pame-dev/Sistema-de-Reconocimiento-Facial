@@ -272,22 +272,36 @@ class MainView:
             ("📊", "historial", self.show_historial_accesos),
             ("🔐", "pantalla", self.show_pantalla_accesos),
         ]:
-            self._create_menu_button(icono, t(clave), cmd)
+            self._create_menu_button(icono, clave, cmd)
 
         ctk.CTkFrame(self.sidebar, fg_color=c['header_hover'],
                      height=1, corner_radius=0).pack(fill="x", padx=16, pady=14)
         ctk.CTkLabel(self.sidebar, text="v1.0.0", font=("Segoe UI", 10),
                      text_color=c['text_gray']).pack(side="bottom", pady=(0, 8))
 
-    def _create_menu_button(self, icono, texto, command):
+    def _create_menu_button(self, icono, clave, command):
         c = self.colors
-        btn = ctk.CTkButton(self.sidebar, text=f"  {icono}  {texto}",
-                            anchor="w", font=("Segoe UI", 13),
-                            fg_color="transparent", hover_color=COLORS['sidebar_hover'],
-                            text_color=c['white'], height=44, corner_radius=10)
+
+        btn = ctk.CTkButton(
+            self.sidebar,
+            text=f"  {icono}  {t(clave)}",
+            anchor="w",
+            font=("Segoe UI", 13),
+            fg_color="transparent",
+            hover_color=COLORS['sidebar_hover'],
+            text_color=c['white'],
+            height=44,
+            corner_radius=10
+        )
+
         btn.configure(command=lambda cmd=command: self._nav(cmd, btn))
         btn.pack(fill="x", padx=10, pady=2)
-        self.nav_buttons.append(btn)
+
+        self.nav_buttons.append((btn, clave, icono))
+        
+    def _actualizar_sidebar_idioma(self):
+        for btn, clave, icono in self.nav_buttons:
+            btn.configure(text=f"  {icono}  {t(clave)}")
 
     def _nav(self, command, btn):
         if self._active_btn and self._active_btn != btn:
@@ -297,6 +311,8 @@ class MainView:
         self._close_sidebar()
         command()
 
+        self.nav_buttons = []
+    
     def _close_sidebar(self):
         if self.menu_visible:
             self.sidebar.pack_forget()
@@ -1120,6 +1136,9 @@ class MainView:
 
     def traducir_app(self):
         cambiar_idioma()
+
+        self._actualizar_sidebar_idioma()
+
         self._recargar_vista()
 
     def logout(self):
