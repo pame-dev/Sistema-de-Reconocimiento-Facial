@@ -11,7 +11,7 @@ import sys
 import threading
 from views.font_scale import FontScale
 from camera import Camera
-from idiomas import t 
+from idiomas import t
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import COLORS, get_colors, toggle_theme, get_db
@@ -25,107 +25,101 @@ from database.queries import (
 
 # ── Configuración de roles ────────────────────────────────────────────────────
 ROL_CONFIG = {
-    "alumno":   {"icono": "🎓", "titulo": "estudiante", "desc": " ", "color": "#4A90D9"},
-    "maestro":  {"icono": "📚", "titulo": "docente", "desc": " ", "color": "#27AE60"},
-    "personal": {"icono": "🏢", "titulo": "personal", "desc": "", "color": "#E67E22"},
+    "alumno":   {"icono": "🎓", "titulo": t("estudiante"), "desc": " ", "color": "#4A90D9"},
+    "maestro":  {"icono": "📚", "titulo": t("docente"),    "desc": " ", "color": "#27AE60"},
+    "personal": {"icono": "🏢", "titulo": t("personal"),   "desc": "",  "color": "#E67E22"},
 }
 
 CAMPOS_POR_ROL = {
     "alumno": [
-        (t("grado")+":", "gradoAlumno", True),
-        (t("grupo")+":", "grupoAlumno", True),
-        (t("facultad")+":", "facultadAlumno", True),
-        (t("carrera")+":", "carreraAlumno", True)
+        (t("grado")+":",    "gradoAlumno",             True),
+        (t("grupo")+":",    "grupoAlumno",             True),
+        (t("facultad")+":", "facultadAlumno",           True),
+        (t("carrera")+":",  "carreraAlumno",            True),
     ],
-
     "maestro": [
-        (t("grado_imparte")+":", "gradoImpartidoMaestro", True),
-        (t("materia")+":", "materiaImpartidaMaestro", True)
+        (t("grado_imparte")+":", "gradoImpartidoMaestro",   True),
+        (t("materia")+":",       "materiaImpartidaMaestro",  True),
     ],
-
     "personal": [
         (t("puesto")+":", "puestoPersonalEscolar", True),
-        (t("area")+":", "areaPersonalEscolar", True)
-    ]
+        (t("area")+":",   "areaPersonalEscolar",   True),
+    ],
 }
 
 CAMPOS_COMUNES = [
-    (t("nombre")+":", "nombreUsuario", True),
-    (t("apellido_paterno")+":", "apellidoPaternoUsuario", True),
-    (t("apellido_materno")+":", "apellidoMaternoUsuario", False),
-    (t("matricula")+":", "matriculaUsuario", False),
-    (t("telefono")+":", "telefonoUsuario", True),
-    (t("correo")+":", "correoUsuario", True),
+    (t("nombre")+":",           "nombreUsuario",          True),
+    (t("apellido_paterno")+":", "apellidoPaternoUsuario",  True),
+    (t("apellido_materno")+":", "apellidoMaternoUsuario",  False),
+    (t("matricula")+":",        "matriculaUsuario",        False),
+    (t("telefono")+":",         "telefonoUsuario",         True),
+    (t("correo")+":",           "correoUsuario",           True),
 ]
 
 # ── Posturas ──────────────────────────────────────────────────────────────────
 POSTURAS = [
     {
-        "id": "frontal",
-        "titulo": t("frontal"),
+        "id":          "frontal",
+        "titulo":      t("frontal"),
         "instruccion": t("inst_frontal"),
-        "imagen": "assets/posturas/postura_frontal.png",
-        "icono": "😐",
-        "fotos": 60,
+        "imagen":      "assets/posturas/postura_frontal.png",
+        "icono":       "😐",
+        "fotos":       60,
     },
-
     {
-        "id": "izquierda",
-        "titulo": t("izquierda"),
+        "id":          "izquierda",
+        "titulo":      t("izquierda"),
         "instruccion": t("inst_izquierda"),
-        "imagen": "assets/posturas/postura_izquierda.png",
-        "icono": "😶",
-        "fotos": 60,
+        "imagen":      "assets/posturas/postura_izquierda.png",
+        "icono":       "😶",
+        "fotos":       60,
     },
-
     {
-        "id": "derecha",
-        "titulo": t("derecha"),
+        "id":          "derecha",
+        "titulo":      t("derecha"),
         "instruccion": t("inst_derecha"),
-        "imagen": "assets/posturas/postura_derecha.png",
-        "icono": "😶",
-        "fotos": 60,
+        "imagen":      "assets/posturas/postura_derecha.png",
+        "icono":       "😶",
+        "fotos":       60,
     },
-
     {
-        "id": "perfil_izq",
-        "titulo": t("perfil_izquierda"),
+        "id":          "perfil_izq",
+        "titulo":      t("perfil_izquierda"),
         "instruccion": t("inst_perfil_izq"),
-        "imagen": "assets/posturas/postura_perfil_izq.png",
-        "icono": "🙂",
-        "fotos": 60,
+        "imagen":      "assets/posturas/postura_perfil_izq.png",
+        "icono":       "🙂",
+        "fotos":       60,
     },
-
     {
-        "id": "perfil_der",
-        "titulo": t("perfil_derecha"),
+        "id":          "perfil_der",
+        "titulo":      t("perfil_derecha"),
         "instruccion": t("inst_perfil_der"),
-        "imagen": "assets/posturas/postura_perfil_der.png",
-        "icono": "🙂",
-        "fotos": 60,
-    }
+        "imagen":      "assets/posturas/postura_perfil_der.png",
+        "icono":       "🙂",
+        "fotos":       60,
+    },
 ]
-TOTAL_FOTOS   = sum(p["fotos"] for p in POSTURAS)  # 300
+
+TOTAL_FOTOS    = sum(p["fotos"] for p in POSTURAS)   # 300
 FRAMES_ESTABLE = 8
-CAPTURE_DELAY  = 0.04
+CAPTURE_DELAY  = 0.04   # segundos entre capturas (~25 fotos/seg)
 
 
 class NuevoRegistroView:
     def __init__(self, parent, initial_state=None):
-        self.colors = get_colors()
+        self.colors    = get_colors()
         self.parent    = parent
         self.container = ctk.CTkFrame(parent, fg_color=self.colors['background'])
         self.container.pack(fill="both", expand=True, padx=30, pady=30)
 
-        self.camara     = None
+        self.camara    = None
         self.capturando = False
-        self.fotos_temp = []
+        self.fotos_temp = []   # list[bytes] — JPG en color (BGR→RGB guardado como JPG)
         self.rol_actual = None
         self.entries    = {}
 
         self.postura_idx          = 0
         self.fotos_postura        = 0
-        self.capturando_rafaga    = False
         self.posturas_completadas = []
 
         self._auto_activo     = False
@@ -134,7 +128,9 @@ class NuevoRegistroView:
         self._countdown       = 0
         self._countdown_job   = None
         self._guardando       = False
+        self._pausado         = False
 
+        # ── Detectores Haar ────────────────────────────────────────────────────
         self.detector_frontal = cv2.CascadeClassifier(
             cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
         )
@@ -147,8 +143,9 @@ class NuevoRegistroView:
 
         self.modo_retomar_fotos = False
         self.user_id_existente  = None
+        self.valores_form       = {}
 
-        self.valores_form = {}
+        # Restaurar estado si viene de un recargo de vista
         estado = initial_state or {}
         self.rol_actual = estado.get("rol_actual")
         if self.rol_actual in ROL_CONFIG:
@@ -158,7 +155,7 @@ class NuevoRegistroView:
             self._mostrar_seleccion_rol()
 
     def export_state(self):
-        """Devuelve el estado del formulario para restaurarlo tras recargar la vista."""
+        """Exporta el estado del formulario para restaurarlo tras recargar la vista."""
         valores = dict(getattr(self, 'valores_form', {}) or {})
         for key, entry in getattr(self, 'entries', {}).items():
             try:
@@ -166,7 +163,7 @@ class NuevoRegistroView:
             except Exception:
                 pass
         return {
-            "rol_actual": self.rol_actual,
+            "rol_actual":  self.rol_actual,
             "valores_form": valores,
         }
 
@@ -174,19 +171,19 @@ class NuevoRegistroView:
     # PANTALLA 1 — Selección de rol
     # ═════════════════════════════════════════════════════════════════════════
     def _mostrar_seleccion_rol(self):
-        self.rol_actual = None
+        self.rol_actual   = None
         self.valores_form = {}
         self._limpiar_container()
+
         outer = ctk.CTkFrame(self.container, fg_color="transparent")
         outer.pack(fill="both", expand=True)
 
         ctk.CTkLabel(outer, text=t("nuevo_registro_titulo"),
-             font=("Segoe UI", 22, "bold"),
-             text_color=self.colors['text_dark']).pack(pady=(20, 4))
-
+                     font=("Segoe UI", 22, "bold"),
+                     text_color=self.colors['text_dark']).pack(pady=(20, 4))
         ctk.CTkLabel(outer, text=t("selecciona_tipo_usuario"),
-             font=("Segoe UI", 12),
-             text_color=self.colors['text_gray']).pack(pady=(0, 16))
+                     font=("Segoe UI", 12),
+                     text_color=self.colors['text_gray']).pack(pady=(0, 16))
 
         cards_frame = ctk.CTkFrame(outer, fg_color="transparent")
         cards_frame.pack(fill="both", expand=True, padx=20, pady=(0, 20))
@@ -195,9 +192,9 @@ class NuevoRegistroView:
         cards_frame.grid_rowconfigure(0, weight=1)
 
         for idx, (rol_key, cfg) in enumerate(ROL_CONFIG.items()):
-            self._crear_tarjeta_responsive(cards_frame, rol_key, cfg, col=idx)
+            self._crear_tarjeta(cards_frame, rol_key, cfg, col=idx)
 
-    def _crear_tarjeta_responsive(self, parent, rol_key, cfg, col):
+    def _crear_tarjeta(self, parent, rol_key, cfg, col):
         color = cfg["color"]
         outer = ctk.CTkFrame(parent, fg_color=color, corner_radius=14)
         outer.grid(row=0, column=col, padx=10, pady=10, sticky="nsew")
@@ -214,23 +211,8 @@ class NuevoRegistroView:
 
         info = ctk.CTkFrame(card, fg_color="transparent")
         info.grid(row=1, column=0, sticky="ew", padx=16)
-
-        ctk.CTkLabel(
-            info,
-            text=cfg['icono'],
-            font=("Segoe UI Emoji", 32),
-            text_color=color
-        ).pack()
-
-
-        ctk.CTkLabel(
-            info,
-            text=t(cfg['titulo']),
-            font=("Segoe UI", 22, "bold"),
-            text_color=color,
-            wraplength=160,
-            justify="center"
-        ).pack()
+        ctk.CTkLabel(info, text=cfg["titulo"], font=("Segoe UI", 30, "bold"),
+                     text_color=color, wraplength=160, justify="center").pack()
         ctk.CTkLabel(info, text=cfg["desc"], font=("Segoe UI", 11),
                      text_color=self.colors['text_gray'],
                      wraplength=160, justify="center").pack(pady=(4, 0))
@@ -297,11 +279,12 @@ class NuevoRegistroView:
         campos_rol = CAMPOS_POR_ROL.get(self.rol_actual, [])
         if campos_rol:
             titulos = {
-                "alumno": t("info_academica"),
-                "maestro": t("info_docente"),
-                "personal": t("info_laboral")
-}
-            self._section_label(form_frame, titulos.get(self.rol_actual, "Datos adicionales"), color)
+                "alumno":   t("info_academica"),
+                "maestro":  t("info_docente"),
+                "personal": t("info_laboral"),
+            }
+            self._section_label(form_frame,
+                                titulos.get(self.rol_actual, "Datos adicionales"), color)
             self._add_fields_grid(form_frame, campos_rol, columns=2)
 
         ctk.CTkButton(self.container, text=t("continuar_fotos"),
@@ -309,7 +292,8 @@ class NuevoRegistroView:
                       text_color=self.colors['white'],
                       font=FontScale.fb(13), corner_radius=10, height=42,
                       command=self._validar_y_continuar).pack(pady=20)
-        
+
+        # Restaurar valores si los hay
         if hasattr(self, 'valores_form') and self.valores_form:
             for key, entry in self.entries.items():
                 if key in self.valores_form:
@@ -345,25 +329,26 @@ class NuevoRegistroView:
         self.entries[key] = entry
 
     def _validar_y_continuar(self):
-        for key in ['nombreUsuario', 'apellidoPaternoUsuario', 'telefonoUsuario', 'correoUsuario']:
+        requeridos = {
+            'nombreUsuario':          'nombre',
+            'apellidoPaternoUsuario': 'apellido paterno',
+            'telefonoUsuario':        'teléfono',
+            'correoUsuario':          'correo',
+        }
+        for key, nombre in requeridos.items():
             if not self.entries.get(key, tk.Entry()).get().strip():
-                nombres = {'nombreUsuario': 'nombre', 'apellidoPaternoUsuario': 'apellido paterno',
-                           'telefonoUsuario': 'teléfono', 'correoUsuario': 'correo'}
-                messagebox.showwarning(
-                        t("campo_requerido"),
-                        t("nombre_obligatorio")
-     )
+                messagebox.showwarning(t("campo_requerido"),
+                                       t("nombre_obligatorio"))
                 return
+
         for _, key, required in CAMPOS_POR_ROL.get(self.rol_actual, []):
             if required and not self.entries.get(key, tk.Entry()).get().strip():
-                messagebox.showwarning(
-                        t("campo_requerido"),
-                        f"El campo '{key}' es obligatorio"
-    )
+                messagebox.showwarning(t("campo_requerido"),
+                                       f"El campo '{key}' es obligatorio")
                 return
-        self.valores_form    = {k: e.get().strip() for k, e in self.entries.items()}
-        self._camara_lista   = False
-        self._camara_preinit = None
+
+        self.valores_form  = {k: e.get().strip() for k, e in self.entries.items()}
+        self._camara_lista = False
         self._mostrar_animacion_camara()
 
     # ═════════════════════════════════════════════════════════════════════════
@@ -404,8 +389,7 @@ class NuevoRegistroView:
                      text_color=c['text_dark']).pack()
 
         self._dots_label = ctk.CTkLabel(inner, text="",
-                                         font=("Segoe UI", 18),
-                                         text_color=color)
+                                         font=("Segoe UI", 18), text_color=color)
         self._dots_label.pack(pady=2)
 
         self._prog_anim = ctk.CTkProgressBar(inner, width=220, height=6,
@@ -424,13 +408,16 @@ class NuevoRegistroView:
         self._tick_anim_prog()
         self._tick_anim_ring()
 
-        threading.Thread(target=self._init_camara_bg, daemon=True).start()
+        # La cámara se abre directamente en _iniciar_camara_auto
+        self.container.after(200, self._set_camara_lista)
+
+    def _set_camara_lista(self):
+        self._camara_lista = True
 
     def _dibujar_icono_camara(self, color):
         cv = self._cam_canvas
         cv.delete("all")
         cx, cy = 55, 58
-
         r = self._anim_radio
         cv.create_oval(cx-r, cy-r, cx+r, cy+r, outline=color, width=2)
         cv.create_rectangle(cx-22, cy-14, cx+22, cy+14, outline=color, width=2, fill="")
@@ -479,13 +466,8 @@ class NuevoRegistroView:
         else:
             self.container.after(300, self._mostrar_captura)
 
-    def _init_camara_bg(self):
-        # No preinit — la cámara se abre solo cuando se necesita en _iniciar_camara_auto
-        self._camara_preinit = None
-        self._camara_lista = True
-
     # ═════════════════════════════════════════════════════════════════════════
-    # PANTALLA 4 — Captura
+    # PANTALLA 4 — Captura biométrica
     # ═════════════════════════════════════════════════════════════════════════
     def _mostrar_captura(self):
         self._anim_activa = False
@@ -496,19 +478,24 @@ class NuevoRegistroView:
         color = cfg["color"]
         c     = self.colors
 
+        # ── Header ────────────────────────────────────────────────────────────
         header = ctk.CTkFrame(self.container, fg_color="transparent")
         header.pack(fill="x", pady=(0, 8))
+
         ctk.CTkButton(header, text="← Volver al formulario",
-              fg_color='#16A34A', hover_color="#15803D",
-              text_color="#ffffff",
-              font=("Segoe UI", 15, "bold"),
-              corner_radius=8, height=32,
-              command=self._volver_formulario).pack(side="left")
+                      fg_color='#16A34A', hover_color="#15803D",
+                      text_color="#ffffff",
+                      font=("Segoe UI", 15, "bold"),
+                      corner_radius=8, height=32,
+                      command=self._volver_formulario).pack(side="left")
+
         ctk.CTkLabel(header, text="Paso 2/2 — Captura biométrica automática",
-                     font=("Segoe UI", 12), text_color=c['text_gray']).pack(side="left", padx=15)
+                     font=("Segoe UI", 12),
+                     text_color=c['text_gray']).pack(side="left", padx=15)
 
         ttk.Separator(self.container, orient="horizontal").pack(fill="x", pady=(0, 8))
 
+        # ── Barra de progreso global ───────────────────────────────────────────
         prog_frame = ctk.CTkFrame(self.container, fg_color="transparent")
         prog_frame.pack(fill="x", padx=4, pady=(0, 6))
         self.bar_total_ctk = ctk.CTkProgressBar(prog_frame, height=12,
@@ -518,6 +505,7 @@ class NuevoRegistroView:
         self.bar_total_ctk.set(0)
         self.bar_total_ctk.pack(fill="x", padx=8)
 
+        # ── Cuerpo ────────────────────────────────────────────────────────────
         body = ctk.CTkFrame(self.container, fg_color="transparent")
         body.pack(fill="both", expand=True)
 
@@ -531,7 +519,7 @@ class NuevoRegistroView:
                                   corner_radius=12, border_width=1,
                                   border_color=COLORS['border'])
         cam_panel.pack(side="left", fill="both", expand=True)
-        
+
         self.video_label = tk.Label(cam_panel, bg=COLORS['content_bg'])
         self.video_label.pack(fill="both", expand=True, padx=8, pady=(8, 4))
 
@@ -545,9 +533,8 @@ class NuevoRegistroView:
         estado_panel = ctk.CTkFrame(cam_panel, fg_color=c['content_bg'], corner_radius=8)
         estado_panel.pack(fill="x", padx=8, pady=(0, 8))
 
-        self.lbl_estado = ctk.CTkLabel(
-        estado_panel,
-        text=t("iniciando_camara_estado"),
+        self.lbl_estado = ctk.CTkLabel(estado_panel,
+                                        text=t("iniciando_camara_estado"),
                                         font=("Segoe UI", 13, "bold"),
                                         text_color=c['text_gray'])
         self.lbl_estado.pack(pady=6)
@@ -557,22 +544,24 @@ class NuevoRegistroView:
                                             text_color=c['text_gray'])
         self.lbl_sub_estado.pack(pady=(0, 6))
 
-        self._btn_pausar = ctk.CTkButton(cam_panel, text=t("pausar"),
-                                  fg_color=c['accent'], hover_color="#D97706",
-                                  text_color="#ffffff",
-                                  font=("Segoe UI", 11, "bold"),
-                                  corner_radius=8, height=32, width=110,
-                                  command=self._toggle_pausa)
-        self._btn_pausar.pack(side="right", padx=(0, 8), pady=(0, 8))
-        self._pausado = False
+        # Botones inferiores
+        btn_row = ctk.CTkFrame(cam_panel, fg_color="transparent")
+        btn_row.pack(fill="x", padx=8, pady=(0, 8))
 
+        self._btn_pausar = ctk.CTkButton(btn_row, text=t("pausar"),
+                                          fg_color=c['accent'], hover_color="#D97706",
+                                          text_color="#ffffff",
+                                          font=("Segoe UI", 11, "bold"),
+                                          corner_radius=8, height=32, width=110,
+                                          command=self._toggle_pausa)
+        self._btn_pausar.pack(side="right", padx=(4, 0))
 
-        self._btn_cancelar = ctk.CTkButton(cam_panel, text=t("cancelar"),
-              fg_color="#DC2626", hover_color="#B91C1C",
-              text_color="#ffffff",
-              font=("Segoe UI", 11, "bold"),
-              corner_radius=8, height=32, width=110,
-              command=self._mostrar_seleccion_rol).pack(side="right", padx=(0, 4), pady=(0, 8))
+        ctk.CTkButton(btn_row, text=t("cancelar"),
+                      fg_color="#DC2626", hover_color="#B91C1C",
+                      text_color="#ffffff",
+                      font=("Segoe UI", 11, "bold"),
+                      corner_radius=8, height=32, width=110,
+                      command=self._mostrar_seleccion_rol).pack(side="right", padx=(0, 4))
 
         self._construir_panel_guia(color)
         self._iniciar_camara_auto()
@@ -582,7 +571,6 @@ class NuevoRegistroView:
         self.postura_idx          = 0
         self.fotos_postura        = 0
         self.posturas_completadas = []
-        self.capturando_rafaga    = False
         self._auto_activo         = False
         self._frames_con_cara     = 0
         self._ultima_captura      = 0.0
@@ -596,7 +584,7 @@ class NuevoRegistroView:
                 pass
             self._countdown_job = None
 
-    # ── Panel guía lateral ────────────────────────────────────────────────────
+    # ── Panel guía ────────────────────────────────────────────────────────────
     def _construir_panel_guia(self, color):
         for w in self.panel_guia.winfo_children():
             w.destroy()
@@ -607,8 +595,7 @@ class NuevoRegistroView:
         ctk.CTkLabel(self.panel_guia,
                      text=f"Postura {self.postura_idx + 1} / {len(POSTURAS)}",
                      font=("Segoe UI", 10), text_color=c['text_gray']).pack(pady=(12, 0))
-        ctk.CTkLabel(self.panel_guia,
-                     text=postura["titulo"],
+        ctk.CTkLabel(self.panel_guia, text=postura["titulo"],
                      font=("Segoe UI", 13, "bold"),
                      text_color=color, wraplength=220, justify="center").pack(pady=(2, 8))
 
@@ -625,14 +612,11 @@ class NuevoRegistroView:
             except Exception:
                 pass
         if not img_loaded:
-            ctk.CTkLabel(self.panel_guia,
-                         text=postura["icono"],
+            ctk.CTkLabel(self.panel_guia, text=postura["icono"],
                          font=("Segoe UI Emoji", 54)).pack(pady=8)
 
-        ctk.CTkLabel(self.panel_guia,
-                     text=postura["instruccion"],
-                     font=("Segoe UI", 10),
-                     text_color=c['text_dark'],
+        ctk.CTkLabel(self.panel_guia, text=postura["instruccion"],
+                     font=("Segoe UI", 10), text_color=c['text_dark'],
                      wraplength=210, justify="center").pack(pady=(4, 10))
 
         ctk.CTkFrame(self.panel_guia, fg_color=COLORS['border'],
@@ -655,12 +639,10 @@ class NuevoRegistroView:
         try:
             self.camara = Camera()
             self.camara.start()
-            time.sleep(1)
-
-            self.capturando = True
+            time.sleep(0.8)
+            self.capturando   = True
             self._auto_activo = True
             self._iniciar_countdown()
-
         except Exception as e:
             self._set_estado(t("error_iniciar_camara"), str(e), "danger")
 
@@ -692,22 +674,22 @@ class NuevoRegistroView:
             self._btn_pausar.configure(text=t("pausar"), fg_color=self.colors['accent'])
             self._set_estado(t("reanudando"), "", "info")
 
-    # ── Detección de cara ─────────────────────────────────────────────────────
+    # ── Detección de cara por postura ──────────────────────────────────────────
     def _filtrar_caras(self, caras, frame_shape):
-        """Descarta detecciones pequeñas o en bordes del frame."""
-        h_frame, w_frame = frame_shape[:2]
-        area_minima = (w_frame * 0.12) * (h_frame * 0.12)
+        """Descarta caras demasiado pequeñas o en los bordes del frame."""
+        h_f, w_f = frame_shape[:2]
+        area_min = (w_f * 0.10) * (h_f * 0.10)
         resultado = []
         for (x, y, w, h) in caras:
-            if w * h < area_minima:
+            if w * h < area_min:
                 continue
-            if x < 10 or y < 10 or (x + w) > w_frame - 10:
+            if x < 8 or y < 8 or (x + w) > w_f - 8:
                 continue
             resultado.append((x, y, w, h))
         return resultado
 
     def _detectar_cara(self, frame, gray, postura_id):
-        """Detecta cara según la postura. Devuelve lista de (x,y,w,h) o []."""
+        """Detecta cara según la postura actual. Retorna lista de (x,y,w,h) o []."""
         PARAMS = {
             "frontal":    dict(scaleFactor=1.1,  minNeighbors=7, minSize=(90, 90)),
             "izquierda":  dict(scaleFactor=1.05, minNeighbors=5, minSize=(70, 70)),
@@ -718,14 +700,12 @@ class NuevoRegistroView:
         p = PARAMS.get(postura_id, PARAMS["frontal"])
 
         if postura_id in ("izquierda", "derecha"):
-            # Primero intentar directo con ambos detectores
             for det in [self.detector_alt, self.detector_frontal]:
                 caras = det.detectMultiScale(gray, **p)
                 filtradas = self._filtrar_caras(caras, gray.shape)
                 if filtradas:
                     return filtradas
-
-            # Si nada directo, intentar con flip con ambos detectores
+            # Intento con flip
             gray_flip = cv2.flip(gray, 1)
             flip_w    = gray_flip.shape[1]
             for det in [self.detector_alt, self.detector_frontal]:
@@ -750,6 +730,7 @@ class NuevoRegistroView:
             caras = self.detector_perfil.detectMultiScale(gray, **p)
             if len(caras) > 0:
                 return self._filtrar_caras(caras, gray.shape)
+            # Intento con flip
             gray_flip = cv2.flip(gray, 1)
             caras = self.detector_perfil.detectMultiScale(gray_flip, **p)
             if len(caras) > 0:
@@ -762,7 +743,7 @@ class NuevoRegistroView:
             caras = self.detector_frontal.detectMultiScale(gray, **p)
             return self._filtrar_caras(caras, gray.shape) if len(caras) > 0 else []
 
-    # ── Loop de video ─────────────────────────────────────────────────────────
+    # ── Loop de video y captura ────────────────────────────────────────────────
     def _actualizar_video(self):
         if not self.capturando or self.camara is None:
             return
@@ -778,8 +759,6 @@ class NuevoRegistroView:
             self.video_label.after(30, self._actualizar_video)
             return
 
-        color = ROL_CONFIG[self.rol_actual]["color"]
-
         gray       = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         postura_id = POSTURAS[self.postura_idx]["id"]
         caras      = self._detectar_cara(frame, gray, postura_id)
@@ -789,7 +768,7 @@ class NuevoRegistroView:
 
         if cara_detectada:
             self._frames_con_cara += 1
-            x, y, w, h = max(caras, key=lambda c: c[2]*c[3])
+            x, y, w, h = max(caras, key=lambda c: c[2] * c[3])
 
             listo      = self._frames_con_cara >= FRAMES_ESTABLE
             rect_color = (0, 220, 0) if listo else (0, 180, 255)
@@ -800,11 +779,13 @@ class NuevoRegistroView:
                     and listo
                     and (ahora - self._ultima_captura) >= CAPTURE_DELAY):
 
-                rostro = frame[y:y+h, x:x+w]
-                rostro = cv2.cvtColor(rostro, cv2.COLOR_BGR2GRAY)
-                rostro = cv2.resize(rostro, (200, 200))
-                _, buf = cv2.imencode('.jpg', rostro,
-                                      [cv2.IMWRITE_JPEG_QUALITY, 90])
+                # ── IMPORTANTE: guardar en COLOR (BGR) ────────────────────────
+                # face_recognition necesita imagen en color para extraer encodings.
+                # Guardamos el recorte del rostro en color como JPG.
+                rostro_bgr = frame[y:y+h, x:x+w]
+                rostro_bgr = cv2.resize(rostro_bgr, (200, 200))
+                _, buf = cv2.imencode('.jpg', rostro_bgr,
+                                      [cv2.IMWRITE_JPEG_QUALITY, 92])
                 self.fotos_temp.append(buf.tobytes())
                 self.fotos_postura  += 1
                 self._ultima_captura = ahora
@@ -822,7 +803,7 @@ class NuevoRegistroView:
                 if self.fotos_postura < total_fotos:
                     self._set_estado(
                         f"✅ {t('capturando')} {POSTURAS[self.postura_idx]['titulo']}",
-                        f"{t('manten_posicion')} {int(progreso_pos*100)}%",
+                        f"{t('manten_posicion')} {int(progreso_pos * 100)}%",
                         "ok")
                 else:
                     self._postura_completada()
@@ -830,14 +811,11 @@ class NuevoRegistroView:
         else:
             self._frames_con_cara = 0
             if not self._pausado and self._auto_activo:
-                self._set_estado(
-                    t("no_detecta_cara"),
-                    t("acercate_iluminacion"),
-                    "warn")
+                self._set_estado(t("no_detecta_cara"), t("acercate_iluminacion"), "warn")
             cv2.putText(frame, t("sin_cara"), (12, 30),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (30, 30, 220), 2)
 
-        # Mostrar frame
+        # Mostrar frame en UI
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         h_f, w_f  = frame_rgb.shape[:2]
         try:
@@ -868,34 +846,27 @@ class NuevoRegistroView:
             siguiente = POSTURAS[self.postura_idx + 1]
             self._set_estado(
                 t("postura_completada"),
-                f"Prepárate para: {siguiente['titulo']} — cambiando en 2s...",
-                "ok")
+                f"Prepárate para: {siguiente['titulo']} — cambiando en 2s...", "ok")
             self.container.after(1800, self._pasar_a_siguiente_postura)
         else:
             self.bar_total_ctk.set(1.0)
-            self._set_estado(
-                t("todas_posturas"),
-                t("guardando_auto"),
-                "ok")
+            self._set_estado(t("todas_posturas"), t("guardando_auto"), "ok")
             self.container.after(800, self._guardar_automatico)
 
     def _pasar_a_siguiente_postura(self):
         if not self.capturando:
             return
-        self.postura_idx    += 1
-        self.fotos_postura   = 0
+        self.postura_idx     += 1
+        self.fotos_postura    = 0
         self._frames_con_cara = 0
-        self._countdown      = 3
-
+        self._countdown       = 3
         color = ROL_CONFIG[self.rol_actual]["color"]
         self.bar_postura_ctk.set(0)
         self._construir_panel_guia(color)
-
         postura = POSTURAS[self.postura_idx]
         self._set_estado(
             f"🔄 {t('nueva_postura')} {postura['titulo']}",
-            f"Comenzando en {self._countdown}...",
-            "info")
+            f"Comenzando en {self._countdown}...", "info")
         self._tick_countdown_postura()
 
     def _tick_countdown_postura(self):
@@ -932,7 +903,7 @@ class NuevoRegistroView:
         except Exception:
             pass
 
-    # ── Guardado ──────────────────────────────────────────────────────────────
+    # ── Guardado en BD ────────────────────────────────────────────────────────
     def _guardar_automatico(self):
         self._guardando = True
         self._detener_camara_silencio()
@@ -944,8 +915,8 @@ class NuevoRegistroView:
             v   = getattr(self, 'valores_form', {})
 
             def val(key, upper=True):
-                t = v.get(key, "").strip()
-                return t.upper() if upper else t
+                texto = v.get(key, "").strip()
+                return texto.upper() if upper else texto
 
             conn  = get_db()
             ahora = datetime.now()
@@ -1008,9 +979,7 @@ class NuevoRegistroView:
 
         except Exception as e:
             self.container.after(0, lambda: messagebox.showerror(
-t("error"),
-f"{t('error_guardar')} {e}"
-))
+                t("error"), f"{t('error_guardar')} {e}"))
             self._guardando = False
 
     def _fin_guardado(self, titulo, mensaje):
