@@ -372,9 +372,10 @@ class MainView:
         stats_row.pack(fill="x", pady=(0, 18))
         stats_row.grid_columnconfigure((0, 1, 2), weight=1, uniform="stat")
 
-        self._stat_total     = self._stat_card(stats_row, "Accesos",   "0", COLORS['primary'], "🔢", 0)
-        self._stat_aceptados = self._stat_card(stats_row, "Aceptados", "0", "#27AE60",         "✅", 1)
-        self._stat_denegados = self._stat_card(stats_row, "Denegados", "0", COLORS['danger'],  "❌", 2)
+        self._stat_total     = self._stat_card(stats_row, t("total"),     "0", COLORS['primary'], "🔢", 0)
+        self._stat_aceptados = self._stat_card(stats_row, t("aceptados"), "0", "#27AE60",         "✅", 1)
+        self._stat_denegados = self._stat_card(stats_row, t("denegados"), "0", COLORS['danger'],  "❌", 2)
+        
         self._cargar_stats()
 
         card = ctk.CTkFrame(outer, fg_color=c['card_bg'], corner_radius=18,
@@ -425,19 +426,34 @@ class MainView:
             if not conn:
                 return
             cur = conn.cursor()
+
             cur.execute("SELECT COUNT(*) FROM accesos")
             total = cur.fetchone()[0]
+
             cur.execute("SELECT COUNT(*) FROM accesos WHERE estado_acceso='aceptado'")
             aceptados = cur.fetchone()[0]
+
             cur.execute("SELECT COUNT(*) FROM accesos WHERE estado_acceso='denegado'")
             denegados = cur.fetchone()[0]
+
             conn.close()
+
             self._stat_total.configure(text=str(total))
             self._stat_aceptados.configure(text=str(aceptados))
             self._stat_denegados.configure(text=str(denegados))
+
         except Exception:
             pass
+        
+        def _actualizar_textos(self):
+            # header
+            try:
+                self.btn_salir.configure(text=t("salir"))
+            except:
+                pass
 
+            # sidebar
+        self._actualizar_sidebar_idioma()
     # ══════════════════════════════════════════════════════════════════════════
     # OTRAS VISTAS
     # ══════════════════════════════════════════════════════════════════════════
