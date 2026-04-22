@@ -218,10 +218,13 @@ class MainView:
         ctk.CTkLabel(title_frame, text=t("titulo"),
              font=("Segoe UI", 18, "bold"), text_color=c['white']).pack(side="left")
 
-        ctk.CTkButton(header, text=t("salir"), font=("Segoe UI", 12, "bold"),
-              fg_color=c['danger'], hover_color=COLORS['danger_dark'],
-              text_color=c['white'], width=90, height=34, corner_radius=8,
-              command=self.logout).pack(side="right", padx=(0, 12))
+        self.btn_salir = ctk.CTkButton(
+            header, text=t("salir"), font=("Segoe UI", 12, "bold"),
+            fg_color=c['danger'], hover_color=COLORS['danger_dark'],
+            text_color=c['white'], width=90, height=34, corner_radius=8,
+            command=self.logout
+        )
+        self.btn_salir.pack(side="right", padx=(0, 12))
 
         self.lbl_reloj = ctk.CTkLabel(header, text="", font=("Segoe UI", 12),
                                        text_color=c['white'])
@@ -1138,6 +1141,11 @@ class MainView:
         cambiar_idioma()
 
         self._actualizar_sidebar_idioma()
+
+        try:
+            self.btn_salir.configure(text=t("salir"))
+        except:
+            pass
 
         self._recargar_vista()
 
