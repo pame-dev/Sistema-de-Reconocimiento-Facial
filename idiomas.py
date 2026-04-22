@@ -160,7 +160,11 @@ TEXTOS = {
         "confianza": "Confianza",
         "umbral": "Umbral",
         "pregunta_limpiar_historial": "¿Estás seguro de que quieres eliminar TODO el historial?\n\nEsta acción no se puede deshacer.",
-        "historial_eliminado": "Historial eliminado correctamente."
+        "historial_eliminado": "Historial eliminado correctamente.",
+        "usuarios_total": "{} usuario{}",
+        "error_cargar_datos": "Error al cargar datos: {}",
+        "error_eliminar": "No se pudo eliminar: {}",
+        "error_captura": "No se pudo iniciar la captura: {}"
     },
     "en": {
         "titulo": "Sentinel System — Main Panel",
@@ -321,7 +325,11 @@ TEXTOS = {
         "confianza": "Confidence",
         "umbral": "Threshold",
         "pregunta_limpiar_historial": "Are you sure you want to delete ALL history?\n\nThis action cannot be undone.",
-        "historial_eliminado": "History deleted successfully."
+        "historial_eliminado": "History deleted successfully.",
+        "usuarios_total": "{} user{}",
+        "error_cargar_datos": "Error loading data: {}",
+        "error_eliminar": "Could not delete: {}",
+        "error_captura": "Could not start capture: {}"
     }
 }
 
