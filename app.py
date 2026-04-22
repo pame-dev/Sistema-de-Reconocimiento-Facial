@@ -5,7 +5,6 @@ from PIL import Image, ImageTk
 from config import WINDOW_WIDTH, WINDOW_HEIGHT, ASSETS_PATH, ICON_FILE # importamos configuraciones generales del sistema
 from views.login_view import LoginView 
 from views.main_view import MainView 
-#prueba de pr
 class SentinelApp:
     """Clase principal que maneja la aplicación y navegación entre vistas"""
     

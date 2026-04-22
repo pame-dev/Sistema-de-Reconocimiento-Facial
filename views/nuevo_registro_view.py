@@ -111,7 +111,7 @@ CAPTURE_DELAY  = 0.04
 
 
 class NuevoRegistroView:
-    def __init__(self, parent):
+    def __init__(self, parent, initial_state=None):
         self.colors = get_colors()
         self.parent    = parent
         self.container = ctk.CTkFrame(parent, fg_color=self.colors['background'])
@@ -148,12 +148,33 @@ class NuevoRegistroView:
         self.modo_retomar_fotos = False
         self.user_id_existente  = None
 
-        self._mostrar_seleccion_rol()
+        self.valores_form = {}
+        estado = initial_state or {}
+        self.rol_actual = estado.get("rol_actual")
+        if self.rol_actual in ROL_CONFIG:
+            self.valores_form = dict(estado.get("valores_form") or {})
+            self._mostrar_formulario()
+        else:
+            self._mostrar_seleccion_rol()
+
+    def export_state(self):
+        """Devuelve el estado del formulario para restaurarlo tras recargar la vista."""
+        valores = dict(getattr(self, 'valores_form', {}) or {})
+        for key, entry in getattr(self, 'entries', {}).items():
+            try:
+                valores[key] = entry.get().strip()
+            except Exception:
+                pass
+        return {
+            "rol_actual": self.rol_actual,
+            "valores_form": valores,
+        }
 
     # ═════════════════════════════════════════════════════════════════════════
     # PANTALLA 1 — Selección de rol
     # ═════════════════════════════════════════════════════════════════════════
     def _mostrar_seleccion_rol(self):
+        self.rol_actual = None
         self.valores_form = {}
         self._limpiar_container()
         outer = ctk.CTkFrame(self.container, fg_color="transparent")

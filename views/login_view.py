@@ -24,11 +24,10 @@ _CHIP_BG    = "#EBF2FA"   # chip azul muy claro
 
 
 class LoginView:
-    """Pantalla de inicio de sesión — Dark tech aesthetic"""
+    """Pantalla de acceso directo al sistema."""
 
     def __init__(self, parent, app):
         self.app           = app
-        self._pass_visible = False
 
         # Fondo oscuro total
         self.frame = ctk.CTkFrame(parent, fg_color=_DARK_BG)
@@ -54,8 +53,6 @@ class LoginView:
         )
         self.card.place(relx=0.74, rely=0.5, anchor="center", relwidth=0.43, relheight=0.86)
 
-        self.email_var    = tk.StringVar()
-        self.password_var = tk.StringVar()
         self._build_card()
 
     # ── Panel izquierdo ───────────────────────────────────────────────────────
@@ -140,19 +137,19 @@ class LoginView:
             ctk.CTkLabel(self.card, image=self._card_logo, text="").pack(pady=(22, 4))
         except Exception:
             ctk.CTkLabel(
-                self.card, text="🔐",
+                self.card, text="🚀",
                 font=("Segoe UI Emoji", 42),
                 text_color=_ACCENT
             ).pack(pady=(22, 4))
 
         ctk.CTkLabel(
-            self.card, text="Le da la Bienvenida",
+            self.card, text="Acceso directo",
             font=("Segoe UI", 20, "bold"),
             text_color=_TEXT_MAIN
         ).pack(pady=(0, 3))
 
         ctk.CTkLabel(
-            self.card, text="Ingresa tus credenciales para acceder",
+            self.card, text="Presiona el botón para entrar al sistema",
             font=("Segoe UI", 11),
             text_color=_TEXT_MUTED
         ).pack(pady=(0, 18))
@@ -160,55 +157,10 @@ class LoginView:
         # Separador
         ctk.CTkFrame(self.card, fg_color=_BORDER_DK, height=1).pack(fill="x", padx=28, pady=(0, 18))
 
-        # Correo
-        self._lbl("Correo electrónico")
-        self.email_entry = ctk.CTkEntry(
-            self.card,
-            textvariable=self.email_var,
-            height=44, corner_radius=10,
-            border_width=1, border_color=_BORDER_DK,
-            fg_color=_INPUT_BG,
-            text_color=_TEXT_MAIN,
-            placeholder_text="usuario@universidad.edu",
-            placeholder_text_color=_TEXT_MUTED,
-            font=("Segoe UI", 12),
-        )
-        self.email_entry.pack(pady=(5, 14), padx=28, fill="x")
-
-        # Contraseña
-        self._lbl("Contraseña")
-        pass_row = ctk.CTkFrame(self.card, fg_color="transparent")
-        pass_row.pack(pady=(5, 6), padx=28, fill="x")
-
-        self.password_entry = ctk.CTkEntry(
-            pass_row,
-            textvariable=self.password_var,
-            show="*", height=44, corner_radius=10,
-            border_width=1, border_color=_BORDER_DK,
-            fg_color=_INPUT_BG,
-            text_color=_TEXT_MAIN,
-            placeholder_text="••••••••",
-            placeholder_text_color=_TEXT_MUTED,
-            font=("Segoe UI", 13),
-        )
-        self.password_entry.pack(side="left", fill="x", expand=True)
-
-        self.btn_ojo = ctk.CTkButton(
-            pass_row, text="👁",
-            width=44, height=44,
-            fg_color=_INPUT_BG, hover_color=_BORDER_DK,
-            text_color=_TEXT_MUTED,
-            border_width=1, border_color=_BORDER_DK,
-            corner_radius=10,
-            font=("Segoe UI Emoji", 15),
-            command=self._toggle_password
-        )
-        self.btn_ojo.pack(side="left", padx=(6, 0))
-
         # Botón ingresar
         ctk.CTkButton(
             self.card,
-            text="Iniciar sesión  →",
+            text="Entrar al sistema  →",
             height=46, corner_radius=10,
             fg_color=_ACCENT, hover_color=_ACCENT2,
             text_color="#FFFFFF",
@@ -219,28 +171,10 @@ class LoginView:
         # Footer
         ctk.CTkLabel(
             self.card,
-            text="Sentinel System  •  Acceso seguro",
+            text="Sentinel System  •  Entrada rápida",
             font=("Segoe UI", 12),
             text_color="#AAAAAA"
         ).pack(side="bottom", pady=12)
-
-        # Bindings
-        self.email_entry.focus_set()
-        self.email_entry.bind("<Return>",    lambda _: self.password_entry.focus_set())
-        self.password_entry.bind("<Return>", lambda _: self.login())
-
-    def _lbl(self, text):
-        ctk.CTkLabel(
-            self.card, text=text,
-            text_color=_TEXT_MUTED,
-            font=("Segoe UI", 11, "bold"),
-            anchor="w"
-        ).pack(padx=28, fill="x")
-
-    def _toggle_password(self):
-        self._pass_visible = not self._pass_visible
-        self.password_entry.configure(show="" if self._pass_visible else "*")
-        self.btn_ojo.configure(text="🙈" if self._pass_visible else "👁")
 
     def login(self):
         self.app.show_main_view()
