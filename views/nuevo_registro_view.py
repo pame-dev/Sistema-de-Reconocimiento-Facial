@@ -25,9 +25,9 @@ from database.queries import (
 
 # ── Configuración de roles ────────────────────────────────────────────────────
 ROL_CONFIG = {
-    "alumno":   {"icono": "🎓", "titulo": t("estudiante"), "desc": " ", "color": "#4A90D9"},
-    "maestro":  {"icono": "📚", "titulo": t("docente"), "desc": " ", "color": "#27AE60"},
-    "personal": {"icono": "🏢", "titulo": t("personal"), "desc": "", "color": "#E67E22"},
+    "alumno":   {"icono": "🎓", "titulo": "estudiante", "desc": " ", "color": "#4A90D9"},
+    "maestro":  {"icono": "📚", "titulo": "docente", "desc": " ", "color": "#27AE60"},
+    "personal": {"icono": "🏢", "titulo": "personal", "desc": "", "color": "#E67E22"},
 }
 
 CAMPOS_POR_ROL = {
@@ -214,8 +214,23 @@ class NuevoRegistroView:
 
         info = ctk.CTkFrame(card, fg_color="transparent")
         info.grid(row=1, column=0, sticky="ew", padx=16)
-        ctk.CTkLabel(info, text=cfg["titulo"], font=("Segoe UI", 30, "bold"),
-                     text_color=color, wraplength=160, justify="center").pack()
+
+        ctk.CTkLabel(
+            info,
+            text=cfg['icono'],
+            font=("Segoe UI Emoji", 32),
+            text_color=color
+        ).pack()
+
+
+        ctk.CTkLabel(
+            info,
+            text=t(cfg['titulo']),
+            font=("Segoe UI", 22, "bold"),
+            text_color=color,
+            wraplength=160,
+            justify="center"
+        ).pack()
         ctk.CTkLabel(info, text=cfg["desc"], font=("Segoe UI", 11),
                      text_color=self.colors['text_gray'],
                      wraplength=160, justify="center").pack(pady=(4, 0))

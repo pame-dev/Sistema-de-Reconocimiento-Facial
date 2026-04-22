@@ -167,7 +167,8 @@ TEXTOS = {
         "error_captura": "No se pudo iniciar la captura: {}",
           "total": "Total de accesos",
         "aceptados": "Accesos aceptados",
-        "denegados": "Accesos denegados"
+        "denegados": "Accesos denegados",
+        "eliminar_usuario_msg": "¿Deseas eliminar al usuario {nombre} {apellido} con rol {rol}?",
     },
     "en": {
         "titulo": "Sentinel System — Main Panel",
@@ -335,7 +336,8 @@ TEXTOS = {
         "error_captura": "Could not start capture: {}",
          "total": "Total accesses",
         "aceptados": "Accepted accesses",
-        "denegados": "Denied accesses"
+        "denegados": "Denied accesses",
+        "eliminar_usuario_msg": "Do you want to delete user {nombre} {apellido} with role {rol}?",
     }
     }
 
