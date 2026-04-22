@@ -167,7 +167,7 @@ class InformacionEscolarView:
                      font=("Segoe UI", 12, "bold")).pack(side="left", padx=(0, 6), pady=10)
 
         self.filtro_rol = ttk.Combobox(filtros,
-            values=[t("todos"), "alumno", "maestro", "personal"],
+            values=[t("todos"), t("estudiante"), t("docente"), t("personal")],
             state="readonly", width=16,
             font=("Segoe UI", 12),
             style='Dark.TCombobox')
@@ -330,10 +330,10 @@ class InformacionEscolarView:
 
     # ── Datos ─────────────────────────────────────────────────────────────────
     def _actualizar_todo(self):
-        self.filtro_rol.set("Todos")
+        self.filtro_rol.set(t("todos"))
         self.busqueda_var.set("")
         self.entrada_busqueda.delete(0, tk.END)
-        self.entrada_busqueda.insert(0, t("nombre_matricula_carrera"))
+        self.entrada_busqueda.insert(0, t("placeholder_busqueda"))
         self.entrada_busqueda.configure(text_color=self.colors['text_gray'])
         self._placeholder_activo = True
         self.cargar_datos()
@@ -377,7 +377,7 @@ class InformacionEscolarView:
                 })
             self.actualizar_tabla()
         except Exception as e:
-            messagebox.showerror("Error", f"Error al cargar datos: {e}")
+            messagebox.showerror(t("error"), t("error_cargar_datos").format(e))
             self.datos = []
 
     def actualizar_tabla(self, datos_filtrados=None):
@@ -392,7 +392,9 @@ class InformacionEscolarView:
             ), tags=(u.get('rol',''),))
 
         total = len(lista)
-        self.lbl_conteo.configure(text=f"{total} usuario{'s' if total != 1 else ''}")
+        self.lbl_conteo.configure(
+            text=t("usuarios_total").format(total, "s" if total != 1 else "")
+        )
 
     def filtrar_tabla(self):
         rol_filtro = self.filtro_rol.get()
@@ -400,11 +402,11 @@ class InformacionEscolarView:
 
         resultado = [
             u for u in self.datos
-            if (rol_filtro == "Todos" or str(u.get('rol','')).lower() == rol_filtro)
+            if (rol_filtro == t("todos") or str(u.get('rol','')).lower() == rol_filtro)
             and (not texto
-                 or texto in str(u.get('nombre','')).lower()
-                 or texto in str(u.get('matricula','')).lower()
-                 or texto in str(u.get('carrera','')).lower())
+                or texto in str(u.get('nombre','')).lower()
+                or texto in str(u.get('matricula','')).lower()
+                or texto in str(u.get('carrera','')).lower())
         ]
         self.actualizar_tabla(resultado)
 
@@ -417,7 +419,7 @@ class InformacionEscolarView:
 
     def restaurar_placeholder(self, event):
         if not self.busqueda_var.get().strip():
-            self.entrada_busqueda.insert(0, "Nombre, matrícula o carrera...")
+            self.entrada_busqueda.insert(0, t("placeholder_busqueda"))
             self.entrada_busqueda.configure(text_color=self.colors['text_gray'])
             self._placeholder_activo = True
 
@@ -507,9 +509,9 @@ class InformacionEscolarView:
         icono_rol = ROL_ICONO.get(u['rol'], '👤')
         nombre_completo = f"{_val('nombre')} {_val('apellido_paterno')}".strip()
         ctk.CTkLabel(wh,
-            text=f"  {icono_rol}  Editar — {nombre_completo}",
-            font=FontScale.fb(13), text_color="white"
-        ).pack(side="left", padx=16, pady=14)
+        text=f"  {icono_rol}  {t('editar')} — {nombre_completo}",
+        font=FontScale.fb(13), text_color="white"
+    ).pack(side="left", padx=16, pady=14)
 
         # ── Scroll principal ──────────────────────────────────────────────────
         scroll_outer = ctk.CTkScrollableFrame(win, fg_color="transparent")
@@ -583,18 +585,18 @@ class InformacionEscolarView:
             section_header(self._sec_rol_frame, titulo, col_sec)
 
             if rol == 'alumno':
-                make_entry(self._sec_rol_frame, "Facultad",  vars_['facultad'])
-                make_entry(self._sec_rol_frame, "Carrera",   vars_['carrera'])
-                make_entry(self._sec_rol_frame, "Grado",     vars_['grado'])
-                make_entry(self._sec_rol_frame, "Grupo",     vars_['grupo'])
+                make_entry(self._sec_rol_frame, t("facultad"),  vars_['facultad'])
+                make_entry(self._sec_rol_frame, t("carrera"),   vars_['carrera'])
+                make_entry(self._sec_rol_frame, t("grado"),     vars_['grado'])
+                make_entry(self._sec_rol_frame, t("grupo"),     vars_['grupo'])
 
             elif rol == 'maestro':
-                make_entry(self._sec_rol_frame, "Grado que imparte", vars_['grado'])
-                make_entry(self._sec_rol_frame, "Materia",           vars_['materia'])
+                make_entry(self._sec_rol_frame, t("grado_imparte"), vars_['grado'])
+                make_entry(self._sec_rol_frame, t("materia"),        vars_['materia'])
 
             elif rol == 'personal':
-                make_entry(self._sec_rol_frame, "Puesto", vars_['puesto'])
-                make_entry(self._sec_rol_frame, "Área",   vars_['area'])
+                make_entry(self._sec_rol_frame, t("puesto"), vars_['puesto'])
+                make_entry(self._sec_rol_frame, t("area"),   vars_['area'])
 
         combo_rol.bind("<<ComboboxSelected>>", construir_seccion_rol)
         construir_seccion_rol()   # construir con el rol actual
@@ -730,7 +732,7 @@ class InformacionEscolarView:
             nuevo_reg.parent.after(200, nuevo_reg._mostrar_captura)
 
         except Exception as e:
-            messagebox.showerror("Error", f"No se pudo iniciar la captura: {e}")
+            messagebox.showerror(t("error"), t("error_captura").format(e))
 
     # ── Eliminar ──────────────────────────────────────────────────────────────
     def eliminar_usuario(self):
@@ -756,7 +758,7 @@ class InformacionEscolarView:
             self.cargar_datos()
             messagebox.showinfo("✅ Eliminado", f"{u['nombre']} eliminado correctamente.")
         except Exception as e:
-            messagebox.showerror("Error", f"No se pudo eliminar: {e}")
+            messagebox.showerror(t("error"), t("error_eliminar").format(e))
 
     # ── Papelera ──────────────────────────────────────────────────────────────
     def _papelera(self):
@@ -791,9 +793,9 @@ class InformacionEscolarView:
 
         for col, lbl, w, anc in [
             ("id",        "ID",        60,  "center"),
-            ("nombre",    "Nombre",    300, "w"),
-            ("rol",       "Rol",       120, "center"),
-            ("matricula", "Matrícula", 160, "center"),
+            ("nombre",    t("nombre"),    300, "w"),
+            ("rol",       t("rol"),       120, "center"),
+            ("matricula", t("matricula"), 160, "center"),
         ]:
             tabla.heading(col, text=lbl)
             tabla.column(col, width=w, anchor=anc)
