@@ -46,6 +46,8 @@ class MainView:
         self._cam_photo    = None
         self._frame_pending = False
         self._zoom_popover = None
+        self._nuevo_registro_view = None
+        self._nuevo_registro_state = None
 
         # Estado pantalla accesos
         self._panel_reset_job = None
@@ -109,6 +111,7 @@ class MainView:
                 pass
 
     def _recargar_vista(self):
+        self._guardar_estado_vista_actual()
         vistas = {
             "home":             self.show_home,
             "nuevo_registro":   self.show_nuevo_registro,
@@ -117,6 +120,17 @@ class MainView:
             "pantalla_accesos": self.show_pantalla_accesos,
         }
         vistas.get(self._vista_actual, self.show_home)()
+
+    def _guardar_estado_vista_actual(self):
+        if self._vista_actual != "nuevo_registro":
+            return
+        vista = getattr(self, "_nuevo_registro_view", None)
+        if not vista:
+            return
+        try:
+            self._nuevo_registro_state = vista.export_state()
+        except Exception:
+            self._nuevo_registro_state = None
 
     # ── Popover zoom ──────────────────────────────────────────────────────────
     def _toggle_zoom_popover(self):
@@ -431,7 +445,9 @@ class MainView:
         self._stop_camera()  # liberar cámara antes de abrir registro
         self._vista_actual = "nuevo_registro"
         self.clear_content()
-        NuevoRegistroView(self.content_frame)
+        estado = self._nuevo_registro_state
+        self._nuevo_registro_state = None
+        self._nuevo_registro_view = NuevoRegistroView(self.content_frame, initial_state=estado)
 
     def show_informacion_escolar(self):
         self._vista_actual = "info_escolar"
