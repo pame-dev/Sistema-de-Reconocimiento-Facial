@@ -164,7 +164,10 @@ TEXTOS = {
         "usuarios_total": "{} usuario{}",
         "error_cargar_datos": "Error al cargar datos: {}",
         "error_eliminar": "No se pudo eliminar: {}",
-        "error_captura": "No se pudo iniciar la captura: {}"
+        "error_captura": "No se pudo iniciar la captura: {}",
+          "total": "Total de accesos",
+        "aceptados": "Accesos aceptados",
+        "denegados": "Accesos denegados"
     },
     "en": {
         "titulo": "Sentinel System — Main Panel",
@@ -329,9 +332,12 @@ TEXTOS = {
         "usuarios_total": "{} user{}",
         "error_cargar_datos": "Error loading data: {}",
         "error_eliminar": "Could not delete: {}",
-        "error_captura": "Could not start capture: {}"
+        "error_captura": "Could not start capture: {}",
+         "total": "Total accesses",
+        "aceptados": "Accepted accesses",
+        "denegados": "Denied accesses"
     }
-}
+    }
 
 def t(clave):
     return TEXTOS[IDIOMA_ACTUAL].get(clave, clave)
