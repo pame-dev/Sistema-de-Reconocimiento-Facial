@@ -8,7 +8,6 @@ from datetime import datetime, timedelta
 import pickle
 from collections import Counter
 import time
-import face_recognition
 
 _PROJECT_ROOT = os.path.dirname(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -28,8 +27,8 @@ class ReconocerFacial:
     Motor de reconocimiento facial.
 
     Detección:       Haar Cascade (rápido, sin dependencias extra)
-    Reconocimiento:  face_recognition (dlib) — encodings de 128 dimensiones
-    Persistencia:    encodings guardados en .pkl, sin reentrenar si no hay cambios
+    Reconocimiento:  LBPH (OpenCV) — histograma local de patrones binarios
+    Persistencia:    modelo entrenado en .yml, datos en .pkl, sin reentrenar si no hay cambios
     """
 
     def __init__(self, db_path='database/sistema_biometrico.db'):
@@ -39,7 +38,8 @@ class ReconocerFacial:
         self.artifacts_dir = os.path.join(self.project_root, 'database')
 
         # Archivos de persistencia
-        self.encodings_path = os.path.join(self.artifacts_dir, 'encodings.pkl')
+        self.model_path = os.path.join(self.artifacts_dir, 'lbph_model.yml')
+        self.data_path  = os.path.join(self.artifacts_dir, 'lbph_data.pkl')
         self.ids_hash_path  = os.path.join(self.artifacts_dir, 'ids_hash.pkl')
 
         # ── Detectores Haar ────────────────────────────────────────────────────
@@ -53,16 +53,16 @@ class ReconocerFacial:
             cv2.data.haarcascades + 'haarcascade_profileface.xml'
         )
 
+        # ── Reconocedor LBPH ───────────────────────────────────────────────────
+        self.recognizer = cv2.face.LBPHFaceRecognizer_create()
+
         # ── Datos de reconocimiento ────────────────────────────────────────────
-        # Lista de encodings conocidos y sus IDs/nombres correspondientes
-        self.encodings_conocidos = []   # list[np.ndarray]  — un encoding por muestra
-        self.ids_conocidos       = []   # list[int]         — user_id por muestra
         self.nombres             = {}   # dict[int, str]    — user_id → nombre completo
 
         # ── Parámetros de reconocimiento ───────────────────────────────────────
-        self.tolerancia           = 0.42   # distancia máxima para considerar match
-        self._TOLERANCIA_MIN      = 0.30
-        self._TOLERANCIA_MAX      = 0.65
+        self.tolerancia           = 50.0   # distancia máxima para considerar match
+        self._TOLERANCIA_MIN      = 20.0
+        self._TOLERANCIA_MAX      = 100.0
 
         # ── Votación ──────────────────────────────────────────────────────────
         self._votos         = []   # list[(user_id|"Desconocido", distancia)]
@@ -189,20 +189,20 @@ class ReconocerFacial:
             pickle.dump(ids_set, f)
 
     def _borrar_archivos_modelo(self):
-        for p in (self.encodings_path, self.ids_hash_path):
+        for p in (self.model_path, self.data_path, self.ids_hash_path):
             try:
                 os.remove(p)
             except Exception:
                 pass
 
     # ─────────────────────────────────────────────────────────────────────────
-    # Construcción de encodings desde la BD
+    # Construcción de datos para LBPH desde la BD
     # ─────────────────────────────────────────────────────────────────────────
-    def preparar_encodings(self):
+    def preparar_datos(self):
         """
-        Lee imágenes de la BD, extrae encodings con face_recognition
-        y los guarda en self.encodings_conocidos / self.ids_conocidos.
-        Retorna True si hay al menos un encoding válido.
+        Lee imágenes de la BD, extrae rostros en gris para LBPH
+        y los guarda en self.faces / self.labels.
+        Retorna True si hay al menos un rostro válido.
         """
         conn = self.get_db()
         if not conn:
@@ -221,14 +221,14 @@ class ReconocerFacial:
         filas = cur.fetchall()
         conn.close()
 
-        encodings_tmp = []
-        ids_tmp       = []
-        nombres_tmp   = {}
+        faces_tmp = []
+        labels_tmp = []
+        nombres_tmp = {}
 
         print(f"📸 Procesando {len(filas)} imágenes biométricas...")
 
         for fila in filas:
-            user_id         = fila[0]
+            user_id = fila[0]
             nombre_completo = f"{fila[1]} {fila[2] or ''} {fila[3] or ''}".strip()
             nombres_tmp[user_id] = nombre_completo
 
@@ -238,41 +238,53 @@ class ReconocerFacial:
 
             try:
                 nparr = np.frombuffer(imagen_bytes, np.uint8)
-                img   = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
                 if img is None:
                     continue
 
-                # face_recognition espera RGB
-                img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-                # Detectar ubicaciones de caras con HOG (más rápido que CNN)
-                ubicaciones = face_recognition.face_locations(img_rgb, model="hog")
-                if not ubicaciones:
+                # Detectar caras con Haar
+                caras = self._haar_frontal.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(80, 80))
+                if len(caras) == 0:
                     continue
 
-                encs = face_recognition.face_encodings(img_rgb, ubicaciones)
-                if not encs:
+                # Usar la cara más grande
+                cara = max(caras, key=lambda x: x[2] * x[3])
+                x, y, w, h = cara
+
+                # Recortar con margen
+                fh, fw = gray.shape[:2]
+                pad = int(min(w, h) * 0.08)
+                x1 = max(0, x - pad)
+                y1 = max(0, y - pad)
+                x2 = min(fw, x + w + pad)
+                y2 = min(fh, y + h + pad)
+
+                rostro_gray = gray[y1:y2, x1:x2]
+                if rostro_gray.size == 0:
                     continue
 
-                # Usar el encoding de la cara más grande
-                enc = encs[0]
-                encodings_tmp.append(enc)
-                ids_tmp.append(user_id)
+                # Redimensionar a 100x100 para consistencia
+                rostro_gray = cv2.resize(rostro_gray, (100, 100))
+
+                faces_tmp.append(rostro_gray)
+                labels_tmp.append(user_id)
 
             except Exception as e:
                 print(f"  ⚠️  Error procesando imagen user {user_id}: {e}")
                 continue
 
-        if not encodings_tmp:
-            print("❌ No se pudieron extraer encodings.")
+        if not faces_tmp:
+            print("❌ No se pudieron extraer rostros.")
             return False
 
-        self.encodings_conocidos = encodings_tmp
-        self.ids_conocidos       = ids_tmp
-        self.nombres             = nombres_tmp
+        self.faces = faces_tmp
+        self.labels = labels_tmp
+        self.nombres = nombres_tmp
 
-        ids_usados = set(ids_tmp)
-        print(f"  ✅ {len(ids_usados)} usuarios · {len(encodings_tmp)} encodings")
+        ids_usados = set(labels_tmp)
+        print(f"  ✅ {len(ids_usados)} usuarios · {len(faces_tmp)} rostros")
         return True
 
     # ─────────────────────────────────────────────────────────────────────────
@@ -280,7 +292,7 @@ class ReconocerFacial:
     # ─────────────────────────────────────────────────────────────────────────
     def cargar_o_reentrenar(self):
         """
-        Carga encodings desde disco si el conjunto de IDs no cambió.
+        Carga modelo LBPH desde disco si el conjunto de IDs no cambió.
         Si cambió (nuevo usuario, eliminado), regenera desde la BD.
         """
         ids_bd     = self._ids_en_bd()
@@ -292,67 +304,70 @@ class ReconocerFacial:
                 self.on_status("Sin datos — registra usuarios primero")
             return False
 
-        archivo_ok = os.path.exists(self.encodings_path)
+        archivo_ok = os.path.exists(self.model_path) and os.path.exists(self.data_path)
 
         # Detectar cambios
         if archivo_ok and ids_bd != ids_modelo:
             nuevos     = ids_bd - ids_modelo
             eliminados = ids_modelo - ids_bd
             if nuevos:
-                print(f"🔄 {len(nuevos)} usuario(s) nuevo(s) — regenerando encodings")
+                print(f"🔄 {len(nuevos)} usuario(s) nuevo(s) — regenerando modelo")
             if eliminados:
-                print(f"🔄 {len(eliminados)} usuario(s) eliminado(s) — regenerando encodings")
+                print(f"🔄 {len(eliminados)} usuario(s) eliminado(s) — regenerando modelo")
             self._borrar_archivos_modelo()
             archivo_ok = False
 
         if archivo_ok:
             try:
-                with open(self.encodings_path, 'rb') as f:
-                    datos = pickle.load(f)
-                self.encodings_conocidos = datos['encodings']
-                self.ids_conocidos       = datos['ids']
-                self.nombres             = datos['nombres']
+                self.recognizer.load(self.model_path)
+                with open(self.data_path, 'rb') as f:
+                    data = pickle.load(f)
+                self.nombres = data['nombres']
+                ids_archivo = data['ids']
 
                 # Doble verificación: IDs en el archivo vs BD
-                ids_archivo = set(self.ids_conocidos)
                 if ids_archivo != ids_bd:
-                    print("🔄 Encodings desincronizados con BD — regenerando...")
+                    print("🔄 Modelo desincronizado con BD — regenerando...")
                     self._borrar_archivos_modelo()
                     return self._generar_y_guardar()
 
-                print(f"✅ Encodings cargados · {len(self.nombres)} usuarios")
+                print(f"✅ Modelo LBPH cargado · {len(self.nombres)} usuarios")
                 if self.on_status:
                     self.on_status(f"Modelo listo · {len(self.nombres)} usuarios")
                 return True
 
             except Exception as e:
-                print(f"⚠️  Encodings corruptos ({e}) — regenerando...")
+                print(f"⚠️  Modelo corrupto ({e}) — regenerando...")
                 self._borrar_archivos_modelo()
 
         return self._generar_y_guardar()
 
     def _generar_y_guardar(self):
-        """Genera encodings desde la BD y los persiste en disco."""
+        """Genera datos desde la BD, entrena LBPH y los persiste en disco."""
         if self.on_status:
-            self.on_status("Generando encodings...")
-        print("🔄 Generando encodings desde cero...")
+            self.on_status("Generando modelo LBPH...")
+        print("🔄 Generando modelo LBPH desde cero...")
 
-        ok = self.preparar_encodings()
+        ok = self.preparar_datos()
         if not ok:
             return False
 
+        # Entrenar el reconocedor LBPH
+        self.recognizer.train(self.faces, np.array(self.labels))
+
         os.makedirs(self.artifacts_dir, exist_ok=True)
-        datos = {
-            'encodings': self.encodings_conocidos,
-            'ids':       self.ids_conocidos,
-            'nombres':   self.nombres,
+        self.recognizer.save(self.model_path)
+
+        data = {
+            'nombres': self.nombres,
+            'ids':     set(self.labels),
         }
-        with open(self.encodings_path, 'wb') as f:
-            pickle.dump(datos, f)
+        with open(self.data_path, 'wb') as f:
+            pickle.dump(data, f)
 
-        self._guardar_ids_hash(set(self.ids_conocidos))
+        self._guardar_ids_hash(set(self.labels))
 
-        print(f"✅ Encodings guardados · {len(self.nombres)} usuarios")
+        print(f"✅ Modelo LBPH guardado · {len(self.nombres)} usuarios")
         if self.on_status:
             self.on_status(f"Modelo listo · {len(self.nombres)} usuarios")
         return True
@@ -363,40 +378,23 @@ class ReconocerFacial:
     def _reconocer_rostro(self, rostro_bgr):
         """
         Dado un recorte BGR del rostro detectado por Haar,
-        extrae el encoding y lo compara con los conocidos.
+        extrae el rostro en gris y lo compara con el modelo LBPH.
         Retorna (user_id|"Desconocido", distancia).
         """
         try:
-            rostro_rgb = cv2.cvtColor(rostro_bgr, cv2.COLOR_BGR2RGB)
+            rostro_gray = cv2.cvtColor(rostro_bgr, cv2.COLOR_BGR2GRAY)
+            rostro_gray = cv2.resize(rostro_gray, (100, 100))
 
-            # Usar whole-image location para que face_recognition no tenga
-            # que detectar de nuevo (ya lo hizo Haar)
-            h, w = rostro_rgb.shape[:2]
-            ubicacion = [(0, w, h, 0)]   # top, right, bottom, left
+            label, conf = self.recognizer.predict(rostro_gray)
 
-            encs = face_recognition.face_encodings(rostro_rgb, ubicacion)
-            if not encs:
-                return "Desconocido", 1.0
-
-            enc_actual = encs[0]
-
-            if not self.encodings_conocidos:
-                return "Desconocido", 1.0
-
-            distancias = face_recognition.face_distance(
-                self.encodings_conocidos, enc_actual
-            )
-            idx_min  = int(np.argmin(distancias))
-            dist_min = float(distancias[idx_min])
-
-            if dist_min <= self.tolerancia:
-                return self.ids_conocidos[idx_min], dist_min
+            if conf <= self.tolerancia:
+                return label, conf
             else:
-                return "Desconocido", dist_min
+                return "Desconocido", conf
 
         except Exception as e:
             print(f"⚠️  Error en reconocimiento: {e}")
-            return "Desconocido", 1.0
+            return "Desconocido", 100.0
 
     # ─────────────────────────────────────────────────────────────────────────
     # Votación por mayoría
@@ -439,7 +437,7 @@ class ReconocerFacial:
             return
 
         # Convertir distancia a "confianza" (0-100, mayor = mejor)
-        confianza = round(max(0.0, (1.0 - distancia) * 100), 2)
+        confianza = round(max(0.0, 100 - distancia), 2)
 
         cur = conn.cursor()
         try:
@@ -647,7 +645,7 @@ class ReconocerFacial:
             return
 
         if not self.cargar_o_reentrenar():
-            print("❌ No se pudieron cargar los encodings")
+            print("❌ No se pudieron cargar el modelo LBPH")
             return
 
         print(f"🎯 Tolerancia: {self.tolerancia}  |  +/- para ajustar  |  q para salir")
@@ -663,7 +661,7 @@ class ReconocerFacial:
 
                 cv2.putText(
                     frame,
-                    f"Tolerancia: {self.tolerancia:.2f}  |  +/- ajustar  |  q salir",
+                    f"Tolerancia: {self.tolerancia:.1f}  |  +/- ajustar  |  q salir",
                     (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.52, (255, 255, 0), 2
                 )
                 cv2.imshow("Reconocimiento Facial — Sentinel System", frame)
