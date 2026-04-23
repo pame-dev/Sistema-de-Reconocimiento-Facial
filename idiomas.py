@@ -172,6 +172,15 @@ TEXTOS = {
         "aceptados": "Accesos aceptados",
         "denegados": "Accesos denegados",
         "eliminar_usuario_msg": "¿Deseas eliminar al usuario {nombre} {apellido} con rol {rol}?",
+        "confirmar_eliminar_definitivo": "¿Seguro que deseas eliminar este usuario definitivamente?",
+        "usuario_eliminado_definitivo": "Usuario eliminado definitivamente",
+        "error_eliminar_definitivo": "No se pudo eliminar: {}",
+
+        "confirmar_vaciar_papelera": "¿Seguro que deseas vaciar la papelera?",
+        "papelera_vaciada": "Papelera vaciada correctamente",
+        "error_vaciar_papelera": "No se pudo vaciar: {}",
+
+        "vaciar_papelera": "Vaciar papelera",
     },
     "en": {
         "titulo": "Sentinel System — Main Panel",
@@ -341,6 +350,15 @@ TEXTOS = {
         "aceptados": "Accepted accesses",
         "denegados": "Denied accesses",
         "eliminar_usuario_msg": "Do you want to delete user {nombre} {apellido} with role {rol}?",
+        "confirmar_eliminar_definitivo": "Are you sure you want to permanently delete this user?",
+        "usuario_eliminado_definitivo": "User permanently deleted",
+        "error_eliminar_definitivo": "Could not delete: {}",
+
+        "confirmar_vaciar_papelera": "Are you sure you want to empty the trash?",
+        "papelera_vaciada": "Trash emptied successfully",
+        "error_vaciar_papelera": "Could not empty trash: {}",
+
+        "vaciar_papelera": "Empty trash",
     }
     }
 
