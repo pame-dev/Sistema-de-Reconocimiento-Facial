@@ -6,6 +6,7 @@ import sys
 import threading
 from datetime import datetime, timedelta
 import pickle
+import hashlib
 from collections import Counter
 import time
 
@@ -60,9 +61,9 @@ class ReconocerFacial:
         self.nombres             = {}   # dict[int, str]    — user_id → nombre completo
 
         # ── Parámetros de reconocimiento ───────────────────────────────────────
-        self.tolerancia           = 50.0   # distancia máxima para considerar match
+        self.tolerancia           = 70.0   # distancia máxima para considerar match
         self._TOLERANCIA_MIN      = 20.0
-        self._TOLERANCIA_MAX      = 100.0
+        self._TOLERANCIA_MAX      = 120.0
 
         # ── Votación ──────────────────────────────────────────────────────────
         self._votos         = []   # list[(user_id|"Desconocido", distancia)]
@@ -127,14 +128,19 @@ class ReconocerFacial:
 
         resultado = []
 
-        for detector, params in [
-            (self._haar_frontal, dict(scaleFactor=1.1, minNeighbors=6, minSize=(80, 80))),
-            (self._haar_alt,     dict(scaleFactor=1.1, minNeighbors=5, minSize=(70, 70))),
+        for detector, params, flipped in [
+            (self._haar_frontal, dict(scaleFactor=1.1, minNeighbors=6, minSize=(80, 80)), False),
+            (self._haar_alt,     dict(scaleFactor=1.1, minNeighbors=5, minSize=(70, 70)), False),
+            (self._haar_perfil,  dict(scaleFactor=1.1, minNeighbors=5, minSize=(70, 70)), False),
+            (self._haar_perfil,  dict(scaleFactor=1.1, minNeighbors=5, minSize=(70, 70)), True),
         ]:
-            caras = detector.detectMultiScale(frame_gray, **params)
+            gray_search = cv2.flip(frame_gray, 1) if flipped else frame_gray
+            caras = detector.detectMultiScale(gray_search, **params)
             if len(caras) == 0:
                 continue
             for (x, y, w, h) in caras:
+                if flipped:
+                    x = w_f - (x + w)
                 cx = x + w // 2
                 cy = y + h // 2
                 # Filtrar caras en los bordes
@@ -148,7 +154,7 @@ class ReconocerFacial:
                 resultado.append((x, y, w, h))
 
             if resultado:
-                break  # Con el frontal ya basta; alt2 solo si frontal falla
+                break  # Basta con la primera detección confiable
 
         return resultado
 
@@ -176,17 +182,51 @@ class ReconocerFacial:
 
     def _ids_en_modelo(self):
         if not os.path.exists(self.ids_hash_path):
-            return set()
+            return set(), None
         try:
             with open(self.ids_hash_path, 'rb') as f:
-                return pickle.load(f)
+                data = pickle.load(f)
+            if isinstance(data, set):
+                return data, None
+            if isinstance(data, dict):
+                return data.get('ids', set()), data.get('fingerprint')
         except Exception:
-            return set()
+            pass
+        return set(), None
 
-    def _guardar_ids_hash(self, ids_set):
+    def _fingerprint_en_bd(self):
+        conn = self.get_db()
+        if not conn:
+            return None
+        try:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT b.fkIdUsuario, b.encodeBiometria
+                FROM biometria b
+                INNER JOIN usuarios u ON u.idUsuario = b.fkIdUsuario
+                WHERE b.encodeBiometria IS NOT NULL
+                  AND u.estadoUsuario = 'activo'
+            """)
+            items = []
+            for user_id, imagen_bytes in cur.fetchall():
+                if imagen_bytes is None:
+                    continue
+                digest = hashlib.md5(imagen_bytes).hexdigest()
+                items.append((user_id, digest))
+            return tuple(sorted(items))
+        except Exception:
+            return None
+        finally:
+            conn.close()
+
+    def _guardar_ids_hash(self, ids_set, fingerprint=None):
         os.makedirs(self.artifacts_dir, exist_ok=True)
+        data = {
+            'ids':         ids_set,
+            'fingerprint': fingerprint,
+        }
         with open(self.ids_hash_path, 'wb') as f:
-            pickle.dump(ids_set, f)
+            pickle.dump(data, f)
 
     def _borrar_archivos_modelo(self):
         for p in (self.model_path, self.data_path, self.ids_hash_path):
@@ -243,15 +283,15 @@ class ReconocerFacial:
                     continue
 
                 gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+                gray = cv2.equalizeHist(gray)
 
                 # Detectar caras con Haar
-                caras = self._haar_frontal.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(80, 80))
+                caras = self._detectar_caras(img, gray)
                 if len(caras) == 0:
                     continue
 
                 # Usar la cara más grande
-                cara = max(caras, key=lambda x: x[2] * x[3])
-                x, y, w, h = cara
+                x, y, w, h = max(caras, key=lambda x: x[2] * x[3])
 
                 # Recortar con margen
                 fh, fw = gray.shape[:2]
@@ -295,8 +335,9 @@ class ReconocerFacial:
         Carga modelo LBPH desde disco si el conjunto de IDs no cambió.
         Si cambió (nuevo usuario, eliminado), regenera desde la BD.
         """
-        ids_bd     = self._ids_en_bd()
-        ids_modelo = self._ids_en_modelo()
+        ids_bd          = self._ids_en_bd()
+        ids_modelo, fp_modelo = self._ids_en_modelo()
+        fp_bd            = self._fingerprint_en_bd()
 
         if not ids_bd:
             print("⚠️  No hay usuarios activos con biometría en la BD")
@@ -306,14 +347,16 @@ class ReconocerFacial:
 
         archivo_ok = os.path.exists(self.model_path) and os.path.exists(self.data_path)
 
-        # Detectar cambios
-        if archivo_ok and ids_bd != ids_modelo:
+        # Detectar cambios en usuarios o en imágenes biométricas existentes
+        if archivo_ok and (ids_bd != ids_modelo or fp_bd != fp_modelo):
             nuevos     = ids_bd - ids_modelo
             eliminados = ids_modelo - ids_bd
             if nuevos:
                 print(f"🔄 {len(nuevos)} usuario(s) nuevo(s) — regenerando modelo")
             if eliminados:
                 print(f"🔄 {len(eliminados)} usuario(s) eliminado(s) — regenerando modelo")
+            elif fp_bd != fp_modelo:
+                print("🔄 Imagen(es) biométrica(s) actualizada(s) — regenerando modelo")
             self._borrar_archivos_modelo()
             archivo_ok = False
 
@@ -324,6 +367,7 @@ class ReconocerFacial:
                     data = pickle.load(f)
                 self.nombres = data['nombres']
                 ids_archivo = data['ids']
+                self.tolerancia = float(data.get('tolerancia', self.tolerancia))
 
                 # Doble verificación: IDs en el archivo vs BD
                 if ids_archivo != ids_bd:
@@ -353,24 +397,45 @@ class ReconocerFacial:
             return False
 
         # Entrenar el reconocedor LBPH
-        self.recognizer.train(self.faces, np.array(self.labels))
+        self.recognizer.train(self.faces, np.array(self.labels, dtype=np.int32))
 
         os.makedirs(self.artifacts_dir, exist_ok=True)
         self.recognizer.save(self.model_path)
 
+        self._ajustar_tolerancia_post_entreno()
+
         data = {
-            'nombres': self.nombres,
-            'ids':     set(self.labels),
+            'nombres':    self.nombres,
+            'ids':        set(self.labels),
+            'tolerancia': self.tolerancia,
         }
         with open(self.data_path, 'wb') as f:
             pickle.dump(data, f)
 
-        self._guardar_ids_hash(set(self.labels))
+        self._guardar_ids_hash(set(self.labels), self._fingerprint_en_bd())
 
         print(f"✅ Modelo LBPH guardado · {len(self.nombres)} usuarios")
         if self.on_status:
             self.on_status(f"Modelo listo · {len(self.nombres)} usuarios")
         return True
+
+    def _ajustar_tolerancia_post_entreno(self):
+        """Ajusta la tolerancia automáticamente según los datos entrenados."""
+        if not getattr(self, 'faces', None):
+            return
+        distancias = []
+        for rostro in self.faces:
+            try:
+                _, conf = self.recognizer.predict(rostro)
+                distancias.append(conf)
+            except Exception:
+                continue
+        if not distancias:
+            return
+        umbral = float(np.percentile(distancias, 90)) + 20.0
+        self.tolerancia = min(self._TOLERANCIA_MAX,
+                              max(self._TOLERANCIA_MIN, umbral))
+        print(f"🔧 Tolerancia ajustada a {self.tolerancia:.1f} según datos de entrenamiento")
 
     # ─────────────────────────────────────────────────────────────────────────
     # Reconocimiento
@@ -383,6 +448,7 @@ class ReconocerFacial:
         """
         try:
             rostro_gray = cv2.cvtColor(rostro_bgr, cv2.COLOR_BGR2GRAY)
+            rostro_gray = cv2.equalizeHist(rostro_gray)
             rostro_gray = cv2.resize(rostro_gray, (100, 100))
 
             label, conf = self.recognizer.predict(rostro_gray)
