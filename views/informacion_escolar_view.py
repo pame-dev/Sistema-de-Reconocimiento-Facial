@@ -865,7 +865,7 @@ class InformacionEscolarView:
 
             user_id = tabla.item(sel[0])['values'][0]
 
-            if not messagebox.askyesno(t("confirmar"), "¿Seguro que deseas eliminar este usuario definitivamente?"):
+            if not messagebox.askyesno(t("confirmar"), t("confirmar_eliminar_definitivo")):
                 return
 
             try:
@@ -873,15 +873,15 @@ class InformacionEscolarView:
                 sp_eliminar_usuario_definitivo(conn, user_id)
                 conn.commit()
                 conn.close()
-                messagebox.showinfo(t("exito"), "Usuario eliminado definitivamente")
+                messagebox.showinfo(t("exito"), t("usuario_eliminado_definitivo"))
                 cargar_tabla()
                 self.cargar_datos()
             except Exception as e:
-                messagebox.showerror(t("error"), f"No se pudo eliminar: {e}")
+                messagebox.showerror(t("error"), t("error_eliminar_definitivo").format(e))
 
         # Vaciar papelera
         def vaciar_papelera():
-            if not messagebox.askyesno(t("confirmar"), "¿Seguro que deseas vaciar la papelera?"):
+            if not messagebox.askyesno(t("confirmar"), t("confirmar_vaciar_papelera")):
                 return
 
             try:
@@ -889,11 +889,12 @@ class InformacionEscolarView:
                 sp_vaciar_papelera(conn)
                 conn.commit()
                 conn.close()
-                messagebox.showinfo(t("exito"), "Papelera vaciada correctamente")
+                messagebox.showinfo(t("exito"), t("papelera_vaciada"))
                 cargar_tabla()
                 self.cargar_datos()
             except Exception as e:
-                messagebox.showerror(t("error"), f"No se pudo vaciar: {e}")
+                messagebox.showerror(t("error"), t("error_vaciar_papelera").format(e))
+
 
         # Botones
         btn_frame = ctk.CTkFrame(win, fg_color="transparent")
@@ -913,7 +914,7 @@ class InformacionEscolarView:
 
         ctk.CTkButton(
             btn_frame,
-            text="❌ Eliminar",
+            text="❌ " + t("eliminar"),
             fg_color=c['danger'],
             hover_color="#b71c1c",
             text_color="#ffffff",
@@ -925,7 +926,7 @@ class InformacionEscolarView:
 
         ctk.CTkButton(
             btn_frame,
-            text="🗑 Vaciar papelera",
+            text="🗑 " + t("vaciar_papelera"),
             fg_color="#6d4c41",
             hover_color="#4e342e",
             text_color="#ffffff",
