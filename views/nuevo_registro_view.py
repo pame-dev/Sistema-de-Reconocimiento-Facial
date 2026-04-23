@@ -12,6 +12,7 @@ import threading
 from views.font_scale import FontScale
 from camera import Camera
 from idiomas import t
+from tkcalendar import DateEntry
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import COLORS, get_colors, toggle_theme, get_db
@@ -54,6 +55,9 @@ CAMPOS_COMUNES = [
     (t("matricula")+":",        "matriculaUsuario",        False),
     (t("telefono")+":",         "telefonoUsuario",         True),
     (t("correo")+":",           "correoUsuario",           True),
+    (t("fecha_nacimiento")+":", "fechaNacimientoUsuario",  True),
+    (t("tipo_sangre")+":",      "tipoSangreUsuario",  True),
+    (t("direccion")+":",        "direccionUsuario",  True),
 ]
 
 # ── Posturas ──────────────────────────────────────────────────────────────────
@@ -320,12 +324,51 @@ class NuevoRegistroView:
     def _add_entry(self, parent, label_text, key, required, row, col):
         frame = ctk.CTkFrame(parent, fg_color="transparent")
         frame.grid(row=row, column=col, sticky="ew", padx=8, pady=6)
-        ctk.CTkLabel(frame, text=label_text + (" *" if required else ""),
-                     text_color=self.colors['text_dark'],
-                     font=("Segoe UI", 11), anchor="w").pack(anchor="w", pady=(0, 4))
-        entry = ctk.CTkEntry(frame, font=("Segoe UI", 11), height=34,
-                              corner_radius=8, border_color=COLORS['border'])
-        entry.pack(fill="x", expand=True)
+
+        ctk.CTkLabel(
+            frame,
+            text=label_text + (" *" if required else ""),
+            text_color=self.colors['text_dark'],
+            font=("Segoe UI", 11),
+            anchor="w"
+        ).pack(anchor="w", pady=(0, 4))
+
+        #Campo especial: Fecha de nacimiento
+        if key == "fechaNacimientoUsuario":
+            entry = DateEntry(
+                frame,
+                date_pattern='dd-mm-yyyy',
+                maxdate=datetime.now(),
+                font=("Segoe UI", 11)
+            )
+            entry.pack(fill="x", expand=True)
+
+        # Campo especial: Tipo de sangre
+        elif key == "tipoSangreUsuario":
+            entry = ttk.Combobox(
+                frame,
+                values=[
+                    "A+", "A-",
+                    "B+", "B-",
+                    "AB+", "AB-",
+                    "O+", "O-"
+                ],
+                state="readonly",
+                font=("Segoe UI", 11)
+            )
+            entry.pack(fill="x", expand=True)
+
+        # 🔹 Campos normales
+        else:
+            entry = ctk.CTkEntry(
+                frame,
+                font=("Segoe UI", 11),
+                height=34,
+                corner_radius=8,
+                border_color=COLORS['border']
+            )
+            entry.pack(fill="x", expand=True)
+
         self.entries[key] = entry
 
     def _validar_y_continuar(self):
@@ -943,6 +986,9 @@ class NuevoRegistroView:
                 'rol':       rol,
                 'telefono':  val('telefonoUsuario',  upper=False),
                 'correo':    val('correoUsuario',    upper=False),
+                'fecha_nacimiento': val('fechaNacimientoUsuario', upper=False),
+                'tipo_sangre': val('tipoSangreUsuario', upper=False),
+                'direccion': val('direccionUsuario', upper=False)
             })
 
             if rol == "alumno":
