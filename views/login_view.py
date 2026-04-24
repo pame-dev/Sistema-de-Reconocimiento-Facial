@@ -1,4 +1,5 @@
 import os
+import math
 import tkinter as tk
 
 import customtkinter as ctk
@@ -10,171 +11,353 @@ from views.font_scale import FontScale
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LOGO_PATH = os.path.join(BASE_DIR, ASSETS_PATH, ICON_FILE)
 
-# Paleta light moderna
-_DARK_BG    = "#F0F4F8"   # fondo general gris muy claro
-_DARK_PANEL = "#1A56A0"   # panel izquierdo azul oscuro (se queda oscuro para contraste)
-_ACCENT     = "#2D7DD2"   # azul acento
-_ACCENT2    = "#1A56A0"   # azul más oscuro
-_TEXT_MAIN  = "#0D1190"   # texto principal casi negro
-_TEXT_MUTED = "#5A6A7A"   # gris medio
-_BORDER_DK  = "#B0C4DE"   # borde claro
-_CARD_BG    = "#FFFFFF"   # card blanca
-_INPUT_BG   = "#F6F8FA"   # input gris muy suave
-_CHIP_BG    = "#EBF2FA"   # chip azul muy claro
+# ── Paleta ────────────────────────────────────────────────────────────────────
+_NAVY        = "#0C1B3A"   # fondo panel izquierdo
+_NAVY_LIGHT  = "#162847"   # hover / acento panel
+_BLUE        = "#378ADD"   # azul acento
+_BLUE_DIM    = "#185FA5"   # azul oscuro
+_BLUE_GLOW   = "#85B7EB"   # azul claro (texto secundario panel)
+_BLUE_PALE   = "#E6F1FB"   # azul muy claro (chip bg)
+_BLUE_CHIP   = "#B5D4F4"   # borde chip
+
+_CARD_BG     = "#F8FAFC"   # fondo right side
+_WHITE       = "#FFFFFF"   # card interna
+_GRAY_BG     = "#F1EFE8"   # chip sesión bg
+_GRAY_BORDER = "#D3D1C7"   # bordes grises
+_GRAY_MID    = "#B4B2A9"   # separadores
+_GRAY_TEXT   = "#888780"   # texto muted
+
+_TEXT_DARK   = "#0C1B3A"   # texto principal
+_TEXT_SEMI   = "#2C2C2A"   # texto semi oscuro
+_GREEN       = "#3B6D11"   # verde icono
+_GREEN_BG    = "#EAF3DE"   # verde fondo icono
+_GREEN_DOT   = "#639922"   # punto activo
+
+_METRIC_BLUE = "#185FA5"   # métrica azul
 
 
 class LoginView:
-    """Pantalla de acceso directo al sistema."""
+    """Pantalla de acceso directo al sistema — diseño renovado."""
 
     def __init__(self, parent, app):
-        self.app           = app
+        self.app = app
 
-        # Fondo oscuro total
-        self.frame = ctk.CTkFrame(parent, fg_color=_DARK_BG)
+        # Contenedor raíz
+        self.frame = ctk.CTkFrame(parent, fg_color=_CARD_BG)
         self.frame.pack(fill="both", expand=True)
 
-        # Panel izquierdo
-        self.left_panel = ctk.CTkFrame(self.frame, fg_color=_DARK_PANEL, corner_radius=0)
-        self.left_panel.place(relx=0, rely=0, relwidth=0.48, relheight=1.0)
-        self._build_left_panel()
-
-        # Línea divisoria de acento
-        ctk.CTkFrame(self.frame, fg_color=_ACCENT, width=2, corner_radius=0).place(
-            relx=0.48, rely=0, relwidth=0.002, relheight=1.0
+        # Panel izquierdo (42 % del ancho)
+        self.left = ctk.CTkFrame(
+            self.frame, fg_color=_NAVY, corner_radius=0
         )
+        self.left.place(relx=0, rely=0, relwidth=0.42, relheight=1.0)
 
-        # Card de login
-        self.card = ctk.CTkFrame(
-            self.frame,
-            fg_color=_CARD_BG,
-            corner_radius=20,
-            border_width=1,
-            border_color=_BORDER_DK,
+        # Área derecha (58 %)
+        self.right = ctk.CTkFrame(self.frame, fg_color=_CARD_BG, corner_radius=0)
+        self.right.place(relx=0.42, rely=0, relwidth=0.58, relheight=1.0)
+
+        # Círculos decorativos sobre el canvas del panel izquierdo
+        self._circles_canvas = None
+
+        self.left.bind("<Configure>", self._draw_circles)
+
+        self._build_left()
+        self._build_right()
+
+    # ── Decoración geométrica ─────────────────────────────────────────────────
+
+    def _draw_circles(self, event=None):
+        """Dibuja círculos tenues sobre el panel izquierdo."""
+        w = self.left.winfo_width()
+        h = self.left.winfo_height()
+        if w < 10:
+            return
+
+        if self._circles_canvas:
+            self._circles_canvas.destroy()
+
+        canvas = tk.Canvas(
+            self.left, bg=_NAVY, highlightthickness=0,
+            width=w, height=h
         )
-        self.card.place(relx=0.74, rely=0.5, anchor="center", relwidth=0.43, relheight=0.86)
+        canvas.place(x=0, y=0, relwidth=1.0, relheight=1.0)
+        canvas.lower("all")
 
-        self._build_card()
+        # Círculos esquina superior derecha (colores sólidos progresivos)
+        circle_colors = ["#1A3560", "#162E55", "#12264A"]
+        for r, color in zip([180, 110, 55], circle_colors):
+            canvas.create_oval(
+                w - r, -r, w + r, r,
+                outline=color, width=1, fill=""
+            )
+
+        # Círculos esquina inferior izquierda
+        for r, color in zip([200, 120], ["#1A3560", "#162E55"]):
+            canvas.create_oval(
+                -r, h - r, r, h + r,
+                outline=color, width=1, fill=""
+            )
+
+        self._circles_canvas = canvas
+        # Reubicar el contenido encima del canvas
+        self._left_inner.lift()
 
     # ── Panel izquierdo ───────────────────────────────────────────────────────
 
-    def _build_left_panel(self):
-        inner = ctk.CTkFrame(self.left_panel, fg_color="transparent")
-        inner.place(relx=0.5, rely=0.5, anchor="center")
+    def _build_left(self):
+        self._left_inner = ctk.CTkFrame(self.left, fg_color="transparent")
+        self._left_inner.place(relx=0.5, rely=0.5, anchor="center", relwidth=0.88)
 
-        # Logo
+        # Ícono / logo
         try:
-            image = Image.open(LOGO_PATH)
-            self._left_logo = ctk.CTkImage(light_image=image, dark_image=image, size=(130, 100))
-            ctk.CTkLabel(inner, image=self._left_logo, text="").pack(pady=(0, 22))
-        except Exception:
+            img = Image.open(LOGO_PATH)
+            self._logo_img = ctk.CTkImage(light_image=img, dark_image=img, size=(80, 62))
             ctk.CTkLabel(
-                inner, text="🔐",
-                font=("Segoe UI Emoji", 72),
-                text_color=_ACCENT
-            ).pack(pady=(0, 22))
+                self._left_inner, image=self._logo_img, text=""
+            ).pack(pady=(0, 18))
+        except Exception:
+            # Ícono SVG-like hecho con un frame circular
+            icon_frame = ctk.CTkFrame(
+                self._left_inner,
+                width=64, height=64,
+                corner_radius=32,
+                fg_color="#162847",
+                border_width=1,
+                border_color="#2A5A8A",
+            )
+            icon_frame.pack(pady=(0, 18))
+            icon_frame.pack_propagate(False)
+            ctk.CTkLabel(
+                icon_frame, text="🛡",
+                font=("Segoe UI Emoji", 28),
+                text_color=_BLUE
+            ).place(relx=0.5, rely=0.5, anchor="center")
 
-        # Nombre
+        # Nombre del sistema
         ctk.CTkLabel(
-            inner, text="SENTINEL",
-            font=("Segoe UI", 32, "bold"),
-            text_color="#FFFFFF"
+            self._left_inner, text="UnimoraAccess",
+            font=("Georgia", 28, "bold"),
+            text_color="#E6F1FB"
         ).pack()
 
-        ctk.CTkLabel(
-            inner, text="S Y S T E M",
-            font=("Segoe UI", 13),
-            text_color="#A8C8F0"
-        ).pack(pady=(2, 8))
+        
 
-        # Línea decorativa
-        line = ctk.CTkFrame(inner, fg_color="transparent")
-        line.pack(pady=(4, 22))
-        ctk.CTkFrame(line, fg_color=_BORDER_DK, height=1, width=55, corner_radius=2).pack(side="left")
-        ctk.CTkFrame(line, fg_color=_ACCENT,    height=2, width=36, corner_radius=2).pack(side="left", padx=4)
-        ctk.CTkFrame(line, fg_color=_BORDER_DK, height=1, width=55, corner_radius=2).pack(side="left")
+        # Divisor con punto central
+        div = ctk.CTkFrame(self._left_inner, fg_color="transparent", height=14)
+        div.pack(fill="x", pady=(2, 18))
+        ctk.CTkFrame(div, fg_color="#1E3D6A", height=1, corner_radius=0).place(
+            relx=0.0, rely=0.5, relwidth=0.44, anchor="w"
+        )
+        ctk.CTkFrame(div, fg_color=_BLUE, width=6, height=6, corner_radius=3).place(
+            relx=0.5, rely=0.5, anchor="center"
+        )
+        ctk.CTkFrame(div, fg_color="#1E3D6A", height=1, corner_radius=0).place(
+            relx=1.0, rely=0.5, relwidth=0.44, anchor="e"
+        )
 
         ctk.CTkLabel(
-            inner,
+            self._left_inner,
             text="Control de acceso biométrico\npara instituciones educativas",
-            font=("Segoe UI", 12),
-            text_color="#B0C4DE",
+            font=("Segoe UI", 11),
+            text_color=_BLUE_GLOW,
             justify="center"
-        ).pack(pady=(0, 28))
+        ).pack(pady=(0, 22))
 
         # Feature chips
         features = [
-            ("🔍", "Reconocimiento facial en tiempo real"),
-            ("🔒", "Acceso seguro y registrado"),
-            ("📋", "Historial completo de entradas"),
-            ("👥", "Gestión de alumnos, maestros y personal"),
+            ("⊙", "Reconocimiento facial en tiempo real"),
+            ("⊠", "Acceso seguro y registrado"),
+            ("≡", "Historial completo de entradas"),
+            ("⊞", "Gestión de alumnos y personal"),
         ]
-        for icono, texto in features:
+        for sym, txt in features:
             chip = ctk.CTkFrame(
-                inner, fg_color=_CHIP_BG,
+                self._left_inner,
+                fg_color="#162847",
                 corner_radius=8,
                 border_width=1,
-                border_color=_BORDER_DK
+                border_color="#1E3D6A",
             )
-            chip.pack(fill="x", pady=3, ipady=5)
-            ctk.CTkLabel(chip, text=icono, font=("Segoe UI Emoji", 14),
-                         text_color=_ACCENT).pack(side="left", padx=(12, 8))
-            ctk.CTkLabel(chip, text=texto, font=("Segoe UI", 11),
-                         text_color=_TEXT_MUTED, anchor="w").pack(side="left", padx=(0, 12))
+            chip.pack(fill="x", pady=3, ipady=6)
 
-        ctk.CTkLabel(
-            inner, text="v1.0.0  •  2026",
-            font=("Segoe UI", 10), text_color=_BORDER_DK
-        ).pack(pady=(24, 0))
-
-    # ── Card ─────────────────────────────────────────────────────────────────
-
-    def _build_card(self):
-
-        # Logo pequeño
-        try:
-            image = Image.open(LOGO_PATH)
-            self._card_logo = ctk.CTkImage(light_image=image, dark_image=image, size=(72, 55))
-            ctk.CTkLabel(self.card, image=self._card_logo, text="").pack(pady=(22, 4))
-        except Exception:
             ctk.CTkLabel(
-                self.card, text="🚀",
-                font=("Segoe UI Emoji", 42),
-                text_color=_ACCENT
-            ).pack(pady=(22, 4))
+                chip, text=sym,
+                font=("Courier New", 16, "bold"),
+                text_color=_BLUE,
+                width=28,
+            ).pack(side="left", padx=(12, 6))
+
+            ctk.CTkLabel(
+                chip, text=txt,
+                font=("Segoe UI", 10),
+                text_color=_BLUE_GLOW,
+                anchor="w"
+            ).pack(side="left", padx=(0, 12))
 
         ctk.CTkLabel(
-            self.card, text="Acceso directo",
-            font=("Segoe UI", 20, "bold"),
-            text_color=_TEXT_MAIN
-        ).pack(pady=(0, 3))
+            self._left_inner,
+            text="v1.0.0  ·  2026",
+            font=("Courier New", 9),
+            text_color="#1E3D6A"
+        ).pack(pady=(20, 0))
+
+    # ── Lado derecho ──────────────────────────────────────────────────────────
+
+    def _build_right(self):
+        center = ctk.CTkFrame(self.right, fg_color="transparent")
+        center.place(relx=0.5, rely=0.5, anchor="center", relwidth=0.78)
+
+        # ── Encabezado ────────────────────────────────────────────────────────
+        # Ícono verde
+        icon_box = ctk.CTkFrame(
+            center,
+            width=56, height=56,
+            corner_radius=14,
+            fg_color=_GREEN_BG,
+            border_width=1,
+            border_color="#C5DDA8",
+        )
+        icon_box.pack(pady=(0, 16))
+        icon_box.pack_propagate(False)
+        ctk.CTkLabel(
+            icon_box, text="✓",
+            font=("Segoe UI", 26, "bold"),
+            text_color=_GREEN
+        ).place(relx=0.5, rely=0.5, anchor="center")
 
         ctk.CTkLabel(
-            self.card, text="Presiona el botón para entrar al sistema",
+            center, text="Acceso directo",
+            font=("Georgia", 20, "bold"),
+            text_color=_TEXT_DARK
+        ).pack()
+
+        ctk.CTkLabel(
+            center,
+            text="Sistema de control de acceso institucional",
             font=("Segoe UI", 11),
-            text_color=_TEXT_MUTED
-        ).pack(pady=(0, 18))
+            text_color=_GRAY_TEXT
+        ).pack(pady=(4, 24))
 
-        # Separador
-        ctk.CTkFrame(self.card, fg_color=_BORDER_DK, height=1).pack(fill="x", padx=28, pady=(0, 18))
+        # ── Tarjeta sesión activa ─────────────────────────────────────────────
+        session_card = ctk.CTkFrame(
+            center,
+            fg_color=_WHITE,
+            corner_radius=12,
+            border_width=1,
+            border_color=_GRAY_BORDER,
+        )
+        session_card.pack(fill="x", pady=(0, 16))
 
-        # Botón ingresar
+        session_inner = ctk.CTkFrame(session_card, fg_color="transparent")
+        session_inner.pack(fill="x", padx=16, pady=14)
+
+        # Avatar azul marino
+        avatar = ctk.CTkFrame(
+            session_inner,
+            width=36, height=36,
+            corner_radius=18,
+            fg_color=_BLUE_DIM,
+        )
+        avatar.pack(side="left", padx=(0, 12))
+        avatar.pack_propagate(False)
+        ctk.CTkLabel(
+            avatar, text="A",
+            font=("Segoe UI", 14, "bold"),
+            text_color="#E6F1FB"
+        ).place(relx=0.5, rely=0.5, anchor="center")
+
+        # Info usuario
+        info = ctk.CTkFrame(session_inner, fg_color="transparent")
+        info.pack(side="left")
+        ctk.CTkLabel(
+            info, text="Administrador",
+            font=("Segoe UI", 12, "bold"),
+            text_color=_TEXT_SEMI
+        ).pack(anchor="w")
+        ctk.CTkLabel(
+            info, text="Acceso total al sistema",
+            font=("Segoe UI", 10),
+            text_color=_GRAY_TEXT
+        ).pack(anchor="w")
+
+        # Punto verde activo
+        dot_frame = ctk.CTkFrame(session_inner, fg_color="transparent")
+        dot_frame.pack(side="right")
+        ctk.CTkFrame(
+            dot_frame,
+            width=9, height=9,
+            corner_radius=5,
+            fg_color=_GREEN_DOT,
+        ).pack()
+
+        # Leyenda sesión automática
+        ctk.CTkLabel(
+            session_card,
+            text="Sesión iniciada automáticamente",
+            font=("Segoe UI", 10),
+            text_color=_GRAY_MID
+        ).pack(pady=(0, 12))
+
+        # ── Botón ingresar ────────────────────────────────────────────────────
         ctk.CTkButton(
-            self.card,
-            text="Entrar al sistema  →",
-            height=46, corner_radius=10,
-            fg_color=_ACCENT, hover_color=_ACCENT2,
-            text_color="#FFFFFF",
+            center,
+            text="  Entrar al sistema  →",
+            height=48,
+            corner_radius=10,
+            fg_color=_NAVY,
+            hover_color=_NAVY_LIGHT,
+            text_color="#E6F1FB",
             font=FontScale.fb(13),
             command=self.login,
-        ).pack(padx=28, fill="x", pady=(20, 0))
+        ).pack(fill="x", pady=(0, 20))
 
-        # Footer
+        # ── Separador ─────────────────────────────────────────────────────────
+        sep = ctk.CTkFrame(center, fg_color="transparent", height=20)
+        sep.pack(fill="x")
+
+        ctk.CTkFrame(sep, fg_color=_GRAY_BORDER, height=1, corner_radius=0).place(
+            relx=0.0, rely=0.5, relwidth=0.34, anchor="w"
+        )
         ctk.CTkLabel(
-            self.card,
-            text="Sentinel System  •  Entrada rápida",
-            font=("Segoe UI", 12),
-            text_color="#AAAAAA"
-        ).pack(side="bottom", pady=12)
+            sep, text="UNIMORA ACCES",
+            font=("Courier New", 9),
+            text_color=_GRAY_MID
+        ).place(relx=0.5, rely=0.5, anchor="center")
+        ctk.CTkFrame(sep, fg_color=_GRAY_BORDER, height=1, corner_radius=0).place(
+            relx=1.0, rely=0.5, relwidth=0.34, anchor="e"
+        )
+
+        # ── Métricas ──────────────────────────────────────────────────────────
+        metrics_row = ctk.CTkFrame(center, fg_color="transparent")
+        metrics_row.pack(fill="x", pady=(14, 0))
+
+        metrics = [
+            ("128",  "Usuarios",  _TEXT_DARK),
+            ("99 %", "Precisión", _GREEN_DOT),
+            ("24/7", "Activo",    _METRIC_BLUE),
+        ]
+        for val, label, color in metrics:
+            card = ctk.CTkFrame(
+                metrics_row,
+                fg_color=_WHITE,
+                corner_radius=8,
+                border_width=1,
+                border_color=_GRAY_BORDER,
+            )
+            card.pack(side="left", expand=True, fill="both",
+                      padx=4, ipady=8)
+            ctk.CTkLabel(
+                card, text=val,
+                font=("Georgia", 16, "bold"),
+                text_color=color
+            ).pack()
+            ctk.CTkLabel(
+                card, text=label,
+                font=("Segoe UI", 9),
+                text_color=_GRAY_TEXT
+            ).pack()
+
+    # ── Acción ───────────────────────────────────────────────────────────────
 
     def login(self):
         self.app.show_main_view()
