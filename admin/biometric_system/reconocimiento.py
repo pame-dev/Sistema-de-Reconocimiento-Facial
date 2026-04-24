@@ -42,6 +42,7 @@ class ReconocerFacial:
         self.model_path = os.path.join(self.artifacts_dir, 'lbph_model.yml')
         self.data_path  = os.path.join(self.artifacts_dir, 'lbph_data.pkl')
         self.ids_hash_path  = os.path.join(self.artifacts_dir, 'ids_hash.pkl')
+        self._modelo_version = 8
 
         # ── Detectores Haar ────────────────────────────────────────────────────
         self._haar_frontal = cv2.CascadeClassifier(
@@ -61,20 +62,20 @@ class ReconocerFacial:
         self.nombres             = {}   # dict[int, str]    — user_id → nombre completo
 
         # ── Parámetros de reconocimiento ───────────────────────────────────────
-        self.tolerancia           = 70.0   # distancia máxima para considerar match
-        self._TOLERANCIA_MIN      = 20.0
-        self._TOLERANCIA_MAX      = 120.0
+        self.tolerancia           = 85.0   # distancia máxima para considerar match
+        self._TOLERANCIA_MIN      = 70.0
+        self._TOLERANCIA_MAX      = 130.0
 
         # ── Votación ──────────────────────────────────────────────────────────
         self._votos         = []   # list[(user_id|"Desconocido", distancia)]
-        self._frames_votar  = 7
+        self._frames_votar  = 4
         self._procesar_cada = 2
         self._frame_counter = 0
         self._ultimo_resultado = []
 
         # ── Cooldown de registros en BD ────────────────────────────────────────
         self._ultimo_registro   = {}
-        self._cooldown_segundos = 15
+        self._cooldown_segundos = 5
 
         # ── Overlay en frame ──────────────────────────────────────────────────
         self._overlay_texto    = ""
@@ -91,6 +92,10 @@ class ReconocerFacial:
         self._ultimo_tipo         = None   # None | "aceptado" | "denegado"
         self._desconocido_desde   = None
         self._tolerancia_segundos = 5.0
+        self._ultimo_usuario_aceptado = None
+        self._ultimo_aceptado_ts      = None
+        self._ventana_recuperacion_seg = 20.0
+        self._margen_recuperacion      = 10.0
 
         # ── Callbacks ─────────────────────────────────────────────────────────
         self.on_resultado = None
@@ -235,6 +240,26 @@ class ReconocerFacial:
             except Exception:
                 pass
 
+    def _cargar_modelo_lbph(self):
+        """Compatibilidad OpenCV: algunos builds usan read, otros load."""
+        if hasattr(self.recognizer, 'read'):
+            self.recognizer.read(self.model_path)
+            return
+        if hasattr(self.recognizer, 'load'):
+            self.recognizer.load(self.model_path)
+            return
+        raise AttributeError("LBPHFaceRecognizer no soporta read/load en este build")
+
+    def _guardar_modelo_lbph(self):
+        """Compatibilidad OpenCV: algunos builds usan write, otros save."""
+        if hasattr(self.recognizer, 'write'):
+            self.recognizer.write(self.model_path)
+            return
+        if hasattr(self.recognizer, 'save'):
+            self.recognizer.save(self.model_path)
+            return
+        raise AttributeError("LBPHFaceRecognizer no soporta write/save en este build")
+
     # ─────────────────────────────────────────────────────────────────────────
     # Construcción de datos para LBPH desde la BD
     # ─────────────────────────────────────────────────────────────────────────
@@ -264,6 +289,7 @@ class ReconocerFacial:
         faces_tmp = []
         labels_tmp = []
         nombres_tmp = {}
+        fallback_directo = 0
 
         print(f"📸 Procesando {len(filas)} imágenes biométricas...")
 
@@ -285,25 +311,27 @@ class ReconocerFacial:
                 gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
                 gray = cv2.equalizeHist(gray)
 
-                # Detectar caras con Haar
+                # Detectar caras con Haar. Si no detecta, usar imagen completa
+                # porque en este sistema muchas biometrías ya están recortadas.
                 caras = self._detectar_caras(img, gray)
-                if len(caras) == 0:
-                    continue
+                if len(caras) > 0:
+                    # Usar la cara más grande
+                    x, y, w, h = max(caras, key=lambda x: x[2] * x[3])
 
-                # Usar la cara más grande
-                x, y, w, h = max(caras, key=lambda x: x[2] * x[3])
+                    # Recortar con margen
+                    fh, fw = gray.shape[:2]
+                    pad = int(min(w, h) * 0.08)
+                    x1 = max(0, x - pad)
+                    y1 = max(0, y - pad)
+                    x2 = min(fw, x + w + pad)
+                    y2 = min(fh, y + h + pad)
 
-                # Recortar con margen
-                fh, fw = gray.shape[:2]
-                pad = int(min(w, h) * 0.08)
-                x1 = max(0, x - pad)
-                y1 = max(0, y - pad)
-                x2 = min(fw, x + w + pad)
-                y2 = min(fh, y + h + pad)
-
-                rostro_gray = gray[y1:y2, x1:x2]
-                if rostro_gray.size == 0:
-                    continue
+                    rostro_gray = gray[y1:y2, x1:x2]
+                    if rostro_gray.size == 0:
+                        continue
+                else:
+                    fallback_directo += 1
+                    rostro_gray = gray
 
                 # Redimensionar a 100x100 para consistencia
                 rostro_gray = cv2.resize(rostro_gray, (100, 100))
@@ -325,6 +353,8 @@ class ReconocerFacial:
 
         ids_usados = set(labels_tmp)
         print(f"  ✅ {len(ids_usados)} usuarios · {len(faces_tmp)} rostros")
+        if fallback_directo > 0:
+            print(f"  ℹ️  {fallback_directo} muestra(s) usadas sin redetección Haar")
         return True
 
     # ─────────────────────────────────────────────────────────────────────────
@@ -362,12 +392,18 @@ class ReconocerFacial:
 
         if archivo_ok:
             try:
-                self.recognizer.load(self.model_path)
+                self._cargar_modelo_lbph()
                 with open(self.data_path, 'rb') as f:
                     data = pickle.load(f)
                 self.nombres = data['nombres']
                 ids_archivo = data['ids']
                 self.tolerancia = float(data.get('tolerancia', self.tolerancia))
+                modelo_version_archivo = int(data.get('modelo_version', 1))
+
+                if modelo_version_archivo != self._modelo_version:
+                    print("🔄 Versión de preprocesado cambiada — regenerando modelo...")
+                    self._borrar_archivos_modelo()
+                    return self._generar_y_guardar()
 
                 # Doble verificación: IDs en el archivo vs BD
                 if ids_archivo != ids_bd:
@@ -400,7 +436,7 @@ class ReconocerFacial:
         self.recognizer.train(self.faces, np.array(self.labels, dtype=np.int32))
 
         os.makedirs(self.artifacts_dir, exist_ok=True)
-        self.recognizer.save(self.model_path)
+        self._guardar_modelo_lbph()
 
         self._ajustar_tolerancia_post_entreno()
 
@@ -408,6 +444,7 @@ class ReconocerFacial:
             'nombres':    self.nombres,
             'ids':        set(self.labels),
             'tolerancia': self.tolerancia,
+            'modelo_version': self._modelo_version,
         }
         with open(self.data_path, 'wb') as f:
             pickle.dump(data, f)
@@ -432,7 +469,10 @@ class ReconocerFacial:
                 continue
         if not distancias:
             return
-        umbral = float(np.percentile(distancias, 90)) + 20.0
+        umbral = float(np.percentile(distancias, 95)) + 20.0
+        # Con pocos usuarios, evitar umbrales excesivamente permisivos.
+        if len(self.nombres) <= 2:
+            umbral = min(umbral, 92.0)
         self.tolerancia = min(self._TOLERANCIA_MAX,
                               max(self._TOLERANCIA_MIN, umbral))
         print(f"🔧 Tolerancia ajustada a {self.tolerancia:.1f} según datos de entrenamiento")
@@ -447,16 +487,39 @@ class ReconocerFacial:
         Retorna (user_id|"Desconocido", distancia).
         """
         try:
-            rostro_gray = cv2.cvtColor(rostro_bgr, cv2.COLOR_BGR2GRAY)
-            rostro_gray = cv2.equalizeHist(rostro_gray)
-            rostro_gray = cv2.resize(rostro_gray, (100, 100))
+            gray_base = cv2.cvtColor(rostro_bgr, cv2.COLOR_BGR2GRAY)
+            gray_base = cv2.resize(gray_base, (100, 100))
 
-            label, conf = self.recognizer.predict(rostro_gray)
+            variantes = [
+                gray_base,
+                cv2.equalizeHist(gray_base),
+                cv2.GaussianBlur(cv2.equalizeHist(gray_base), (3, 3), 0),
+            ]
+
+            predicciones = []
+            for variante in variantes:
+                label_i, conf_i = self.recognizer.predict(variante)
+                predicciones.append((label_i, float(conf_i)))
+
+            # Elegir la etiqueta más estable entre variantes y usar distancia robusta.
+            labels = [l for l, _ in predicciones]
+            label = Counter(labels).most_common(1)[0][0]
+            dists_label = [c for l, c in predicciones if l == label]
+            conf = float(np.median(dists_label))
 
             if conf <= self.tolerancia:
                 return label, conf
-            else:
-                return "Desconocido", conf
+
+            # Histeresis de recuperacion: despues de un denegado, permitir
+            # un margen corto solo si coincide con el ultimo usuario aceptado.
+            if (self._ultimo_usuario_aceptado is not None
+                    and label == self._ultimo_usuario_aceptado
+                    and self._ultimo_aceptado_ts is not None):
+                delta = (datetime.now() - self._ultimo_aceptado_ts).total_seconds()
+                if (0 <= delta <= self._ventana_recuperacion_seg
+                        and conf <= (self.tolerancia + self._margen_recuperacion)):
+                    return label, conf
+            return "Desconocido", conf
 
         except Exception as e:
             print(f"⚠️  Error en reconocimiento: {e}")
@@ -474,7 +537,7 @@ class ReconocerFacial:
 
         labels_validos = [l for l, d in self._votos
                           if l != "Desconocido"]
-        if len(labels_validos) < int(self._frames_votar * 0.55):
+        if len(labels_validos) < int(self._frames_votar * 0.50):
             return "Desconocido", None
 
         label_ganador = Counter(labels_validos).most_common(1)[0][0]
@@ -495,15 +558,35 @@ class ReconocerFacial:
         return (ahora - ultimo).total_seconds() >= self._cooldown_segundos
 
     def registrar_acceso(self, user_id, estado, distancia):
+        confianza = round(max(0.0, 100 - distancia), 2)
+        hubo_cambio_estado = (self._ultimo_tipo != estado)
+
         if not self._puede_registrar(user_id):
+            # Aunque no se escriba en BD por cooldown, mantener el estado vivo
+            # para que la UI pueda volver a "aceptado" tras un "desconocido".
+            self._ultimo_tipo = estado
+            if hubo_cambio_estado:
+                if estado == "aceptado":
+                    self._overlay_texto  = "ACCESO PERMITIDO"
+                    self._overlay_color  = (30, 200, 60)
+                    self._overlay_frames = 10
+                    self._votos = []
+                    self._ultimo_usuario_aceptado = user_id
+                    self._ultimo_aceptado_ts = datetime.now()
+                else:
+                    self._overlay_texto  = "ACCESO DENEGADO"
+                    self._overlay_color  = (40, 40, 220)
+                    self._overlay_frames = 8
+                    self._votos = []
+
+                if self.on_resultado:
+                    nombre = self.nombres.get(user_id, "Desconocido")
+                    self.on_resultado(nombre, confianza, estado)
             return
 
         conn = self.get_db()
         if not conn:
             return
-
-        # Convertir distancia a "confianza" (0-100, mayor = mejor)
-        confianza = round(max(0.0, 100 - distancia), 2)
 
         cur = conn.cursor()
         try:
@@ -529,6 +612,8 @@ class ReconocerFacial:
                 self._overlay_color    = (30, 200, 60)
                 self._overlay_frames   = self._overlay_duracion
                 self._ultimo_registro.pop("desconocido", None)
+                self._ultimo_usuario_aceptado = user_id
+                self._ultimo_aceptado_ts = datetime.now()
                 self._abrir_cerradura()
             else:
                 self.total_denegados += 1
@@ -598,8 +683,12 @@ class ReconocerFacial:
 
                     label_raw, dist_raw = self._reconocer_rostro(rostro_bgr)
 
-                    # Limpiar votos si cambió la cara
-                    if label_anterior is not None and label_raw != label_anterior:
+                    # Limpiar votos solo cuando cambia entre dos identidades conocidas.
+                    # No resetear por transiciones con "Desconocido" para no bloquear
+                    # la recuperación inmediata tras una denegación.
+                    if (label_anterior is not None and label_raw != label_anterior
+                            and label_anterior != "Desconocido"
+                            and label_raw != "Desconocido"):
                         self._votos = []
 
                     label, distancia = self._votar(label_raw, dist_raw)

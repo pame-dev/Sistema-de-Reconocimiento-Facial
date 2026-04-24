@@ -3,6 +3,7 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 import customtkinter as ctk
 import cv2
+import numpy as np
 from PIL import Image, ImageTk
 import os
 import time
@@ -105,8 +106,8 @@ POSTURAS = [
 ]
 
 TOTAL_FOTOS    = sum(p["fotos"] for p in POSTURAS)   # 300
-FRAMES_ESTABLE = 8
-CAPTURE_DELAY  = 0.04   # segundos entre capturas (~25 fotos/seg)
+FRAMES_ESTABLE = 5
+CAPTURE_DELAY  = 0.18   # segundos entre capturas (evita ráfaga con fotos casi iguales)
 
 
 class NuevoRegistroView:
@@ -133,6 +134,7 @@ class NuevoRegistroView:
         self._countdown_job   = None
         self._guardando       = False
         self._pausado         = False
+        self._ultima_muestra_gray = None
 
         # ── Detectores Haar ────────────────────────────────────────────────────
         self.detector_frontal = cv2.CascadeClassifier(
@@ -620,12 +622,33 @@ class NuevoRegistroView:
         self._countdown           = 0
         self._guardando           = False
         self._pausado             = False
+        self._ultima_muestra_gray = None
         if self._countdown_job:
             try:
                 self.container.after_cancel(self._countdown_job)
             except Exception:
                 pass
             self._countdown_job = None
+
+    def _rostro_apto_para_guardar(self, rostro_bgr):
+        """Valida calidad minima del rostro para entrenar mejor el modelo."""
+        try:
+            gray = cv2.cvtColor(rostro_bgr, cv2.COLOR_BGR2GRAY)
+
+            # Evitar fotos borrosas.
+            nitidez = float(cv2.Laplacian(gray, cv2.CV_64F).var())
+            if nitidez < 40.0:
+                return False, "Rostro borroso"
+
+            # Evitar fotos demasiado oscuras o sobreexpuestas.
+            brillo = float(np.mean(gray))
+            if brillo < 45.0 or brillo > 215.0:
+                return False, "Ajusta la iluminacion"
+
+            self._ultima_muestra_gray = gray
+            return True, ""
+        except Exception:
+            return True, ""
 
     # ── Panel guía ────────────────────────────────────────────────────────────
     def _construir_panel_guia(self, color):
@@ -827,6 +850,13 @@ class NuevoRegistroView:
                 # Guardamos el recorte del rostro en color como JPG.
                 rostro_bgr = frame[y:y+h, x:x+w]
                 rostro_bgr = cv2.resize(rostro_bgr, (200, 200))
+
+                apto, msg = self._rostro_apto_para_guardar(rostro_bgr)
+                if not apto:
+                    self._set_sub(msg)
+                    self.video_label.after(15, self._actualizar_video)
+                    return
+
                 _, buf = cv2.imencode('.jpg', rostro_bgr,
                                       [cv2.IMWRITE_JPEG_QUALITY, 92])
                 self.fotos_temp.append(buf.tobytes())
