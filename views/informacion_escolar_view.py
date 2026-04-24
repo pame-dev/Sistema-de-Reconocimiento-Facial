@@ -4,6 +4,8 @@ from tkinter import ttk, messagebox
 import customtkinter as ctk
 import sys
 import os
+from datetime import datetime
+from tkcalendar import DateEntry
 from views.font_scale import FontScale
 from views import nuevo_registro_view
 from idiomas import t   
@@ -229,7 +231,7 @@ class InformacionEscolarView:
         scroll_x.pack(side="bottom", fill="x", pady=(0, 4))
 
         self.tabla = ttk.Treeview(self.tabla_frame,
-            columns=("id", "nombre", "matricula", "rol", "fotos"),
+            columns=("id", "nombre", "matricula", "tipo_sangre", "rol", "fotos"),
             show="headings",
             yscrollcommand=scroll_y.set,
             xscrollcommand=scroll_x.set,
@@ -242,6 +244,7 @@ class InformacionEscolarView:
             ("id", t("id"), 55, "center"),
             ("nombre",    t("nombre_completo"), 260, "w"),
             ("matricula", t("matricula"), 130, "center"),
+            ("tipo_sangre", t("tipo_sangre"), 95, "center"),
             ("rol",       t("rol"), 110, "center"),
             ("fotos", f"📸 {t('fotos')}", 80, "center"),
         ]:
@@ -306,6 +309,8 @@ class InformacionEscolarView:
                 (t("apellido_materno"), u.get('apellido_materno','—')),]
         col2 = [(t("matricula"), u.get('matricula','—')),
                 (t("telefono"), u.get('telefono','—')),
+            (t("fecha_nacimiento"), u.get('fecha_nacimiento','—')),
+            (t("tipo_sangre"), u.get('tipo_sangre','—')),
                 (t("rol"), rol.capitalize()),]
         col3 = []
         if rol == 'alumno':
@@ -353,11 +358,11 @@ class InformacionEscolarView:
             for row in resultados:
                 rol = row[5]
                 if rol == 'alumno':
-                    carrera, grado, grupo = row[7] or '—', row[8] or '—', row[9] or '—'
+                    carrera, grado, grupo = row[9] or '—', row[10] or '—', row[11] or '—'
                 elif rol == 'maestro':
-                    carrera, grado, grupo = row[11] or '—', row[12] or '—', '—'
+                    carrera, grado, grupo = row[12] or '—', row[13] or '—', '—'
                 else:
-                    carrera, grado, grupo = row[13] or '—', '—', '—'
+                    carrera, grado, grupo = row[14] or '—', '—', '—'
 
                 self.datos.append({
                     'id':              row[0],
@@ -367,15 +372,17 @@ class InformacionEscolarView:
                     'matricula':       row[4] or '—',
                     'rol':             rol,
                     'telefono':        row[6] or '—',
+                    'fecha_nacimiento': row[7] or '—',
+                    'tipo_sangre':     row[8] or '—',
                     'carrera':         carrera,
                     'grado':           grado,
                     'grupo':           grupo,
-                    'materia':         row[11] or '—',
-                    'puesto':          row[13] or '—',
-                    'area':            row[14] or '—',
-                    'facultad':        row[10] if rol == 'alumno' else '—',
-                    'fotos':           row[15] or 0,
-                    'accesos':         row[16] or 0,
+                    'materia':         row[12] or '—',
+                    'puesto':          row[14] or '—',
+                    'area':            row[15] or '—',
+                    'facultad':        row[11] if rol == 'alumno' else '—',
+                    'fotos':           row[16] or 0,
+                    'accesos':         row[17] or 0,
                 })
             self.actualizar_tabla()
         except Exception as e:
@@ -390,7 +397,7 @@ class InformacionEscolarView:
         for u in lista:
             nombre_completo = f"{u.get('nombre','')} {u.get('apellido_paterno','')} {u.get('apellido_materno','')}".strip()
             self.tabla.insert("", "end", values=(
-                u['id'], nombre_completo, u['matricula'], u['rol'], u['fotos']
+                u['id'], nombre_completo, u['matricula'], u.get('tipo_sangre', '—'), u['rol'], u['fotos']
             ), tags=(u.get('rol',''),))
 
         total = len(lista)
@@ -483,6 +490,8 @@ class InformacionEscolarView:
             'materno':   tk.StringVar(value=_val('apellido_materno')),
             'matricula': tk.StringVar(value=_val('matricula')),
             'telefono':  tk.StringVar(value=_val('telefono')),
+            'fecha_nacimiento': tk.StringVar(value=_val('fecha_nacimiento')),
+            'tipo_sangre': tk.StringVar(value=_val('tipo_sangre')),
             'rol':       tk.StringVar(value=u['rol']),
             # específicos — se rellenan/vacían al cambiar rol
             'facultad':  tk.StringVar(value=_val('facultad')),
@@ -529,7 +538,7 @@ class InformacionEscolarView:
             ctk.CTkFrame(f, fg_color=COLORS['border'],
                          height=1, corner_radius=0).pack(side="left", fill="x", expand=True, padx=(8, 0))
 
-        def make_entry(parent, label_text, var):
+        def make_entry(parent, label_text, var, key=None):
             """Crea una fila label + entry y devuelve el CTkEntry."""
             row = ctk.CTkFrame(parent, fg_color="transparent")
             row.pack(fill="x", padx=20, pady=4)
@@ -537,12 +546,47 @@ class InformacionEscolarView:
                          font=("Segoe UI", 10),
                          text_color=c['text_gray'],
                          width=130, anchor="w").pack(side="left")
-            e = ctk.CTkEntry(row, textvariable=var,
-                             font=("Segoe UI", 11), height=34,
-                             corner_radius=8,
-                             border_color=COLORS['border'],
-                             fg_color=c['content_bg'],
-                             text_color=c['text_dark'])
+            if key == "fecha_nacimiento":
+                e = DateEntry(
+                    row,
+                    date_pattern='dd-mm-yyyy',
+                    maxdate=datetime.now(),
+                    font=("Segoe UI", 11),
+                    textvariable=var,
+                )
+                if var.get().strip() not in ('', '—'):
+                    valor = var.get().strip()
+                    for fmt in ('%d-%m-%Y', '%Y-%m-%d'):
+                        try:
+                            e.set_date(datetime.strptime(valor, fmt))
+                            break
+                        except Exception:
+                            pass
+                e.bind("<<DateEntrySelected>>", lambda _event, v=var, widget=e: v.set(widget.get()))
+
+            elif key == "tipo_sangre":
+                e = ttk.Combobox(
+                    row,
+                    values=[
+                        "A+", "A-",
+                        "B+", "B-",
+                        "AB+", "AB-",
+                        "O+", "O-"
+                    ],
+                    state="readonly",
+                    font=("Segoe UI", 11),
+                    textvariable=var,
+                )
+                if var.get().strip() in e['values']:
+                    e.set(var.get().strip())
+
+            else:
+                e = ctk.CTkEntry(row, textvariable=var,
+                                 font=("Segoe UI", 11), height=34,
+                                 corner_radius=8,
+                                 border_color=COLORS['border'],
+                                 fg_color=c['content_bg'],
+                                 text_color=c['text_dark'])
             e.pack(side="left", fill="x", expand=True)
             return e
 
@@ -552,6 +596,8 @@ class InformacionEscolarView:
         make_entry(scroll_outer, t("apellido_materno"), vars_['materno'])
         make_entry(scroll_outer, t("matricula"), vars_['matricula'])
         make_entry(scroll_outer, t("telefono"), vars_['telefono'])
+        make_entry(scroll_outer, t("fecha_nacimiento"), vars_['fecha_nacimiento'], key="fecha_nacimiento")
+        make_entry(scroll_outer, t("tipo_sangre"), vars_['tipo_sangre'], key="tipo_sangre")
 
         # Rol — combobox
         rol_row = ctk.CTkFrame(scroll_outer, fg_color="transparent")
@@ -661,9 +707,21 @@ class InformacionEscolarView:
                     apellidoMaternoUsuario = ?,
                     matriculaUsuario       = ?,
                     telefonoUsuario        = ?,
+                    fechaNacimientoUsuario = ?,
+                    tipoSangreUsuario      = ?,
                     rolUsuario             = ?
                 WHERE idUsuario = ?
-            """, (nombre, paterno, materno, matricula, telefono, rol, user_id))
+            """, (
+                nombre,
+                paterno,
+                materno,
+                matricula,
+                telefono,
+                g('fecha_nacimiento'),
+                g('tipo_sangre'),
+                rol,
+                user_id,
+            ))
 
             cursor.execute("DELETE FROM alumnos          WHERE fkIdUsuario = ?", (user_id,))
             cursor.execute("DELETE FROM maestros         WHERE fkIdUsuario = ?", (user_id,))
