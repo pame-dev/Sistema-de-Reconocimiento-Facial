@@ -10,6 +10,7 @@ import time
 from datetime import datetime
 import sys
 import threading
+
 from views.font_scale import FontScale
 from camera import Camera
 from idiomas import t
@@ -24,6 +25,32 @@ from database.queries import (
     sp_insertar_personal,
     sp_insertar_biometria,
 )
+
+# ── Haar cascades (multiplataforma: Windows + Debian/Raspberry) ──────────────
+def haar_path(filename: str) -> str:
+    """
+    Devuelve ruta absoluta a Haar cascade.
+    - En Windows (opencv-python) suele existir cv2.data.haarcascades
+    - En Debian/Raspberry, viene de opencv-data: /usr/share/opencv4/haarcascades
+    """
+    if hasattr(cv2, "data") and hasattr(cv2.data, "haarcascades"):
+        return os.path.join(cv2.data.haarcascades, filename)
+
+    debian_dir = "/usr/share/opencv4/haarcascades"
+    p = os.path.join(debian_dir, filename)
+    if os.path.exists(p):
+        return p
+
+    # fallback adicional por si alguna distro lo ubica distinto
+    for base in ("/usr/share/opencv/haarcascades",):
+        p2 = os.path.join(base, filename)
+        if os.path.exists(p2):
+            return p2
+
+    raise FileNotFoundError(
+        f"No encontré Haar cascade '{filename}'. "
+        f"En Debian instala: sudo apt install opencv-data"
+    )
 
 # ── Configuración de roles ────────────────────────────────────────────────────
 ROL_CONFIG = {
@@ -138,14 +165,29 @@ class NuevoRegistroView:
 
         # ── Detectores Haar ────────────────────────────────────────────────────
         self.detector_frontal = cv2.CascadeClassifier(
-            cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+            haar_path("haarcascade_frontalface_default.xml")
         )
         self.detector_alt = cv2.CascadeClassifier(
-            cv2.data.haarcascades + 'haarcascade_frontalface_alt2.xml'
+            haar_path("haarcascade_frontalface_alt2.xml")
         )
         self.detector_perfil = cv2.CascadeClassifier(
-            cv2.data.haarcascades + 'haarcascade_profileface.xml'
+            haar_path("haarcascade_profileface.xml")
         )
+
+        if self.detector_frontal.empty():
+            raise RuntimeError("No se pudo cargar haarcascade_frontalface_default.xml")
+        if self.detector_alt.empty():
+            raise RuntimeError("No se pudo cargar haarcascade_frontalface_alt2.xml")
+        if self.detector_perfil.empty():
+            raise RuntimeError("No se pudo cargar haarcascade_profileface.xml")
+
+        # Validación (si falla, mejor lanzar error claro)
+        if self.detector_frontal.empty():
+            raise RuntimeError("No se pudo cargar haarcascade_frontalface_default.xml")
+        if self.detector_alt.empty():
+            raise RuntimeError("No se pudo cargar haarcascade_frontalface_alt2.xml")
+        if self.detector_perfil.empty():
+            raise RuntimeError("No se pudo cargar haarcascade_profileface.xml")
 
         self.modo_retomar_fotos = False
         self.user_id_existente  = None

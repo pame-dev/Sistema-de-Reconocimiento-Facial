@@ -1,57 +1,82 @@
-#archivo para poder usar la camara de la raspberry y tambien la de windows
 import os
-
-try:
-    from picamera2 import Picamera2
-    import cv2
-    USE_PI_CAMERA = True
-except ImportError:
-    import cv2
-    USE_PI_CAMERA = False
-
+import sys
+import time
+import cv2
 
 class Camera:
-    def __init__(self):
+    """
+    read() devuelve un frame en BGR (OpenCV).
+    Raspberry Pi: Picamera2 (libcamera)
+    Windows: cv2.VideoCapture
+    """
+
+    def __init__(self, index: int = 0, size=(640, 480), warmup_frames: int = 5):
+        self.index = index
+        self.size = size
+        self.warmup_frames = warmup_frames
+        self.backend = None
         self.cap = None
 
+    def _select_backend(self) -> str:
+        force = os.environ.get("CAM_BACKEND", "").strip().lower()
+        if force in ("picamera2", "pi", "libcamera"):
+            return "picamera2"
+        if force in ("opencv", "cv2", "windows"):
+            return "opencv"
+
+        # default
+        return "picamera2" if sys.platform.startswith("linux") else "opencv"
+
     def start(self):
-        if USE_PI_CAMERA:
+        self.backend = self._select_backend()
+
+        if self.backend == "picamera2":
+            from picamera2 import Picamera2  # import aquí para que Windows no falle
             self.cap = Picamera2()
+
             config = self.cap.create_preview_configuration(
-                main={"format": "RGB888", "size": (640, 480)}
+                main={"format": "RGB888", "size": self.size}
             )
             self.cap.configure(config)
             self.cap.start()
-        else:
-            # En Windows, CAP_DSHOW suele abrir más rápido y con menos bloqueos.
-            if os.name == "nt" and hasattr(cv2, "CAP_DSHOW"):
-                self.cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-            else:
-                self.cap = cv2.VideoCapture(0)
 
-            if not self.cap or not self.cap.isOpened():
-                raise RuntimeError("No se pudo abrir la cámara")
+            # warmup (evita frames raros al inicio)
+            for _ in range(max(0, int(self.warmup_frames))):
+                _ = self.cap.capture_array()
+                time.sleep(0.01)
+            return
+
+        # backend opencv
+        api = cv2.CAP_DSHOW if os.name == "nt" and hasattr(cv2, "CAP_DSHOW") else 0
+        self.cap = cv2.VideoCapture(self.index, api)
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.size[0])
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.size[1])
+
+        if not self.cap.isOpened():
+            raise RuntimeError("No se pudo abrir la cámara con OpenCV")
 
     def read(self):
         if not self.cap:
             return None
 
-        if USE_PI_CAMERA:
-            frame = self.cap.capture_array()
-            return cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-        else:
-            ret, frame = self.cap.read()
-            if not ret:
-                return None
-            return frame
+        if self.backend == "picamera2":
+            frame_rgb = self.cap.capture_array()                 # RGB
+            frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
+            return frame_bgr
+
+        ok, frame = self.cap.read()
+        if not ok:
+            return None
+        return frame
 
     def stop(self):
         if not self.cap:
             return
-
-        if USE_PI_CAMERA:
-            self.cap.stop()
-        else:
-            self.cap.release()
-
-        self.cap = None
+        try:
+            if self.backend == "picamera2":
+                self.cap.stop()
+            else:
+                self.cap.release()
+        finally:
+            self.cap = None
+            self.backend = None

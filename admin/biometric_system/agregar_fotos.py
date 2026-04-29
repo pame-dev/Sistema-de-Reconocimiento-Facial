@@ -15,14 +15,31 @@ if _PROJECT_ROOT not in sys.path:
 
 from camera import Camera
 
+def haar_path(filename: str) -> str:
+    if hasattr(cv2, "data") and hasattr(cv2.data, "haarcascades"):
+        return os.path.join(cv2.data.haarcascades, filename)
+
+    debian_dir = "/usr/share/opencv4/haarcascades"
+    p = os.path.join(debian_dir, filename)
+    if os.path.exists(p):
+        return p
+
+    for base in ("/usr/share/opencv/haarcascades",):
+        p2 = os.path.join(base, filename)
+        if os.path.exists(p2):
+            return p2
+
+    raise FileNotFoundError(f"No encontré Haar cascade '{filename}' (instala opencv-data).")
 
 DB_PATH = os.path.join(_PROJECT_ROOT, "database", "sistema_biometrico.db")
 
 # Detectores Haar (mismo enfoque que el motor)
-_HAAR_FRONTAL = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
-_HAAR_ALT     = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_alt2.xml")
-_HAAR_PERFIL  = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_profileface.xml")
+_HAAR_FRONTAL = cv2.CascadeClassifier(haar_path("haarcascade_frontalface_default.xml"))
+_HAAR_ALT     = cv2.CascadeClassifier(haar_path("haarcascade_frontalface_alt2.xml"))
+_HAAR_PERFIL  = cv2.CascadeClassifier(haar_path("haarcascade_profileface.xml"))
 
+if _HAAR_FRONTAL.empty() or _HAAR_ALT.empty() or _HAAR_PERFIL.empty():
+    raise RuntimeError("No se pudieron cargar Haar cascades (revisa opencv-data / rutas).")
 
 def _detectar_caras(frame_gray):
     """

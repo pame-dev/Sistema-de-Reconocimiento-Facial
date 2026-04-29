@@ -23,6 +23,32 @@ except Exception:
     ejecutar_test_cerradura = None
 
 
+# ── Haar cascades (multiplataforma: Windows + Debian/Raspberry) ──────────────
+def haar_path(filename: str) -> str:
+    """
+    Devuelve ruta absoluta a Haar cascade.
+    - Windows (opencv-python) suele tener: cv2.data.haarcascades
+    - Debian/Raspberry: opencv-data -> /usr/share/opencv4/haarcascades
+    """
+    if hasattr(cv2, "data") and hasattr(cv2.data, "haarcascades"):
+        return os.path.join(cv2.data.haarcascades, filename)
+
+    debian_dir = "/usr/share/opencv4/haarcascades"
+    p = os.path.join(debian_dir, filename)
+    if os.path.exists(p):
+        return p
+
+    # fallback adicional por si alguna distro lo ubica distinto
+    for base in ("/usr/share/opencv/haarcascades",):
+        p2 = os.path.join(base, filename)
+        if os.path.exists(p2):
+            return p2
+
+    raise FileNotFoundError(
+        f"No encontré Haar cascade '{filename}'. "
+        f"En Debian instala: sudo apt install opencv-data"
+    )
+
 class ReconocerFacial:
     """
     Motor de reconocimiento facial.
@@ -46,16 +72,25 @@ class ReconocerFacial:
 
         # ── Detectores Haar ────────────────────────────────────────────────────
         self._haar_frontal = cv2.CascadeClassifier(
-            cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+            haar_path('haarcascade_frontalface_default.xml')
         )
         self._haar_alt = cv2.CascadeClassifier(
-            cv2.data.haarcascades + 'haarcascade_frontalface_alt2.xml'
+            haar_path('haarcascade_frontalface_alt2.xml')
         )
         self._haar_perfil = cv2.CascadeClassifier(
-            cv2.data.haarcascades + 'haarcascade_profileface.xml'
+            haar_path('haarcascade_profileface.xml')
         )
 
+        # Validación (si no cargan, fallará la detección y “parece que no detecta nada”)
+        if self._haar_frontal.empty():
+            raise RuntimeError("No se pudo cargar haarcascade_frontalface_default.xml")
+        if self._haar_alt.empty():
+            raise RuntimeError("No se pudo cargar haarcascade_frontalface_alt2.xml")
+        if self._haar_perfil.empty():
+            raise RuntimeError("No se pudo cargar haarcascade_profileface.xml")
+
         # ── Reconocedor LBPH ───────────────────────────────────────────────────
+        # Nota: requiere OpenCV contrib (cv2.face). Si falla aquí, hay que instalar contrib en Windows/Pi.
         self.recognizer = cv2.face.LBPHFaceRecognizer_create()
 
         # ── Datos de reconocimiento ────────────────────────────────────────────
@@ -75,9 +110,8 @@ class ReconocerFacial:
         self._ultimo_resultado = []
 
         # ── Cooldown de registros en BD ────────────────────────────────────────
-        # Evita registrar accesos cada frame.
         self._ultimo_registro   = {}
-        self._cooldown_segundos = 3  # antes era 5; 3s suele sentirse mejor
+        self._cooldown_segundos = 3
 
         # ── Overlay en frame ──────────────────────────────────────────────────
         self._overlay_texto    = ""
@@ -91,7 +125,7 @@ class ReconocerFacial:
         self._cara_presente   = False
 
         # ── Estado de acceso ──────────────────────────────────────────────────
-        self._ultimo_tipo         = None   # None | "aceptado" | "denegado"
+        self._ultimo_tipo         = None
         self._desconocido_desde   = None
         self._tolerancia_segundos = 5.0
         self._ultimo_usuario_aceptado = None
