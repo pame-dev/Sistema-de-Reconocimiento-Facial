@@ -98,14 +98,14 @@ class ReconocerFacial:
 
         # ── Parámetros de reconocimiento ───────────────────────────────────────
         # En LBPH "conf" es una distancia/error: más bajo = mejor match.
-        self.tolerancia           = 85.0   # distancia máxima para considerar match
-        self._TOLERANCIA_MIN      = 70.0
+        self.tolerancia           = 90.0   # distancia máxima para considerar match
+        self._TOLERANCIA_MIN      = 90.0
         self._TOLERANCIA_MAX      = 130.0
 
         # ── Votación ───────────────────────────────────────────────────────────
-        self._votos         = []   # list[(user_id|"Desconocido", distancia)]
-        self._frames_votar  = 3
-        self._procesar_cada = 4
+        self._votos         = []   
+        self._frames_votar  = 2      # antes 3  ✅ más rápido
+        self._procesar_cada = 2      # antes 4  ✅ más rápido
         self._frame_counter = 0
         self._ultimo_resultado = []
 
@@ -127,7 +127,11 @@ class ReconocerFacial:
         # ── Estado de acceso ──────────────────────────────────────────────────
         self._ultimo_tipo         = None
         self._desconocido_desde   = None
-        self._tolerancia_segundos = 5.0
+
+        self._tolerancia_segundos = 0.6   
+        self._fast_accept_margin = 6.0 
+        self._desconocido_hold_seg = 0.8  # 
+
         self._ultimo_usuario_aceptado = None
         self._ultimo_aceptado_ts      = None
         self._ventana_recuperacion_seg = 20.0
@@ -219,6 +223,30 @@ class ReconocerFacial:
                 break
 
         return resultado
+
+    def _preprocess_gray(self, frame_bgr):
+        """
+        Preprocesado para detección: convierte a gris, aplica CLAHE y
+        un ligero ajuste de contraste/brillo si la imagen está muy oscura.
+        Esto ayuda a detectar rostros en baja iluminación.
+        """
+        gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
+        try:
+            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+            gray = clahe.apply(gray)
+        except Exception:
+            # En caso de que CLAHE falle, caer a equalizeHist
+            try:
+                gray = cv2.equalizeHist(gray)
+            except Exception:
+                pass
+
+        # Si la imagen sigue muy oscura, aumentar ligeramente brillo/contraste
+        med = float(np.median(gray))
+        if med < 70.0:
+            gray = cv2.convertScaleAbs(gray, alpha=1.3, beta=15)
+
+        return gray
 
     # ─────────────────────────────────────────────────────────────────────────
     # Gestión de IDs y persistencia (ENTRENA CON TODOS, INCLUSO INACTIVOS)
@@ -357,8 +385,8 @@ class ReconocerFacial:
                 if img is None:
                     continue
 
-                gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-                gray = cv2.equalizeHist(gray)
+                # preprocesado para robustez ante diferentes iluminaciones
+                gray = self._preprocess_gray(img)
 
                 caras = self._detectar_caras(img, gray)
                 if len(caras) > 0:
@@ -680,14 +708,14 @@ class ReconocerFacial:
         self._frame_counter += 1
 
         if self._frame_counter % self._procesar_cada == 0:
-            gray      = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            # preprocesar el frame para mejorar detección en baja iluminación
+            gray = self._preprocess_gray(frame)
             faces_det = self._detectar_caras(frame, gray)
             self._ultimo_resultado = []
 
             if faces_det:
                 self._frames_sin_cara   = 0
                 self._cara_presente     = True
-                self._desconocido_desde = self._desconocido_desde  # mantener
 
                 for (x, y, w, h) in faces_det:
                     fh, fw = frame.shape[:2]
@@ -704,6 +732,22 @@ class ReconocerFacial:
                     label_anterior = self._votos[-1][0] if self._votos else None
 
                     label_raw, dist_raw = self._reconocer_rostro(rostro_bgr)
+                    if label_raw != "Desconocido":
+                        print("DEBUG match", label_raw, "conf", dist_raw, "tol", self.tolerancia)
+                    
+                    # ✅ Fast-path: si el match es muy bueno, aceptar sin esperar votación
+                    if (label_raw != "Desconocido"
+                            and dist_raw is not None
+                            and dist_raw <= (self.tolerancia - self._fast_accept_margin)):
+
+                        # validar activo antes de permitir acceso
+                        if self._usuario_activo(label_raw):
+                            self._votos = []  # limpiar para que no “ensucie” el siguiente ciclo
+                            self._desconocido_desde = None
+                            nombre = self.nombres.get(label_raw, "Desconocido")
+                            self.registrar_acceso(label_raw, "aceptado", dist_raw)
+                            self._ultimo_resultado.append((x, y, w, h, nombre, dist_raw, (30, 200, 60)))
+                            continue
 
                     # Reset de votos solo entre identidades conocidas
                     if (label_anterior is not None and label_raw != label_anterior
@@ -719,10 +763,14 @@ class ReconocerFacial:
 
                     if label == "Desconocido":
                         ahora = datetime.now()
+
+                        # Iniciar/continuar temporizador de desconocido
+                        if self._desconocido_desde is None:
+                            self._desconocido_desde = ahora
+                        transcurrido = (ahora - self._desconocido_desde).total_seconds()
+
                         if self._ultimo_tipo == "aceptado":
-                            if self._desconocido_desde is None:
-                                self._desconocido_desde = ahora
-                            transcurrido = (ahora - self._desconocido_desde).total_seconds()
+                            # Antes: esperabas 5s; ahora se controla con self._tolerancia_segundos (ej 1.2s)
                             if transcurrido >= self._tolerancia_segundos:
                                 self._desconocido_desde = None
                                 self._ultimo_tipo = None
@@ -732,13 +780,23 @@ class ReconocerFacial:
                                     (x, y, w, h, "Desconocido", dist_raw, (40, 40, 220))
                                 )
                             else:
+                                # Mostrar “pendiente” mientras todavía no vence el hold
                                 self._ultimo_resultado.append((x, y, w, h, None, 0, (0, 200, 255)))
+
                         else:
-                            self._desconocido_desde = None
-                            self.registrar_acceso(None, "denegado", dist_raw)
-                            self._ultimo_resultado.append(
-                                (x, y, w, h, "Desconocido", dist_raw, (40, 40, 220))
-                            )
+                            # ✅ Cambio CLAVE:
+                            # No registrar denegado inmediatamente. Esperar un poco para evitar
+                            # el efecto "DENEGADO → (después) ACEPTADO" cuando todavía se está estabilizando.
+                            if transcurrido >= self._desconocido_hold_seg:
+                                self._desconocido_desde = None
+                                self._votos = []
+                                self.registrar_acceso(None, "denegado", dist_raw)
+                                self._ultimo_resultado.append(
+                                    (x, y, w, h, "Desconocido", dist_raw, (40, 40, 220))
+                                )
+                            else:
+                                # Aún no denegamos, solo indicamos que está “evaluando”
+                                self._ultimo_resultado.append((x, y, w, h, None, 0, (0, 200, 255)))
 
                     else:
                         # Si reconoció un ID, validar estado ACTIVO antes de permitir acceso
