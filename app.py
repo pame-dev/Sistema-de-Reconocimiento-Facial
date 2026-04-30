@@ -1,6 +1,9 @@
 import tkinter as tk #libreria grafica para crear interfaces de usuario
 import customtkinter as ctk
 import os #libreria para interactuar con el sistema operativo, como manejar archivos y rutas
+import sys
+import ctypes
+import tempfile
 from PIL import Image, ImageTk
 from config import WINDOW_WIDTH, WINDOW_HEIGHT, ASSETS_PATH, ICON_FILE # importamos configuraciones generales del sistema
 from views.login_view import LoginView 
@@ -56,17 +59,36 @@ class SentinelApp:
 def main():
     ctk.set_appearance_mode("light")
     ctk.set_default_color_theme("blue")
+
+    # En Windows, establecer AppUserModelID ayuda a que la barra de tareas
+    # muestre el icono correcto de la aplicación.
+    if sys.platform.startswith("win"):
+        try:
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("Sentinel.System")
+        except Exception:
+            pass
+
     root = ctk.CTk()
     
-    # Configurar icono de la aplicación
+    # Configurar icono de la aplicación para ventana y barra de tareas
     try:
         base_dir = os.path.dirname(os.path.abspath(__file__))
         icon_path = os.path.join(base_dir, ASSETS_PATH, ICON_FILE)
         if os.path.exists(icon_path):
-            # Usar PIL para cargar PNG en cualquier sistema operativo
-            icon_img = Image.open(icon_path)
+            # Cargar PNG y usar para iconphoto (ventana/titlebar)
+            icon_img = Image.open(icon_path).convert("RGBA")
             root._icon_image = ImageTk.PhotoImage(icon_img)
             root.iconphoto(True, root._icon_image)
+            root.after(100, lambda: root.iconphoto(True, root._icon_image))
+
+            # En Windows, convertir PNG a ICO para barra de tareas
+            if sys.platform.startswith("win"):
+                sizes = [(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)]
+                ico_path = os.path.join(tempfile.gettempdir(), "sentinel_system_icon.ico")
+                icon_img.save(ico_path, format="ICO", sizes=sizes)
+                root.iconbitmap(default=ico_path)
+        else:
+            print(f"Advertencia: No se encontró el icono en {icon_path}")
     except Exception as e:
         print(f"Advertencia: No se pudo cargar el icono: {e}")
     

@@ -264,7 +264,7 @@ class HistorialAccesosView:
 
         self.tree = ttk.Treeview(
             tabla_card,
-            columns=("id", "usuario", "fecha", "estado", "confianza", "umbral"),
+            columns=("usuario", "fecha", "estado", "confianza", "umbral"),
             show="headings",
             yscrollcommand=scroll_y.set,
             xscrollcommand=scroll_x.set,
@@ -276,7 +276,6 @@ class HistorialAccesosView:
         scroll_x.configure(command=self.tree.xview)
 
         columnas = [
-            ("id", "ID", 55, "center"),
             ("usuario", t("usuario"), 220, "w"),
             ("fecha", t("fecha_hora"), 165, "center"),
             ("estado", t("estado"), 120, "center"),
@@ -428,8 +427,8 @@ class HistorialAccesosView:
             self.tree.insert(
                 "",
                 "end",
+                iid=str(id_acceso),
                 values=(
-                    id_acceso,
                     nombre,
                     fecha_fmt,
                     estado_fmt,

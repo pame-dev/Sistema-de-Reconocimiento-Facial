@@ -231,7 +231,7 @@ class InformacionEscolarView:
         scroll_x.pack(side="bottom", fill="x", pady=(0, 4))
 
         self.tabla = ttk.Treeview(self.tabla_frame,
-            columns=("id", "nombre", "matricula", "tipo_sangre", "rol", "fotos"),
+            columns=("nombre", "matricula", "fecha_nacimiento", "tipo_sangre", "rol", "fotos"),
             show="headings",
             yscrollcommand=scroll_y.set,
             xscrollcommand=scroll_x.set,
@@ -241,9 +241,9 @@ class InformacionEscolarView:
         scroll_x.configure(command=self.tabla.xview)
 
         for col, label, w, anchor in [
-            ("id", t("id"), 55, "center"),
             ("nombre",    t("nombre_completo"), 260, "w"),
             ("matricula", t("matricula"), 130, "center"),
+            ("fecha_nacimiento", t("fecha_nacimiento"), 115, "center"),
             ("tipo_sangre", t("tipo_sangre"), 95, "center"),
             ("rol",       t("rol"), 110, "center"),
             ("fotos", f"📸 {t('fotos')}", 80, "center"),
@@ -356,33 +356,62 @@ class InformacionEscolarView:
 
             self.datos = []
             for row in resultados:
-                rol = row[5]
+                (
+                    user_id,
+                    nombre,
+                    apellido_paterno,
+                    apellido_materno,
+                    matricula,
+                    rol,
+                    telefono,
+                    correo,
+                    fecha_nacimiento,
+                    tipo_sangre,
+                    carrera,
+                    grado,
+                    grupo,
+                    facultad,
+                    materia,
+                    grado_impartido,
+                    puesto,
+                    area,
+                    fotos,
+                    accesos,
+                ) = row
+
                 if rol == 'alumno':
-                    carrera, grado, grupo = row[9] or '—', row[10] or '—', row[11] or '—'
+                    carrera = carrera or '—'
+                    grado = grado or '—'
+                    grupo = grupo or '—'
                 elif rol == 'maestro':
-                    carrera, grado, grupo = row[12] or '—', row[13] or '—', '—'
+                    carrera = materia or '—'
+                    grado = grado_impartido or '—'
+                    grupo = '—'
                 else:
-                    carrera, grado, grupo = row[14] or '—', '—', '—'
+                    carrera = puesto or '—'
+                    grado = '—'
+                    grupo = '—'
 
                 self.datos.append({
-                    'id':              row[0],
-                    'nombre':          row[1] or '',
-                    'apellido_paterno':row[2] or '—',
-                    'apellido_materno':row[3] or '—',
-                    'matricula':       row[4] or '—',
+                    'id':              user_id,
+                    'nombre':          nombre or '',
+                    'apellido_paterno':apellido_paterno or '—',
+                    'apellido_materno':apellido_materno or '—',
+                    'matricula':       matricula or '—',
                     'rol':             rol,
-                    'telefono':        row[6] or '—',
-                    'fecha_nacimiento': row[7] or '—',
-                    'tipo_sangre':     row[8] or '—',
+                    'telefono':        telefono or '—',
+                    'correo':          correo or '—',
+                    'fecha_nacimiento': fecha_nacimiento or '—',
+                    'tipo_sangre':     tipo_sangre or '—',
                     'carrera':         carrera,
                     'grado':           grado,
                     'grupo':           grupo,
-                    'materia':         row[12] or '—',
-                    'puesto':          row[14] or '—',
-                    'area':            row[15] or '—',
-                    'facultad':        row[11] if rol == 'alumno' else '—',
-                    'fotos':           row[16] or 0,
-                    'accesos':         row[17] or 0,
+                    'materia':         materia or '—',
+                    'puesto':          puesto or '—',
+                    'area':            area or '—',
+                    'facultad':        facultad if rol == 'alumno' else '—',
+                    'fotos':           fotos or 0,
+                    'accesos':         accesos or 0,
                 })
             self.actualizar_tabla()
         except Exception as e:
@@ -396,8 +425,13 @@ class InformacionEscolarView:
         lista = datos_filtrados if datos_filtrados is not None else self.datos
         for u in lista:
             nombre_completo = f"{u.get('nombre','')} {u.get('apellido_paterno','')} {u.get('apellido_materno','')}".strip()
-            self.tabla.insert("", "end", values=(
-                u['id'], nombre_completo, u['matricula'], u.get('tipo_sangre', '—'), u['rol'], u['fotos']
+            self.tabla.insert("", "end", iid=str(u['id']), values=(
+                nombre_completo,
+                u['matricula'],
+                u.get('fecha_nacimiento', '—'),
+                u.get('tipo_sangre', '—'),
+                u['rol'],
+                u['fotos'],
             ), tags=(u.get('rol',''),))
 
         total = len(lista)
@@ -437,7 +471,7 @@ class InformacionEscolarView:
         sel = self.tabla.selection()
         if not sel:
             return
-        user_id = self.tabla.item(sel[0])['values'][0]
+        user_id = int(sel[0])
         for u in self.datos:
             if u['id'] == user_id:
                 self.usuario_seleccionado = u
