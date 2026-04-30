@@ -20,9 +20,7 @@ from database.queries import (
     sp_actualizar_personal,
     sp_eliminar_usuario,
     sp_get_usuarios_inactivos,
-    sp_restaurar_usuario,
-    sp_eliminar_usuario_definitivo,   # 👈 AGREGAR
-    sp_vaciar_papelera  
+    sp_restaurar_usuario, 
 )
 
 ROL_COLOR = {"alumno": "#4A90D9", "maestro": "#27AE60", "personal": "#E67E22"}
@@ -42,6 +40,17 @@ class InformacionEscolarView:
         self._placeholder_activo  = True
 
         self.crear_interfaz()
+        self.btn_restaurar = ctk.CTkButton(
+        self.acciones_frame,
+        text="🔄 Restaurar",
+        fg_color=self.colors['primary'],
+        hover_color=COLORS['primary_dark'],
+        text_color="#ffffff",
+        font=("Segoe UI", 12, "bold"),
+        corner_radius=10,
+        height=36,
+        command=self.restaurar_usuario
+)
         self.cargar_datos()
 
     # ── Aplica estilos ttk con colores del tema actual ────────────────────────
@@ -117,14 +126,6 @@ class InformacionEscolarView:
                      text_color=c['text_gray']).pack(anchor="w", pady=(2, 0))
 
         btn_row = ctk.CTkFrame(header, fg_color="transparent")
-        btn_row.pack(side="right")
-
-        ctk.CTkButton(btn_row, text="🗑",
-                      fg_color=c['content_bg'], hover_color=COLORS['border'],
-                      text_color=c['text_dark'],
-                      font=("Segoe UI", 12, "bold"),
-                      corner_radius=10, height=38, width=30,
-                      command=self._papelera).pack(side="left", padx=(0, 8))
 
         self.btn_toggle_detalles = ctk.CTkButton(btn_row, text=t("ver_detalles"),
                       fg_color=c['header'], hover_color=COLORS['header_hover'],
@@ -178,6 +179,26 @@ class InformacionEscolarView:
         self.filtro_rol.set(t("todos")),
         self.filtro_rol.pack(side="left", pady=10)
         self.filtro_rol.bind('<<ComboboxSelected>>', lambda e: self.filtrar_tabla())
+        
+        ctk.CTkLabel(filtros, text="Estado",
+             text_color=c['text_dark'],
+             font=("Segoe UI", 12, "bold")).pack(side="left", padx=(12, 6), pady=10)
+
+        self.filtro_estado = ttk.Combobox(
+            filtros,
+            values=["Activos", "Inactivos"],
+            state="readonly",
+            width=12,
+            font=("Segoe UI", 12),
+            style='Dark.TCombobox'
+        )
+        self.filtro_estado.set("Activos")
+        self.filtro_estado.pack(side="left", pady=10)
+
+        self.filtro_estado.bind(
+            '<<ComboboxSelected>>',
+            lambda e: self.cambiar_estado()
+        )
 
         self.lbl_conteo = ctk.CTkLabel(filtros, text="",
                                         font=("Segoe UI", 11),
@@ -452,6 +473,14 @@ class InformacionEscolarView:
                 or texto in str(u.get('carrera','')).lower())
         ]
         self.actualizar_tabla(resultado)
+        
+    def cambiar_estado(self):
+        estado = self.filtro_estado.get()
+
+        if estado == "Activos":
+            self.cargar_datos()
+        else:
+            self.cargar_inactivos()
 
     # ── Placeholder ───────────────────────────────────────────────────────────
     def limpiar_placeholder(self, event):
@@ -482,8 +511,24 @@ class InformacionEscolarView:
     def mostrar_detalles_panel(self):
         if not self.detalles_frame.winfo_ismapped():
             self.detalles_frame.pack(fill="x", pady=(0, 8), before=self.tabla_frame)
+
         if not self.acciones_frame.winfo_ismapped():
             self.acciones_frame.pack(fill="x", pady=(0, 6), before=self.detalles_frame)
+
+        # LIMPIAR BOTONES
+        for widget in self.acciones_frame.winfo_children():
+            widget.pack_forget()
+
+        estado = self.filtro_estado.get()
+
+        if estado == "Inactivos":
+            #  SOLO RESTAURAR
+            self.btn_restaurar.pack(side="left")
+        else:
+            #  EDITAR Y ELIMINAR
+            self.btn_editar.pack(side="left", padx=(0, 8))
+            self.btn_eliminar.pack(side="left")
+
         self.btn_toggle_detalles.configure(state="normal", text=t("ocultar_detalles"))
         self.container.update_idletasks()
 
@@ -854,177 +899,107 @@ class InformacionEscolarView:
         except Exception as e:
             messagebox.showerror(t("error"), t("error_eliminar").format(e))
 
-    # ── Papelera ──────────────────────────────────────────────────────────────
-    def _papelera(self):
-        c   = self.colors
-        win = ctk.CTkToplevel(self.parent)
-        win.title(t("papelera"))
-        win.geometry("860x480")
-        win.configure(fg_color=c['background'])
-        win.grab_set()
-
-        # Header
-        wh = ctk.CTkFrame(win, fg_color=c['danger'], corner_radius=0, height=50)
-        wh.pack(fill="x")
-        wh.pack_propagate(False)
-        ctk.CTkLabel(
-            wh,
-            text="  🗑  " + t("papelera_usuarios"),
-            font=("Segoe UI", 14, "bold"),
-            text_color="white"
-        ).pack(side="left", padx=16, pady=12)
-
-        # Tabla
-        tabla_frame = ctk.CTkFrame(
-            win,
-            fg_color=c['card_bg'],
-            corner_radius=12,
-            border_width=1,
-            border_color=COLORS['border']
-        )
-        tabla_frame.pack(fill="both", expand=True, padx=16, pady=12)
-
-        scroll = ttk.Scrollbar(tabla_frame, orient="vertical",
-                            style='Dark.Vertical.TScrollbar')
-        scroll.pack(side="right", fill="y")
-
-        tabla = ttk.Treeview(
-            tabla_frame,
-            columns=("id", "nombre", "rol", "matricula"),
-            show="headings",
-            height=12,
-            yscrollcommand=scroll.set,
-            style='Dark.Treeview'
-        )
-        scroll.configure(command=tabla.yview)
-
-        for col, lbl, w, anc in [
-            ("id",        "ID",             60,  "center"),
-            ("nombre",    t("nombre"),      300, "w"),
-            ("rol",       t("rol"),         120, "center"),
-            ("matricula", t("matricula"),   160, "center"),
-        ]:
-            tabla.heading(col, text=lbl)
-            tabla.column(col, width=w, anchor=anc)
-
-        tabla.pack(fill="both", expand=True, padx=4, pady=4)
-
-        # Cargar datos
-        def cargar_tabla():
-            for i in tabla.get_children():
-                tabla.delete(i)
-            try:
-                conn = get_db()
-                rows = sp_get_usuarios_inactivos(conn)
-                conn.close()
-                for r in rows:
-                    nombre = f"{r[1]} {r[2] or ''} {r[3] or ''}".strip()
-                    tabla.insert("", "end", values=(r[0], nombre, r[5], r[4] or "—"))
-            except Exception as e:
-                messagebox.showerror(t("error"), t("no_cargar_papelera").format(e))
-
-        cargar_tabla()
-
-        # Restaurar usuario
-        def restaurar():
-            sel = tabla.selection()
-            if not sel:
-                messagebox.showwarning(t("atencion"), t("selecciona_usuario"))
+    def cargar_inactivos(self):
+        try:
+            conn = get_db()
+            if not conn:
                 return
 
-            user_id = tabla.item(sel[0])['values'][0]
+            resultados = sp_get_usuarios_inactivos(conn)
+            conn.close()
 
-            if not messagebox.askyesno(t("confirmar"), t("restaurar_msg")):
-                return
+            self.datos = []
 
-            try:
-                conn = get_db()
-                sp_restaurar_usuario(conn, user_id)
-                conn.commit()
-                conn.close()
-                messagebox.showinfo(t("restaurado"), t("usuario_restaurado"))
-                cargar_tabla()
-                self.cargar_datos()
-            except Exception as e:
-                messagebox.showerror(t("error"), t("no_restaurar").format(e))
+            for row in resultados:
+                (
+                    user_id,
+                    nombre,
+                    apellido_paterno,
+                    apellido_materno,
+                    matricula,
+                    rol,
+                    telefono,
+                    correo,
+                    fecha_nacimiento,
+                    tipo_sangre,
+                    carrera,
+                    grado,
+                    grupo,
+                    facultad,
+                    materia,
+                    grado_impartido,
+                    puesto,
+                    area,
+                    fotos,
+                    accesos,
+                ) = row
 
-        # Eliminar definitivamente
-        def eliminar_definitivo():
-            sel = tabla.selection()
-            if not sel:
-                messagebox.showwarning(t("atencion"), t("selecciona_usuario"))
-                return
+                if rol == 'alumno':
+                    carrera = carrera or '—'
+                    grado = grado or '—'
+                    grupo = grupo or '—'
+                elif rol == 'maestro':
+                    carrera = materia or '—'
+                    grado = grado_impartido or '—'
+                    grupo = '—'
+                else:
+                    carrera = puesto or '—'
+                    grado = '—'
+                    grupo = '—'
 
-            user_id = tabla.item(sel[0])['values'][0]
+                self.datos.append({
+                    'id': user_id,
+                    'nombre': nombre or '',
+                    'apellido_paterno': apellido_paterno or '—',
+                    'apellido_materno': apellido_materno or '—',
+                    'matricula': matricula or '—',
+                    'rol': rol,
+                    'telefono': telefono or '—',
+                    'correo': correo or '—',
+                    'fecha_nacimiento': fecha_nacimiento or '—',
+                    'tipo_sangre': tipo_sangre or '—',
+                    'carrera': carrera,
+                    'grado': grado,
+                    'grupo': grupo,
+                    'materia': materia or '—',
+                    'puesto': puesto or '—',
+                    'area': area or '—',
+                    'facultad': facultad if rol == 'alumno' else '—',
+                    'fotos': fotos or 0,
+                    'accesos': accesos or 0,
+                })
 
-            if not messagebox.askyesno(t("confirmar"), t("confirmar_eliminar_definitivo")):
-                return
+            self.actualizar_tabla()
 
-            try:
-                conn = get_db()
-                sp_eliminar_usuario_definitivo(conn, user_id)
-                conn.commit()
-                conn.close()
-                messagebox.showinfo(t("exito"), t("usuario_eliminado_definitivo"))
-                cargar_tabla()
-                self.cargar_datos()
-            except Exception as e:
-                messagebox.showerror(t("error"), t("error_eliminar_definitivo").format(e))
+        except Exception as e:
+            messagebox.showerror("Error", f"Error cargando inactivos: {e}")
+            
+    def restaurar_usuario(self):
+        if not self.usuario_seleccionado:
+            return
 
-        # Vaciar papelera
-        def vaciar_papelera():
-            if not messagebox.askyesno(t("confirmar"), t("confirmar_vaciar_papelera")):
-                return
+        u = self.usuario_seleccionado
 
-            try:
-                conn = get_db()
-                sp_vaciar_papelera(conn)
-                conn.commit()
-                conn.close()
-                messagebox.showinfo(t("exito"), t("papelera_vaciada"))
-                cargar_tabla()
-                self.cargar_datos()
-            except Exception as e:
-                messagebox.showerror(t("error"), t("error_vaciar_papelera").format(e))
+        if not messagebox.askyesno(
+            "Restaurar usuario",
+            f"¿Deseas restaurar a {u['nombre']}?"
+        ):
+            return
 
+        try:
+            conn = get_db()
+            sp_restaurar_usuario(conn, u['id'])
+            conn.commit()
+            conn.close()
 
-        # Botones
-        btn_frame = ctk.CTkFrame(win, fg_color="transparent")
-        btn_frame.pack(fill="x", padx=16, pady=(0, 12))
+            messagebox.showinfo("✅ Restaurado", "Usuario restaurado correctamente")
 
-        ctk.CTkButton(
-            btn_frame,
-            text="♻️  " + t("restaurar_usuario"),
-            fg_color=c['primary'],
-            hover_color=COLORS['primary_dark'],
-            text_color="#ffffff",
-            font=("Segoe UI", 12, "bold"),
-            corner_radius=10,
-            height=38,
-            command=restaurar
-        ).pack(side="left")
+            self.usuario_seleccionado = None
+            self.ocultar_detalles_panel()
 
-        ctk.CTkButton(
-            btn_frame,
-            text="❌ " + t("eliminar"),
-            fg_color=c['danger'],
-            hover_color="#b71c1c",
-            text_color="#ffffff",
-            font=("Segoe UI", 12, "bold"),
-            corner_radius=10,
-            height=38,
-            command=eliminar_definitivo
-        ).pack(side="right", padx=5)
+            # 🔥 Regresar automáticamente a activos
+            self.filtro_estado.set("Activos")
+            self.cargar_datos()
 
-        ctk.CTkButton(
-            btn_frame,
-            text="🗑 " + t("vaciar_papelera"),
-            fg_color="#6d4c41",
-            hover_color="#4e342e",
-            text_color="#ffffff",
-            font=("Segoe UI", 12, "bold"),
-            corner_radius=10,
-            height=38,
-            command=vaciar_papelera
-        ).pack(side="right", padx=5)
-
+        except Exception as e:
+            messagebox.showerror("Error", f"No se pudo restaurar: {e}")
