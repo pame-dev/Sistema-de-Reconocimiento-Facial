@@ -1,0 +1,584 @@
+# views/captura_biometrica.py
+import os
+import time
+import threading
+from datetime import datetime
+
+import cv2
+import numpy as np
+import tkinter as tk
+from tkinter import messagebox, ttk
+from PIL import Image, ImageTk
+import customtkinter as ctk
+
+from camera import Camera
+from config import COLORS, get_colors, get_db
+from idiomas import t
+from views.nuevo_registro.constants import (
+    ROL_CONFIG, POSTURAS, TOTAL_FOTOS,
+    FRAMES_ESTABLE, CAPTURE_DELAY, haar_path,
+)
+from database.queries import (
+    sp_insertar_usuario,
+    sp_insertar_alumno,
+    sp_insertar_maestro,
+    sp_insertar_personal,
+    sp_insertar_biometria,
+)
+
+
+class CapturaBiometricaMixin:
+    """
+    Mixin que añade la pantalla de captura biométrica (Paso 4).
+    Requiere: self.container, self.colors, self.rol_actual, self.valores_form,
+    self.camara, self.capturando, self._limpiar_container(),
+    self._mostrar_seleccion_rol(), self._mostrar_formulario().
+    También espera que la clase base inicialice los detectores Haar.
+    """
+
+    # ── Pantalla principal de captura ─────────────────────────────────────────
+    def _mostrar_captura(self):
+        self._anim_activa = False
+        self._limpiar_container()
+        self._reset_estado_captura()
+
+        cfg   = ROL_CONFIG[self.rol_actual]
+        color = cfg["color"]
+        c     = self.colors
+
+        header = ctk.CTkFrame(self.container, fg_color="transparent")
+        header.pack(fill="x", pady=(0, 8))
+        ctk.CTkButton(header, text="← Volver al formulario",
+                      fg_color='#16A34A', hover_color="#15803D",
+                      text_color="#ffffff",
+                      font=("Segoe UI", 15, "bold"),
+                      corner_radius=8, height=32,
+                      command=self._volver_formulario).pack(side="left")
+        ctk.CTkLabel(header, text="Paso 2/2 — Captura biométrica automática",
+                     font=("Segoe UI", 12),
+                     text_color=c['text_gray']).pack(side="left", padx=15)
+
+        ttk.Separator(self.container, orient="horizontal").pack(fill="x", pady=(0, 8))
+
+        prog_frame = ctk.CTkFrame(self.container, fg_color="transparent")
+        prog_frame.pack(fill="x", padx=4, pady=(0, 6))
+        self.bar_total_ctk = ctk.CTkProgressBar(prog_frame, height=12,
+                                                  corner_radius=6,
+                                                  progress_color=color,
+                                                  fg_color=COLORS['border'])
+        self.bar_total_ctk.set(0)
+        self.bar_total_ctk.pack(fill="x", padx=8)
+
+        body = ctk.CTkFrame(self.container, fg_color="transparent")
+        body.pack(fill="both", expand=True)
+
+        self.panel_guia = ctk.CTkFrame(body, fg_color=c['card_bg'],
+                                        width=260, corner_radius=12,
+                                        border_width=1, border_color=COLORS['border'])
+        self.panel_guia.pack(side="left", fill="y", padx=(0, 10))
+        self.panel_guia.pack_propagate(False)
+
+        cam_panel = ctk.CTkFrame(body, fg_color=c['card_bg'],
+                                  corner_radius=12, border_width=1,
+                                  border_color=COLORS['border'])
+        cam_panel.pack(side="left", fill="both", expand=True)
+
+        self.video_label = tk.Label(cam_panel, bg=COLORS['content_bg'])
+        self.video_label.pack(fill="both", expand=True, padx=8, pady=(8, 4))
+
+        self.bar_postura_ctk = ctk.CTkProgressBar(cam_panel, height=8,
+                                                    corner_radius=4,
+                                                    progress_color=color,
+                                                    fg_color=COLORS['border'])
+        self.bar_postura_ctk.set(0)
+        self.bar_postura_ctk.pack(fill="x", padx=8, pady=(0, 4))
+
+        estado_panel = ctk.CTkFrame(cam_panel, fg_color=c['content_bg'], corner_radius=8)
+        estado_panel.pack(fill="x", padx=8, pady=(0, 8))
+
+        self.lbl_estado = ctk.CTkLabel(estado_panel,
+                                        text=t("iniciando_camara_estado"),
+                                        font=("Segoe UI", 13, "bold"),
+                                        text_color=c['text_gray'])
+        self.lbl_estado.pack(pady=6)
+
+        self.lbl_sub_estado = ctk.CTkLabel(estado_panel, text="",
+                                            font=("Segoe UI", 10),
+                                            text_color=c['text_gray'])
+        self.lbl_sub_estado.pack(pady=(0, 6))
+
+        btn_row = ctk.CTkFrame(cam_panel, fg_color="transparent")
+        btn_row.pack(fill="x", padx=8, pady=(0, 8))
+
+        self._btn_pausar = ctk.CTkButton(btn_row, text=t("pausar"),
+                                          fg_color=c['accent'], hover_color="#D97706",
+                                          text_color="#ffffff",
+                                          font=("Segoe UI", 11, "bold"),
+                                          corner_radius=8, height=32, width=110,
+                                          command=self._toggle_pausa)
+        self._btn_pausar.pack(side="right", padx=(4, 0))
+
+        ctk.CTkButton(btn_row, text=t("cancelar"),
+                      fg_color="#DC2626", hover_color="#B91C1C",
+                      text_color="#ffffff",
+                      font=("Segoe UI", 11, "bold"),
+                      corner_radius=8, height=32, width=110,
+                      command=self._mostrar_seleccion_rol).pack(side="right", padx=(0, 4))
+
+        self._construir_panel_guia(color)
+        self._iniciar_camara_auto()
+
+    def _reset_estado_captura(self):
+        self.fotos_temp           = []
+        self.postura_idx          = 0
+        self.fotos_postura        = 0
+        self.posturas_completadas = []
+        self._auto_activo         = False
+        self._frames_con_cara     = 0
+        self._ultima_captura      = 0.0
+        self._countdown           = 0
+        self._guardando           = False
+        self._pausado             = False
+        self._ultima_muestra_gray = None
+        if self._countdown_job:
+            try:
+                self.container.after_cancel(self._countdown_job)
+            except Exception:
+                pass
+            self._countdown_job = None
+
+    # ── Panel guía ────────────────────────────────────────────────────────────
+    def _construir_panel_guia(self, color):
+        for w in self.panel_guia.winfo_children():
+            w.destroy()
+
+        postura = POSTURAS[self.postura_idx]
+        c       = self.colors
+
+        ctk.CTkLabel(self.panel_guia,
+                     text=f"Postura {self.postura_idx + 1} / {len(POSTURAS)}",
+                     font=("Segoe UI", 10), text_color=c['text_gray']).pack(pady=(12, 0))
+        ctk.CTkLabel(self.panel_guia, text=postura["titulo"],
+                     font=("Segoe UI", 13, "bold"),
+                     text_color=color, wraplength=220, justify="center").pack(pady=(2, 8))
+
+        img_path   = os.path.join(os.path.dirname(os.path.dirname(__file__)), postura["imagen"])
+        img_loaded = False
+        if os.path.exists(img_path):
+            try:
+                img   = Image.open(img_path).resize((160, 160), Image.LANCZOS)
+                photo = ImageTk.PhotoImage(img)
+                lbl_img       = tk.Label(self.panel_guia, image=photo, bg=COLORS['card_bg'])
+                lbl_img.image = photo
+                lbl_img.pack(pady=4)
+                img_loaded = True
+            except Exception:
+                pass
+        if not img_loaded:
+            ctk.CTkLabel(self.panel_guia, text=postura["icono"],
+                         font=("Segoe UI Emoji", 54)).pack(pady=8)
+
+        ctk.CTkLabel(self.panel_guia, text=postura["instruccion"],
+                     font=("Segoe UI", 10), text_color=c['text_dark'],
+                     wraplength=210, justify="center").pack(pady=(4, 10))
+
+        ctk.CTkFrame(self.panel_guia, fg_color=COLORS['border'],
+                     height=1, corner_radius=0).pack(fill="x", padx=14, pady=4)
+
+        for i, p in enumerate(POSTURAS):
+            if i in self.posturas_completadas:
+                icono, fg = "✅", COLORS['primary']
+            elif i == self.postura_idx:
+                icono, fg = "▶", color
+            else:
+                icono, fg = "○", COLORS['text_gray']
+            ctk.CTkLabel(self.panel_guia,
+                         text=f" {icono}  {p['titulo']}",
+                         font=("Segoe UI", 10),
+                         text_color=fg, anchor="w").pack(fill="x", padx=14, pady=1)
+
+    # ── Cámara y detección ────────────────────────────────────────────────────
+    def _iniciar_camara_auto(self):
+        try:
+            self.camara = Camera()
+            self.camara.start()
+            time.sleep(0.8)
+            self.capturando   = True
+            self._auto_activo = True
+            self._iniciar_countdown()
+        except Exception as e:
+            self._set_estado(t("error_iniciar_camara"), str(e), "danger")
+
+    def _iniciar_countdown(self):
+        self._countdown = 3
+        self._set_estado(
+            f"📷 {t('preparate_postura')} {POSTURAS[self.postura_idx]['titulo']}",
+            f"{t('comenzando_en')} {self._countdown}...", "info")
+        self._tick_countdown()
+
+    def _tick_countdown(self):
+        if not self.capturando:
+            return
+        if self._countdown > 0:
+            self._set_sub(f"Comenzando en {self._countdown}...")
+            self._countdown -= 1
+            self._countdown_job = self.container.after(900, self._tick_countdown)
+        else:
+            self._set_sub(t("manten_posicion"))
+            self._auto_activo = True
+            self._actualizar_video()
+
+    def _toggle_pausa(self):
+        self._pausado = not self._pausado
+        if self._pausado:
+            self._btn_pausar.configure(text=t("reanudar"), fg_color=COLORS['primary'])
+            self._set_estado(t("pausado"), t("presiona_reanudar"), "gray")
+        else:
+            self._btn_pausar.configure(text=t("pausar"), fg_color=self.colors['accent'])
+            self._set_estado(t("reanudando"), "", "info")
+
+    def _filtrar_caras(self, caras, frame_shape):
+        h_f, w_f = frame_shape[:2]
+        area_min = (w_f * 0.10) * (h_f * 0.10)
+        resultado = []
+        for (x, y, w, h) in caras:
+            if w * h < area_min:
+                continue
+            if x < 8 or y < 8 or (x + w) > w_f - 8:
+                continue
+            resultado.append((x, y, w, h))
+        return resultado
+
+    def _detectar_cara(self, frame, gray, postura_id):
+        PARAMS = {
+            "frontal":    dict(scaleFactor=1.1,  minNeighbors=7, minSize=(90, 90)),
+            "izquierda":  dict(scaleFactor=1.05, minNeighbors=5, minSize=(70, 70)),
+            "derecha":    dict(scaleFactor=1.05, minNeighbors=5, minSize=(70, 70)),
+            "perfil_izq": dict(scaleFactor=1.1,  minNeighbors=6, minSize=(70, 70)),
+            "perfil_der": dict(scaleFactor=1.1,  minNeighbors=6, minSize=(70, 70)),
+        }
+        p = PARAMS.get(postura_id, PARAMS["frontal"])
+
+        if postura_id in ("izquierda", "derecha"):
+            for det in [self.detector_alt, self.detector_frontal]:
+                caras = det.detectMultiScale(gray, **p)
+                filtradas = self._filtrar_caras(caras, gray.shape)
+                if filtradas:
+                    return filtradas
+            gray_flip = cv2.flip(gray, 1)
+            flip_w    = gray_flip.shape[1]
+            for det in [self.detector_alt, self.detector_frontal]:
+                caras = det.detectMultiScale(gray_flip, **p)
+                if len(caras) > 0:
+                    caras = [(flip_w - x - w, y, w, h) for (x, y, w, h) in caras]
+                    filtradas = self._filtrar_caras(caras, gray.shape)
+                    if filtradas:
+                        return filtradas
+            return []
+
+        elif postura_id == "perfil_izq":
+            gray_flip = cv2.flip(gray, 1)
+            caras = self.detector_perfil.detectMultiScale(gray_flip, **p)
+            if len(caras) > 0:
+                flip_w = gray_flip.shape[1]
+                caras  = [(flip_w - x - w, y, w, h) for (x, y, w, h) in caras]
+                return self._filtrar_caras(caras, gray.shape)
+            return []
+
+        elif postura_id == "perfil_der":
+            caras = self.detector_perfil.detectMultiScale(gray, **p)
+            if len(caras) > 0:
+                return self._filtrar_caras(caras, gray.shape)
+            gray_flip = cv2.flip(gray, 1)
+            caras = self.detector_perfil.detectMultiScale(gray_flip, **p)
+            if len(caras) > 0:
+                flip_w = gray_flip.shape[1]
+                caras  = [(flip_w - x - w, y, w, h) for (x, y, w, h) in caras]
+                return self._filtrar_caras(caras, gray.shape)
+            return []
+
+        else:
+            caras = self.detector_frontal.detectMultiScale(gray, **p)
+            return self._filtrar_caras(caras, gray.shape) if len(caras) > 0 else []
+
+    def _rostro_apto_para_guardar(self, rostro_bgr):
+        try:
+            gray = cv2.cvtColor(rostro_bgr, cv2.COLOR_BGR2GRAY)
+            if float(cv2.Laplacian(gray, cv2.CV_64F).var()) < 40.0:
+                return False, "Rostro borroso"
+            brillo = float(np.mean(gray))
+            if brillo < 45.0 or brillo > 215.0:
+                return False, "Ajusta la iluminacion"
+            self._ultima_muestra_gray = gray
+            return True, ""
+        except Exception:
+            return True, ""
+
+    # ── Loop de video ─────────────────────────────────────────────────────────
+    def _actualizar_video(self):
+        if not self.capturando or self.camara is None:
+            return
+        if self._guardando:
+            return
+
+        try:
+            frame = self.camara.read()
+            if frame is None:
+                self.video_label.after(30, self._actualizar_video)
+                return
+        except Exception:
+            self.video_label.after(30, self._actualizar_video)
+            return
+
+        gray       = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        postura_id = POSTURAS[self.postura_idx]["id"]
+        caras      = self._detectar_cara(frame, gray, postura_id)
+
+        cara_detectada = len(caras) > 0
+        ahora          = time.time()
+
+        if cara_detectada:
+            self._frames_con_cara += 1
+            x, y, w, h = max(caras, key=lambda c: c[2] * c[3])
+            listo      = self._frames_con_cara >= FRAMES_ESTABLE
+            rect_color = (0, 220, 0) if listo else (0, 180, 255)
+            cv2.rectangle(frame, (x, y), (x+w, y+h), rect_color, 2)
+
+            if (not self._pausado
+                    and self._auto_activo
+                    and listo
+                    and (ahora - self._ultima_captura) >= CAPTURE_DELAY):
+
+                rostro_bgr = frame[y:y+h, x:x+w]
+                rostro_bgr = cv2.resize(rostro_bgr, (200, 200))
+                apto, msg = self._rostro_apto_para_guardar(rostro_bgr)
+                if not apto:
+                    self._set_sub(msg)
+                    self.video_label.after(15, self._actualizar_video)
+                    return
+
+                _, buf = cv2.imencode('.jpg', rostro_bgr,
+                                      [cv2.IMWRITE_JPEG_QUALITY, 92])
+                self.fotos_temp.append(buf.tobytes())
+                self.fotos_postura  += 1
+                self._ultima_captura = ahora
+
+                total_fotos    = POSTURAS[self.postura_idx]["fotos"]
+                progreso_pos   = self.fotos_postura / total_fotos
+                progreso_total = len(self.fotos_temp) / TOTAL_FOTOS
+
+                try:
+                    self.bar_postura_ctk.set(progreso_pos)
+                    self.bar_total_ctk.set(progreso_total)
+                except Exception:
+                    pass
+
+                if self.fotos_postura < total_fotos:
+                    self._set_estado(
+                        f"✅ {t('capturando')} {POSTURAS[self.postura_idx]['titulo']}",
+                        f"{t('manten_posicion')} {int(progreso_pos * 100)}%", "ok")
+                else:
+                    self._postura_completada()
+                    return
+        else:
+            self._frames_con_cara = 0
+            if not self._pausado and self._auto_activo:
+                self._set_estado(t("no_detecta_cara"), t("acercate_iluminacion"), "warn")
+            cv2.putText(frame, t("sin_cara"), (12, 30),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (30, 30, 220), 2)
+
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        h_f, w_f  = frame_rgb.shape[:2]
+        try:
+            lw = self.video_label.winfo_width()  or 480
+            lh = self.video_label.winfo_height() or 360
+        except Exception:
+            lw, lh = 480, 360
+        scale  = min(lw / w_f, lh / h_f, 1.0)
+        nw, nh = max(1, int(w_f * scale)), max(1, int(h_f * scale))
+        frame_rgb = cv2.resize(frame_rgb, (nw, nh))
+        img       = Image.fromarray(frame_rgb)
+        imgtk     = ImageTk.PhotoImage(image=img)
+        try:
+            self.video_label.imgtk = imgtk
+            self.video_label.config(image=imgtk)
+        except Exception:
+            pass
+
+        self.video_label.after(15, self._actualizar_video)
+
+    # ── Ciclo de posturas ─────────────────────────────────────────────────────
+    def _postura_completada(self):
+        self._auto_activo = False
+        self.posturas_completadas.append(self.postura_idx)
+        self.bar_postura_ctk.set(1.0)
+
+        if self.postura_idx < len(POSTURAS) - 1:
+            siguiente = POSTURAS[self.postura_idx + 1]
+            self._set_estado(
+                t("postura_completada"),
+                f"Prepárate para: {siguiente['titulo']} — cambiando en 2s...", "ok")
+            self.container.after(1800, self._pasar_a_siguiente_postura)
+        else:
+            self.bar_total_ctk.set(1.0)
+            self._set_estado(t("todas_posturas"), t("guardando_auto"), "ok")
+            self.container.after(800, self._guardar_automatico)
+
+    def _pasar_a_siguiente_postura(self):
+        if not self.capturando:
+            return
+        self.postura_idx     += 1
+        self.fotos_postura    = 0
+        self._frames_con_cara = 0
+        self._countdown       = 3
+        color = ROL_CONFIG[self.rol_actual]["color"]
+        self.bar_postura_ctk.set(0)
+        self._construir_panel_guia(color)
+        postura = POSTURAS[self.postura_idx]
+        self._set_estado(
+            f"🔄 {t('nueva_postura')} {postura['titulo']}",
+            f"Comenzando en {self._countdown}...", "info")
+        self._tick_countdown_postura()
+
+    def _tick_countdown_postura(self):
+        if not self.capturando:
+            return
+        if self._countdown > 0:
+            self._set_sub(f"Comenzando en {self._countdown}...")
+            self._countdown -= 1
+            self._countdown_job = self.container.after(900, self._tick_countdown_postura)
+        else:
+            self._set_sub("¡Mantén la posición!")
+            self._auto_activo = True
+            self._actualizar_video()
+
+    # ── Estado UI ─────────────────────────────────────────────────────────────
+    def _set_estado(self, texto, subtexto="", tipo="info"):
+        COLORES = {
+            "ok":     "#16a34a",
+            "warn":   "#d97706",
+            "danger": "#dc2626",
+            "info":   self.colors['info'],
+            "gray":   self.colors['text_gray'],
+        }
+        color = COLORES.get(tipo, self.colors['text_gray'])
+        try:
+            self.lbl_estado.configure(text=texto, text_color=color)
+            self.lbl_sub_estado.configure(text=subtexto, text_color=self.colors['text_gray'])
+        except Exception:
+            pass
+
+    def _set_sub(self, texto):
+        try:
+            self.lbl_sub_estado.configure(text=texto)
+        except Exception:
+            pass
+
+    # ── Guardado en BD ────────────────────────────────────────────────────────
+    def _guardar_automatico(self):
+        self._guardando = True
+        self._detener_camara_silencio()
+        threading.Thread(target=self._guardar_en_bd, daemon=True).start()
+
+    def _guardar_en_bd(self):
+        try:
+            rol = self.rol_actual
+            v   = getattr(self, 'valores_form', {})
+
+            def val(key, upper=True):
+                texto = v.get(key, "").strip()
+                return texto.upper() if upper else texto
+
+            conn  = get_db()
+            ahora = datetime.now()
+
+            if self.modo_retomar_fotos:
+                user_id = self.user_id_existente
+                cursor  = conn.cursor()
+                cursor.execute("DELETE FROM biometria WHERE fkIdUsuario = ?", (user_id,))
+                for foto_bytes in self.fotos_temp:
+                    sp_insertar_biometria(conn, user_id, foto_bytes, ahora)
+                conn.commit()
+                conn.close()
+                self.container.after(0, lambda: self._fin_guardado(
+                    t("fotos_actualizadas"),
+                    t("se_actualizaron_fotos").format(len(self.fotos_temp))
+                ))
+                return
+
+            user_id = sp_insertar_usuario(conn, {
+                'nombre':    val('nombreUsuario'),
+                'paterno':   val('apellidoPaternoUsuario'),
+                'materno':   val('apellidoMaternoUsuario'),
+                'matricula': val('matriculaUsuario', upper=False),
+                'rol':       rol,
+                'telefono':  val('telefonoUsuario',  upper=False),
+                'correo':    val('correoUsuario',    upper=False),
+                'fecha_nacimiento': val('fechaNacimientoUsuario', upper=False),
+                'tipo_sangre': val('tipoSangreUsuario', upper=False),
+                'direccion': val('direccionUsuario', upper=False)
+            })
+
+            if rol == "alumno":
+                sp_insertar_alumno(conn, user_id, {
+                    'grado':    val('gradoAlumno', upper=False),
+                    'grupo':    val('grupoAlumno', upper=False),
+                    'facultad': val('facultadAlumno'),
+                    'carrera':  val('carreraAlumno'),
+                })
+            elif rol == "maestro":
+                sp_insertar_maestro(conn, user_id, {
+                    'grado':   val('gradoImpartidoMaestro', upper=False),
+                    'materia': val('materiaImpartidaMaestro'),
+                })
+            elif rol == "personal":
+                sp_insertar_personal(conn, user_id, {
+                    'puesto': val('puestoPersonalEscolar'),
+                    'area':   val('areaPersonalEscolar'),
+                })
+
+            for foto_bytes in self.fotos_temp:
+                sp_insertar_biometria(conn, user_id, foto_bytes, ahora)
+
+            conn.commit()
+            conn.close()
+
+            cfg             = ROL_CONFIG[rol]
+            nombre_completo = f"{val('nombreUsuario')} {val('apellidoPaternoUsuario')}"
+            self.container.after(0, lambda: self._fin_guardado(
+                t("registro_exitoso"),
+                f"{cfg['icono']} {nombre_completo} ({cfg['titulo']})\n"
+                f"{t('fotos_registradas')} {len(self.fotos_temp)} fotos."
+            ))
+
+        except Exception as e:
+            self.container.after(0, lambda: messagebox.showerror(
+                t("error"), f"{t('error_guardar')} {e}"))
+            self._guardando = False
+
+    def _fin_guardado(self, titulo, mensaje):
+        messagebox.showinfo(titulo, mensaje)
+        self._guardando = False
+        self._mostrar_seleccion_rol()
+
+    # ── Helpers cámara ────────────────────────────────────────────────────────
+    def _detener_camara_silencio(self):
+        self.capturando   = False
+        self._auto_activo = False
+        if self.camara:
+            try:
+                self.camara.stop()
+            except Exception:
+                pass
+            self.camara = None
+
+    def _detener_camara(self):
+        self._detener_camara_silencio()
+        try:
+            self.video_label.config(image='')
+        except Exception:
+            pass
+
+    def _volver_formulario(self):
+        self._detener_camara()
+        self._mostrar_formulario()
