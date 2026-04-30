@@ -54,6 +54,8 @@ class MainView:
         self._historial_items = []
         self._sin_cara_job    = None
         self._last_scale      = None
+        self._accesos_layout_vertical = None
+        self._accesos_body            = None
 
         self.main_frame = ctk.CTkFrame(parent, fg_color=self.colors['background'])
         self.main_frame.pack(fill="both", expand=True)
@@ -167,8 +169,79 @@ class MainView:
             except Exception:
                 pass
 
+            if self._vista_actual == "pantalla_accesos":
+                self._sincronizar_layout_pantalla_accesos()
+
         except Exception:
             pass
+
+    def _esta_en_pantalla_completa(self):
+        root = self.parent.winfo_toplevel()
+        try:
+            if bool(root.attributes("-fullscreen")):
+                return True
+        except Exception:
+            pass
+        try:
+            if str(root.state()).lower() == "zoomed":
+                return True
+        except Exception:
+            pass
+        try:
+            sw = root.winfo_screenwidth()
+            sh = root.winfo_screenheight()
+            w = root.winfo_width()
+            h = root.winfo_height()
+            return w >= sw - 20 and h >= sh - 20
+        except Exception:
+            return False
+
+    def _debe_usar_layout_vertical_accesos(self):
+        return not self._esta_en_pantalla_completa()
+
+    def _sincronizar_layout_pantalla_accesos(self):
+        vertical = self._debe_usar_layout_vertical_accesos()
+        if self._accesos_layout_vertical is None or vertical != self._accesos_layout_vertical:
+            self._aplicar_layout_pantalla_accesos(vertical)
+
+    def _aplicar_layout_pantalla_accesos(self, vertical=True):
+        body = getattr(self, "_accesos_body", None)
+        if not body or not body.winfo_exists():
+            return
+
+        try:
+            self._cam_card.grid_forget()
+            self._user_card.grid_forget()
+        except Exception:
+            pass
+
+        # Limpiar configuraciones previas de grid.
+        for idx in (0, 1):
+            try:
+                body.grid_rowconfigure(idx, weight=0, minsize=0)
+            except Exception:
+                pass
+            try:
+                body.grid_columnconfigure(idx, weight=0, minsize=0)
+            except Exception:
+                pass
+
+        if vertical:
+            body.grid_rowconfigure(0, weight=4, minsize=360)
+            body.grid_rowconfigure(1, weight=1, minsize=170)
+            body.grid_columnconfigure(0, weight=1)
+
+            self._cam_card.grid(row=0, column=0, sticky="nsew", pady=(0, 8))
+            self._user_card.grid(row=1, column=0, sticky="nsew")
+        else:
+            body.grid_rowconfigure(0, weight=1)
+            body.grid_columnconfigure(0, weight=3)
+            body.grid_columnconfigure(1, weight=2)
+
+            self._cam_card.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
+            self._user_card.grid(row=0, column=1, sticky="nsew", padx=(6, 0))
+
+        self._accesos_layout_vertical = vertical
 
     def _guardar_estado_vista_actual(self):
         if self._vista_actual != "nuevo_registro":
@@ -554,17 +627,16 @@ class MainView:
         self._lbl_cam.pack(side="right", padx=16)
 
         # ── Cuerpo ────────────────────────────────────────────────────────────
-        body = ctk.CTkFrame(outer, fg_color="transparent")
-        body.grid(row=1, column=0, sticky="nsew", padx=12, pady=(6, 12))
-        body.grid_rowconfigure(0, weight=1)
-        body.grid_columnconfigure(0, weight=3)
-        body.grid_columnconfigure(1, weight=2)
-
-        # Panel cámara
-        self._cam_card = ctk.CTkFrame(body, fg_color=c['card_bg'],
+        self._accesos_body = ctk.CTkFrame(outer, fg_color="transparent")
+        self._accesos_body.grid(row=1, column=0, sticky="nsew", padx=12, pady=(6, 12))
+        self._accesos_body.grid_rowconfigure(0, weight=4, minsize=360)
+        self._accesos_body.grid_rowconfigure(1, weight=1, minsize=170)
+        self._accesos_body.grid_columnconfigure(0, weight=1)
+        self._cam_card = ctk.CTkFrame(self._accesos_body, fg_color=c['card_bg'],
                                        border_color=c['cam_border'], border_width=3,
                                        corner_radius=14)
-        self._cam_card.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
+        self._cam_card.grid(row=0, column=0, sticky="nsew", pady=(0, 8))
+        self._cam_card.grid_propagate(False)
         self._cam_card.grid_rowconfigure(0, weight=1)
         self._cam_card.grid_columnconfigure(0, weight=1)
 
@@ -573,15 +645,11 @@ class MainView:
         self._cam_canvas.bind("<Configure>", lambda e: self._draw_placeholder())
 
         # Panel información
-        info_col = ctk.CTkFrame(body, fg_color="transparent")
-        info_col.grid(row=0, column=1, sticky="nsew")
-        info_col.grid_rowconfigure(0, weight=1)
-        info_col.grid_columnconfigure(0, weight=1)
-
-        self._user_card = ctk.CTkFrame(info_col, fg_color=c['card_bg'],
+        self._user_card = ctk.CTkFrame(self._accesos_body, fg_color=c['card_bg'],
                                         border_color=c['border'], border_width=1,
                                         corner_radius=14)
-        self._user_card.grid(row=0, column=0, sticky="nsew")
+        self._user_card.grid(row=1, column=0, sticky="nsew")
+        self._user_card.grid_propagate(False)
         self._construir_panel_espera()
 
         # Iniciar motor de reconocimiento
