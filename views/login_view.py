@@ -256,15 +256,22 @@ class LoginView:
             session_inner,
             width=36, height=36,
             corner_radius=18,
-            fg_color=_BLUE_DIM,
+            fg_color="transparent",
         )
         avatar.pack(side="left", padx=(0, 12))
         avatar.pack_propagate(False)
-        ctk.CTkLabel(
-            avatar, text="A",
-            font=("Segoe UI", 14, "bold"),
-            text_color="#E6F1FB"
-        ).place(relx=0.5, rely=0.5, anchor="center")
+        # Intentar cargar imagen de avatar proporcionada, si falla usar la letra por defecto
+        try:
+            avatar_path = r"C:\Users\Colibecas\Desktop\Sistema-de-Reconocimiento-Facial\assets\sentinelSystemLogoo.png"
+            _img = Image.open(avatar_path)
+            self._avatar_img = ctk.CTkImage(light_image=_img, dark_image=_img, size=(36, 36))
+            ctk.CTkLabel(avatar, image=self._avatar_img, text="").place(relx=0.5, rely=0.5, anchor="center")
+        except Exception:
+            ctk.CTkLabel(
+                avatar, text="A",
+                font=("Segoe UI", 14, "bold"),
+                text_color="#E6F1FB"
+            ).place(relx=0.5, rely=0.5, anchor="center")
 
         # Info usuario
         info = ctk.CTkFrame(session_inner, fg_color="transparent")

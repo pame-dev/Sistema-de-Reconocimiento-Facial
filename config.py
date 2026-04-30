@@ -97,8 +97,8 @@ SIDEBAR_WIDTH = 250
 HEADER_HEIGHT = 60
 
 ASSETS_PATH = "assets"
-LOGO_FILE   = "sentinelSystemLogo.png"
-ICON_FILE   = "sentinelSystemIcono.png"
+LOGO_FILE   = "sentinelSystemLogoo.png"
+ICON_FILE   = "sentinelSystemIconoo.png"
 
 DB_PATH = os.path.join(os.path.dirname(__file__), 'database', 'sistema_biometrico.db')
 

@@ -223,7 +223,7 @@ class MainView:
         title_frame.pack(side="left", padx=12)
         try:
             logo_path = os.path.join(os.path.dirname(__file__), "..", "assets",
-                                     "sentinelSystemIcono.png")
+                                     "sentinelSystemIconoo.png")
             img = Image.open(logo_path).resize((32, 32), Image.LANCZOS)
             self._header_logo = ctk.CTkImage(light_image=img, dark_image=img, size=(32, 32))
             ctk.CTkLabel(title_frame, image=self._header_logo, text="").pack(side="left", padx=(0, 8))
@@ -377,7 +377,7 @@ class MainView:
 
         try:
             logo_path = os.path.join(os.path.dirname(__file__), "..", "assets",
-                                     "sentinelSystemIcono.png")
+                                     "sentinelSystemIconoo.png")
             img = Image.open(logo_path).resize((90, 90), Image.LANCZOS)
             self._home_logo = ctk.CTkImage(light_image=img, dark_image=img, size=(100, 90))
             ctk.CTkLabel(inner, image=self._home_logo, text="").pack(pady=(0, 12))
@@ -847,7 +847,7 @@ class MainView:
             try:
                 if not hasattr(self, "_placeholder_logo") or self._placeholder_logo is None:
                     logo_path = os.path.join(os.path.dirname(__file__), "..", "assets",
-                                             "sentinelSystemIcono.png")
+                                             "sentinelSystemIconoo.png")
                     img = Image.open(logo_path).resize((100, 100), Image.LANCZOS)
                     self._placeholder_logo = ImageTk.PhotoImage(img)
                 self._cam_canvas.create_image(w//2, h//2 - 28, image=self._placeholder_logo)
