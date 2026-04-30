@@ -53,9 +53,15 @@ class MainView:
         self._borde_job       = None
         self._historial_items = []
         self._sin_cara_job    = None
+        self._last_scale      = None
 
         self.main_frame = ctk.CTkFrame(parent, fg_color=self.colors['background'])
         self.main_frame.pack(fill="both", expand=True)
+
+        # Base design dimensions used for responsive scaling. Use app's
+        # desired size if available so scaling matches the initial window.
+        self._base_w = getattr(self.app, 'desired_width', 900)
+        self._base_h = getattr(self.app, 'desired_height', 600)
 
         self.create_header()
 
@@ -66,6 +72,12 @@ class MainView:
         self.create_content_area()
         self.show_home()
         self._bind_zoom_keys()
+        # Bind to parent window resize to keep UI responsive
+        try:
+            root = self.parent.winfo_toplevel()
+            root.bind("<Configure>", self._on_root_configure)
+        except Exception:
+            pass
 
     # ══════════════════════════════════════════════════════════════════════════
     # ZOOM
@@ -118,6 +130,45 @@ class MainView:
             "pantalla_accesos": self.show_pantalla_accesos,
         }
         vistas.get(self._vista_actual, self.show_home)()
+
+    def _on_root_configure(self, event):
+        try:
+            # Base design for scaling (use app start size if available)
+            base_w, base_h = self._base_w, self._base_h
+            w = max(320, event.width)
+            h = max(240, event.height)
+            scale_w = w / base_w
+            scale_h = h / base_h
+            scale = min(max(scale_w, 0.7), max(scale_h, 0.7))
+
+            # Limit scale range to reasonable bounds
+            scale = max(0.75, min(1.5, scale))
+
+            # Evita bucle de repintado continuo por eventos Configure.
+            if self._last_scale is not None and abs(scale - self._last_scale) < 0.01:
+                return
+
+            self._last_scale = scale
+            FontScale.set(scale)
+
+            # Adjust sidebar width proportionally
+            try:
+                new_sidebar = int(250 * scale)
+                if hasattr(self, 'sidebar') and self.sidebar.winfo_exists():
+                    self.sidebar.configure(width=new_sidebar)
+            except Exception:
+                pass
+
+            # Update zoom button text
+            try:
+                pct = round(FontScale.get() * 100)
+                if hasattr(self, '_btn_zoom'):
+                    self._btn_zoom.configure(text=f"🔍 {pct}%")
+            except Exception:
+                pass
+
+        except Exception:
+            pass
 
     def _guardar_estado_vista_actual(self):
         if self._vista_actual != "nuevo_registro":
