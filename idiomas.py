@@ -2,7 +2,7 @@ IDIOMA_ACTUAL = "es"
 
 TEXTOS = {
     "es": {
-        "titulo": "UnimoraAccess — Panel Principal",
+        "titulo": "Panel Principal",
         "salir": "← Salir",
         "inicio": "Inicio",
         "nuevo": "Nuevo Registro",
@@ -168,9 +168,9 @@ TEXTOS = {
         "error_cargar_datos": "Error al cargar datos: {}",
         "error_eliminar": "No se pudo eliminar: {}",
         "error_captura": "No se pudo iniciar la captura: {}",
-          "total": "Total de accesos",
-        "aceptados": "Accesos aceptados",
-        "denegados": "Accesos denegados",
+          "total": "Total",
+        "aceptados": "Aceptados",
+        "denegados": "Denegados",
         "eliminar_usuario_msg": "¿Deseas eliminar al usuario {nombre} {apellido} con rol {rol}?",
         "confirmar_eliminar_definitivo": "¿Seguro que deseas eliminar este usuario definitivamente?",
         "usuario_eliminado_definitivo": "Usuario eliminado definitivamente",
@@ -183,7 +183,7 @@ TEXTOS = {
         "vaciar_papelera": "Vaciar papelera",
     },
     "en": {
-        "titulo": "UnimoraAccess — Main Panel",
+        "titulo": "Main Panel",
         "salir": "← Logout",
         "inicio": "Home",
         "nuevo": "New Register",

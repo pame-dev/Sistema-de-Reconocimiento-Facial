@@ -341,16 +341,16 @@ class MainView:
         ctk.CTkButton(header, text="☰", font=("Segoe UI", 22, "bold"),
                       fg_color="transparent", hover_color=COLORS['header_hover'],
                       text_color=c['white'], width=52, height=44, corner_radius=8,
-                      command=self.toggle_menu).pack(side="left", padx=(8, 0))
+                      command=self.toggle_menu).pack(side="left", padx=0)
 
         title_frame = ctk.CTkFrame(header, fg_color="transparent")
-        title_frame.pack(side="left", padx=12)
+        title_frame.pack(side="left", padx=0)
         try:
             logo_path = os.path.join(os.path.dirname(__file__), "..", "assets",
                                      "sentinelSystemIconoo.png")
             img = Image.open(logo_path).resize((32, 32), Image.LANCZOS)
             self._header_logo = ctk.CTkImage(light_image=img, dark_image=img, size=(32, 32))
-            ctk.CTkLabel(title_frame, image=self._header_logo, text="").pack(side="left", padx=(0, 8))
+            ctk.CTkLabel(title_frame, image=self._header_logo, text="").pack(side="left", padx=(0, 0))
         except Exception:
             pass
         ctk.CTkLabel(title_frame, text=t("titulo"),
@@ -509,9 +509,9 @@ class MainView:
             ctk.CTkLabel(inner, text="🔐", font=FontScale.fb(48)).pack(pady=(0, 12))
 
         ctk.CTkLabel(inner, text=t("bienvenida"),
-                     font=FontScale.fb(24), text_color=c['text_dark']).pack()
+                     font=FontScale.fb(16), text_color=c['text_dark']).pack()
         ctk.CTkLabel(inner, text=t("seleccion"),
-                     font=FontScale.f(13), text_color=c['text_gray']).pack(pady=(6, 22))
+                     font=FontScale.f(10), text_color=c['text_gray']).pack(pady=(6, 22))
         ctk.CTkButton(inner, text=t("agregar"),
                       fg_color=c['primary'], hover_color=COLORS['primary_dark'],
                       text_color="#ffffff", font=FontScale.fb(13),
@@ -522,15 +522,15 @@ class MainView:
         c    = self.colors
         card = ctk.CTkFrame(parent, fg_color=c['card_bg'], corner_radius=14,
                             border_width=1, border_color=COLORS['border'])
-        card.grid(row=0, column=col, padx=8, sticky="ew")
+        card.grid(row=0, column=col, padx=4, sticky="ew")
         inner = ctk.CTkFrame(card, fg_color="transparent")
-        inner.pack(padx=18, pady=14, fill="x")
+        inner.pack(padx=8, pady=8, fill="x")
         top = ctk.CTkFrame(inner, fg_color="transparent")
         top.pack(fill="x")
-        ctk.CTkLabel(top, text=titulo, font=FontScale.fb(12),
+        ctk.CTkLabel(top, text=titulo, font=FontScale.fb(9),
                      text_color=color, anchor="w").pack(side="left")
         ctk.CTkLabel(top, text=icono, font=FontScale.f(18)).pack(side="right")
-        lbl = ctk.CTkLabel(inner, text=valor, font=FontScale.fb(34),
+        lbl = ctk.CTkLabel(inner, text=valor, font=FontScale.fb(24),
                            text_color=c['text_dark'], anchor="w")
         lbl.pack(anchor="w", pady=(4, 0))
         return lbl

@@ -31,7 +31,7 @@ class NuevoRegistroView(
         self.colors    = get_colors()
         self.parent    = parent
         self.container = ctk.CTkFrame(parent, fg_color=self.colors['background'])
-        self.container.pack(fill="both", expand=True, padx=30, pady=30)
+        self.container.pack(fill="both", expand=True, padx=1, pady=30)
 
         self.camara    = None
         self.capturando = False
