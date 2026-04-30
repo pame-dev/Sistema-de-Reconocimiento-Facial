@@ -234,7 +234,7 @@ def agregar_fotos_usuario():
             cv2.putText(frame, "ESPACIO=guardar | A=auto | Q=salir", (10, 120),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 200, 200), 2)
 
-            cv2.imshow("Agregar Fotos - Sentinel System", frame)
+            cv2.imshow("Agregar Fotos - UnimoraAccess", frame)
 
             key = cv2.waitKey(1) & 0xFF
             ahora = time.time()

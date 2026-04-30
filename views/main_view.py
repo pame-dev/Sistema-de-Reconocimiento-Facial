@@ -903,10 +903,10 @@ class MainView:
                     self._placeholder_logo = ImageTk.PhotoImage(img)
                 self._cam_canvas.create_image(w//2, h//2 - 28, image=self._placeholder_logo)
                 self._cam_canvas.create_text(w//2, h//2 + 24,
-                    text="Sentinel System", font=("Segoe UI", 22, "bold"), fill=c['info'])
+                    text="UnimoraAccess", font=("Segoe UI", 22, "bold"), fill=c['info'])
             except Exception:
                 self._cam_canvas.create_text(w//2, h//2 - 22,
-                    text="🛡  Sentinel System", font=("Segoe UI", 22, "bold"), fill=c['info'])
+                    text="🛡  UnimoraAccess", font=("Segoe UI", 22, "bold"), fill=c['info'])
             self._cam_canvas.create_text(w//2, h//2 + 48,
                 text=t("presiona_iniciar"), font=("Segoe UI", 16), fill=c['text_gray'])
         except Exception:
