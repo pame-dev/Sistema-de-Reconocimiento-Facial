@@ -814,7 +814,7 @@ class ReconocerFacial:
     # ─────────────────────────────────────────────────────────────────────────
     def iniciar(self):
         print("=" * 55)
-        print("🚀 SISTEMA DE RECONOCIMIENTO FACIAL — Sentinel System")
+        print("🚀 SISTEMA DE RECONOCIMIENTO FACIAL — ")
         print("=" * 55)
 
         try:
@@ -846,7 +846,7 @@ class ReconocerFacial:
                     f"Tolerancia: {self.tolerancia:.1f}  |  +/- ajustar  |  q salir",
                     (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.52, (255, 255, 0), 2
                 )
-                cv2.imshow("Reconocimiento Facial — Sentinel System", frame)
+                cv2.imshow("Reconocimiento Facial — UnimoraAccess", frame)
 
                 key = cv2.waitKey(1) & 0xFF
                 if key == ord('q'):

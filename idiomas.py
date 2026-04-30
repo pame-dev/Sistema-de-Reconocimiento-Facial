@@ -2,7 +2,7 @@ IDIOMA_ACTUAL = "es"
 
 TEXTOS = {
     "es": {
-        "titulo": "Sentinel System — Panel Principal",
+        "titulo": "UnimoraAccess — Panel Principal",
         "salir": "← Salir",
         "inicio": "Inicio",
         "nuevo": "Nuevo Registro",
@@ -183,7 +183,7 @@ TEXTOS = {
         "vaciar_papelera": "Vaciar papelera",
     },
     "en": {
-        "titulo": "Sentinel System — Main Panel",
+        "titulo": "UnimoraAccess — Main Panel",
         "salir": "← Logout",
         "inicio": "Home",
         "nuevo": "New Register",
