@@ -367,4 +367,13 @@ class LoginView:
     # ── Acción ───────────────────────────────────────────────────────────────
 
     def login(self):
-        self.app.show_main_view()
+        try:
+            self.app.show_main_view()
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            try:
+                from tkinter import messagebox
+                messagebox.showerror("Error", f"Fallo al entrar al sistema:\n{e}")
+            except Exception:
+                pass

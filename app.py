@@ -4,6 +4,7 @@ import os #libreria para interactuar con el sistema operativo, como manejar arch
 import sys
 import ctypes
 import tempfile
+import math
 from PIL import Image, ImageTk
 from config import WINDOW_WIDTH, WINDOW_HEIGHT, ASSETS_PATH, ICON_FILE # importamos configuraciones generales del sistema
 from views.login_view import LoginView 
@@ -13,11 +14,21 @@ class SentinelApp:
     
     def __init__(self, root):  
         self.root = root
-        self.root.title("Sentinel System")
-        self.root.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
-        self.root.resizable(True, True)
+        self.root.title("UnimoraAccess - Sistema de Reconocimiento Facial")
         self.root.configure(fg_color="#F4F7FB")
-        
+
+        # Ajustar la ventana para una pantalla física de 7" en vertical
+        try:
+            self.set_size_for_physical_diagonal(7.0, orientation='vertical')
+        except Exception:
+            # fallback a valores de config si falla la detección
+            self.root.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
+            self.desired_width = WINDOW_WIDTH
+            self.desired_height = WINDOW_HEIGHT
+
+        # Permitimos redimensionar por defecto
+        self.root.resizable(True, True)
+
         self.center_window()
         
         # Contenedor principal donde se cargan las vistas
@@ -31,14 +42,59 @@ class SentinelApp:
         self.root.update_idletasks()
         screen_w = self.root.winfo_screenwidth()
         screen_h = self.root.winfo_screenheight()
+        # Usa las dimensiones calculadas si existen
+        width = getattr(self, 'desired_width', WINDOW_WIDTH)
+        height = getattr(self, 'desired_height', WINDOW_HEIGHT)
 
-        # Evita abrir más grande que la pantalla útil.
-        width = min(WINDOW_WIDTH, max(720, screen_w - 80))
-        height = min(WINDOW_HEIGHT, max(520, screen_h - 120))
+        # No permitir que la ventana sea mayor que la pantalla
+        width = min(width, max(100, screen_w - 8))
+        height = min(height, max(100, screen_h - 8))
 
         x = max((screen_w // 2) - (width // 2), 0)
         y = max((screen_h // 2) - (height // 2), 0)
         self.root.geometry(f'{width}x{height}+{x}+{y}')
+
+    def set_size_for_physical_diagonal(self, diagonal_inches: float = 7.0, orientation: str = 'vertical'):
+        """
+        Calcula un tamaño de ventana (en píxeles) que corresponda aproximadamente
+        a una diagonal física dada (en pulgadas) usando las mediciones del monitor.
+        orientation: 'vertical' o 'horizontal'
+        """
+        self.root.update_idletasks()
+        sw = self.root.winfo_screenwidth()
+        sh = self.root.winfo_screenheight()
+        mmw = self.root.winfo_screenmmwidth()
+        mmh = self.root.winfo_screenmmheight()
+
+        # Estimar PPI (píxeles por pulgada)
+        try:
+            if mmw and mmh:
+                screen_diag_mm = math.hypot(mmw, mmh)
+                screen_diag_in = screen_diag_mm / 25.4
+                screen_diag_px = math.hypot(sw, sh)
+                ppi = screen_diag_px / screen_diag_in if screen_diag_in > 0 else self.root.winfo_fpixels('1i')
+            else:
+                # fallback a winfo_fpixels
+                ppi = self.root.winfo_fpixels('1i')
+        except Exception:
+            ppi = self.root.winfo_fpixels('1i')
+
+        desired_diag_px = diagonal_inches * ppi
+        screen_diag_px = math.hypot(sw, sh)
+
+        # Escala relativa (no exceder la pantalla completa)
+        scale = min(1.0, desired_diag_px / max(1.0, screen_diag_px))
+
+        desired_w = max(120, int(sw * scale))
+        desired_h = max(120, int(sh * scale))
+
+        # Para orientación vertical, asegurar que height >= width
+        if orientation == 'vertical' and desired_h < desired_w:
+            desired_w, desired_h = desired_h, desired_w
+
+        self.desired_width = desired_w
+        self.desired_height = desired_h
+        self.root.geometry(f"{self.desired_width}x{self.desired_height}")
     
     def clear_container(self):
         """Elimina todos los widgets del contenedor"""
