@@ -55,8 +55,8 @@ class SeleccionRolMixin:
 
         info = ctk.CTkFrame(card, fg_color="transparent")
         info.grid(row=1, column=0, sticky="ew", padx=8, pady=0)
-        ctk.CTkLabel(info, text=cfg["titulo"], font=("Segoe UI", 10, "bold"),
-                     text_color=color, justify="center").pack()
+        ctk.CTkLabel(info, text=t(cfg["titulo"]), font=("Segoe UI", 10, "bold"),
+             text_color=color, justify="center").pack()
         
 
         ctk.CTkButton(card, text=t("seleccionar"),
