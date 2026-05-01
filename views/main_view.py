@@ -958,31 +958,7 @@ class MainView:
 
     def _show_frame(self, frame_bgr):
         try:
-            # Determinar una sola vez si debemos convertir BGR->RGB para mostrar.
-            # Algunas backends devuelven RGB directamente; otras devuelven BGR.
-            if not hasattr(self, '_display_color_decision_made'):
-                try:
-                    sample = cv2.resize(frame_bgr, (64, 48), interpolation=cv2.INTER_AREA)
-                    cand_conv = cv2.cvtColor(sample, cv2.COLOR_BGR2RGB)  # tratar input como BGR
-                    cand_direct = sample  # tratar input como ya RGB
-
-                    mean_conv = cand_conv.mean(axis=(0, 1))  # R,G,B
-                    mean_direct = cand_direct.mean(axis=(0, 1))
-
-                    score_conv = float(mean_conv[0] - mean_conv[2])
-                    score_direct = float(mean_direct[0] - mean_direct[2])
-
-                    # Si la conversión produce un resultado con mayor predominio de rojo sobre azul,
-                    # preferimos `cv2.cvtColor` (input era BGR). En caso contrario, dejamos directo.
-                    self._display_use_cvt = score_conv >= score_direct
-                except Exception:
-                    self._display_use_cvt = True
-                self._display_color_decision_made = True
-
-            if getattr(self, '_display_use_cvt', True):
-                rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
-            else:
-                rgb = frame_bgr
+            rgb   = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
             img   = Image.fromarray(rgb)
             cw    = self._cam_canvas.winfo_width()  or 640
             ch    = self._cam_canvas.winfo_height() or 480
