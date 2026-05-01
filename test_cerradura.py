@@ -1,36 +1,16 @@
 import time
 
-try:
-    import RPi.GPIO as GPIO
-except ImportError:
-    GPIO = None
-
-RELE_PIN = 4  # GPIO 4 (pin físico 7)
+from admin.biometric_system.contro_cerradura import ejecutar_cerradura
 
 
-def ejecutar_cerradura(segundos=8):
-    if GPIO is None:
-        print("⚠️  RPi.GPIO no disponible. No se puede accionar la cerradura.")
-        return False
-
-    GPIO.setmode(GPIO.BCM)
-    GPIO.setup(RELE_PIN, GPIO.OUT)
-
-    try:
-        print("🔓 Abriendo cerradura...")
-        GPIO.output(RELE_PIN, GPIO.HIGH)  # Activa el relé
-        time.sleep(segundos)
-
-        print("🔒 Cerrando cerradura...")
-        GPIO.output(RELE_PIN, GPIO.LOW)   # Desactiva el relé
-        return True
-
-    finally:
-        GPIO.cleanup()
+def ciclo_prueba(intervalo=2):
+    """Prueba manual: alterna ON/OFF en bucle hasta Ctrl+C."""
+    while True:
+        print("ON")
+        ejecutar_cerradura(segundos=intervalo)
+        print("OFF")
+        time.sleep(intervalo)
 
 
 if __name__ == "__main__":
-    try:
-        ejecutar_cerradura(8)
-    except KeyboardInterrupt:
-        print("Programa detenido")
+    ciclo_prueba()

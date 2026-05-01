@@ -19,7 +19,7 @@ if _PROJECT_ROOT not in sys.path:
 from camera import Camera
 
 try:
-    from test_cerradura import ejecutar_cerradura as ejecutar_test_cerradura
+    from contro_cerradura import ejecutar_cerradura as ejecutar_test_cerradura
 except Exception:
     ejecutar_test_cerradura = None
 
@@ -91,8 +91,8 @@ class ReconocerFacial:
             raise RuntimeError("No se pudo cargar haarcascade_profileface.xml")
 
         # ── Reconocedor LBPH ───────────────────────────────────────────────────
-        # Nota: requiere OpenCV contrib (cv2.face). Si falla aquí, hay que instalar contrib en Windows/Pi.
-        self.recognizer = cv2.face.LBPHFaceRecognizer_create()
+        # Nota: requiere OpenCV contrib (cv2.face).
+        self.recognizer = self._crear_lbph_recognizer()
 
         # ── Datos de reconocimiento ────────────────────────────────────────────
         self.nombres = {}   # dict[int, str]    — user_id → nombre completo
@@ -147,6 +147,29 @@ class ReconocerFacial:
         self.total_aceptados       = 0
         self.total_denegados       = 0
         self._cerradura_en_proceso = False
+
+    @staticmethod
+    def _crear_lbph_recognizer():
+        """Crea el reconocedor LBPH con compatibilidad entre variantes de OpenCV."""
+        face_mod = getattr(cv2, "face", None)
+        if face_mod is None:
+            raise RuntimeError(
+                "OpenCV no incluye cv2.face. Instala solo opencv-contrib-python."
+            )
+
+        ctor = getattr(face_mod, "LBPHFaceRecognizer_create", None)
+        if callable(ctor):
+            return ctor()
+
+        # Algunas compilaciones exponen la clase y su constructor .create()
+        cls = getattr(face_mod, "LBPHFaceRecognizer", None)
+        create_fn = getattr(cls, "create", None) if cls is not None else None
+        if callable(create_fn):
+            return create_fn()
+
+        raise RuntimeError(
+            "Tu OpenCV no trae LBPH. Reinstala con: pip uninstall -y opencv opencv-python opencv-contrib-python && pip install opencv-contrib-python==4.10.0.84"
+        )
 
     # ─────────────────────────────────────────────────────────────────────────
     # Base de datos

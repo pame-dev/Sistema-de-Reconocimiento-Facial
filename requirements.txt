@@ -3,7 +3,6 @@
 
 # Computer Vision (LBPH + Haar Cascade)
 opencv-contrib-python>=4.8.1
-opencv-python>=4.8.1
 
 # GUI (solo para Windows - en Raspberry Pi se puede omitir)
 customtkinter>=5.2.2
