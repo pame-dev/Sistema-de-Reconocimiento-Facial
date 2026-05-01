@@ -268,6 +268,7 @@ class ReconocerFacial:
                 FROM biometria b
                 INNER JOIN usuarios u ON u.idUsuario = b.fkIdUsuario
                 WHERE b.encodeBiometria IS NOT NULL
+                AND LOWER(TRIM(u.estadoUsuario)) = 'activo'
             """)
             return {row[0] for row in cur.fetchall()}
         except Exception:
@@ -300,6 +301,7 @@ class ReconocerFacial:
                 FROM biometria b
                 INNER JOIN usuarios u ON u.idUsuario = b.fkIdUsuario
                 WHERE b.encodeBiometria IS NOT NULL
+                AND LOWER(TRIM(u.estadoUsuario)) = 'activo'
             """)
             items = []
             for user_id, imagen_bytes in cur.fetchall():
@@ -355,11 +357,12 @@ class ReconocerFacial:
         cur = conn.cursor()
         cur.execute("""
             SELECT u.idUsuario,
-                   u.nombreUsuario, u.apellidoPaternoUsuario, u.apellidoMaternoUsuario,
-                   b.encodeBiometria
+                u.nombreUsuario, u.apellidoPaternoUsuario, u.apellidoMaternoUsuario,
+                b.encodeBiometria
             FROM usuarios u
             INNER JOIN biometria b ON u.idUsuario = b.fkIdUsuario
             WHERE b.encodeBiometria IS NOT NULL
+            AND LOWER(TRIM(u.estadoUsuario)) = 'activo'
         """)
         filas = cur.fetchall()
         conn.close()
