@@ -51,23 +51,21 @@ class SeleccionRolMixin:
         card.grid_columnconfigure(0, weight=1)
 
         ctk.CTkLabel(card, text=cfg["icono"],
-                     font=("Segoe UI Emoji", 110)).grid(row=0, column=0, pady=(28, 6))
+             font=("Segoe UI Emoji", 50)).grid(row=0, column=0, pady=(10, 2))
 
         info = ctk.CTkFrame(card, fg_color="transparent")
-        info.grid(row=1, column=0, sticky="ew", padx=16)
-        ctk.CTkLabel(info, text=cfg["titulo"], font=("Segoe UI", 30, "bold"),
-                     text_color=color, wraplength=160, justify="center").pack()
-        ctk.CTkLabel(info, text=cfg["desc"], font=("Segoe UI", 11),
-                     text_color=self.colors['text_gray'],
-                     wraplength=160, justify="center").pack(pady=(4, 0))
+        info.grid(row=1, column=0, sticky="ew", padx=8, pady=0)
+        ctk.CTkLabel(info, text=cfg["titulo"], font=("Segoe UI", 10, "bold"),
+                     text_color=color, justify="center").pack()
+        
 
         ctk.CTkButton(card, text=t("seleccionar"),
                       fg_color=color, hover_color=darken(color),
                       text_color=self.colors['white'],
-                      font=("Segoe UI", 12, "bold"),
-                      corner_radius=10, height=38,
+                      font=("Segoe UI", 8, "bold"),
+                      corner_radius=10, height=32,
                       command=lambda r=rol_key: self._seleccionar_rol(r),
-                      ).grid(row=2, column=0, padx=20, pady=(12, 22), sticky="ew")
+                      ).grid(row=2, column=0, padx=2, pady=(12, 22), sticky="ew")
 
         for w in (outer, card):
             w.bind("<Button-1>", lambda e, r=rol_key: self._seleccionar_rol(r))

@@ -151,17 +151,17 @@ class InformacionEscolarView:
 
         ctk.CTkLabel(filtros, text="🔍  " + t("buscar"),
                      text_color=c['text_dark'],
-                     font=("Segoe UI", 12, "bold")).pack(side="left", padx=(14, 6), pady=10)
+                     font=("Segoe UI", 10, "bold")).pack(side="left", padx=(2, 6), pady=10)
 
         self.busqueda_var = tk.StringVar()
         self.entrada_busqueda = ctk.CTkEntry(filtros,
             textvariable=self.busqueda_var,
-            font=("Segoe UI", 12), width=200, height=36,
+            font=("Segoe UI", 10), width=50, height=36,
             corner_radius=10,
             fg_color=c['content_bg'],
             border_color=COLORS['border'],
             text_color=c['text_gray'])
-        self.entrada_busqueda.pack(side="left", padx=(0, 16), pady=10)
+        self.entrada_busqueda.pack(side="left", padx=(0, 3), pady=10)
         self.entrada_busqueda.insert(0, t("placeholder_busqueda"))
         self.entrada_busqueda.bind("<FocusIn>",    self.limpiar_placeholder)
         self.entrada_busqueda.bind("<FocusOut>",   self.restaurar_placeholder)
@@ -169,11 +169,11 @@ class InformacionEscolarView:
 
         ctk.CTkLabel(filtros, text=t("rol"),
                      text_color=c['text_dark'],
-                     font=("Segoe UI", 12, "bold")).pack(side="left", padx=(0, 6), pady=10)
+                     font=("Segoe UI", 10, "bold")).pack(side="left", padx=(3, 3), pady=10)
 
         self.filtro_rol = ttk.Combobox(filtros,
             values=[t("todos"), t("estudiante"), t("docente"), t("personal")],
-            state="readonly", width=16,
+            state="readonly", width=6,
             font=("Segoe UI", 12),
             style='Dark.TCombobox')
         self.filtro_rol.set(t("todos")),
@@ -182,13 +182,13 @@ class InformacionEscolarView:
         
         ctk.CTkLabel(filtros, text="Estado",
              text_color=c['text_dark'],
-             font=("Segoe UI", 12, "bold")).pack(side="left", padx=(12, 6), pady=10)
+             font=("Segoe UI", 10, "bold")).pack(side="left", padx=(3, 3), pady=10)
 
         self.filtro_estado = ttk.Combobox(
             filtros,
             values=["Activos", "Inactivos"],
             state="readonly",
-            width=12,
+            width=8,
             font=("Segoe UI", 12),
             style='Dark.TCombobox'
         )

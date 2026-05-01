@@ -28,25 +28,44 @@ class FormularioMixin:
 
         header = ctk.CTkFrame(self.container, fg_color="transparent")
         header.pack(fill="x", pady=(0, 12))
-        ctk.CTkButton(header, text=t("regresar"),
-                      fg_color="transparent", hover_color=COLORS['content_bg'],
-                      text_color=color, font=("Segoe UI", 11, "bold"),
-                      command=self._mostrar_seleccion_rol).pack(side="left")
+        ctk.CTkButton(
+            header,
+            text="← " + t("regresar"),
+            fg_color="transparent",
+            hover_color=COLORS['content_bg'],
+            text_color=color,
+            font=("Segoe UI", 10),
+            width=65,
+            height=26,
+            corner_radius=6,
+            command=self._mostrar_seleccion_rol
+        ).pack(side="left", padx=(4, 2), pady=2)
 
         badge = ctk.CTkFrame(header, fg_color=color, corner_radius=10)
-        badge.pack(side="left", padx=12)
-        ctk.CTkLabel(badge, text=f"  {cfg['icono']}  {cfg['titulo']}  ",
-                     font=("Segoe UI", 11, "bold"),
-                     text_color=self.colors['white']).pack(padx=6, pady=4)
-        ctk.CTkLabel(header, text=t("paso_datos"),
-                     font=("Segoe UI", 12),
-                     text_color=self.colors['text_gray']).pack(side="left", padx=10)
+        badge.pack(side="left", padx=(2, 6))
+
+        ctk.CTkLabel(
+            badge,
+            text=f"{cfg['icono']} {cfg['titulo']}",
+            font=("Segoe UI", 11, "bold"),
+            text_color=self.colors['white']
+        ).pack(padx=4, pady=2)
+
+        ctk.CTkLabel(
+            header,
+            text=t("paso_datos"),
+            font=("Segoe UI", 12),
+            text_color=self.colors['text_gray']
+        ).pack(side="left", padx=(6, 0))
 
         ttk.Separator(self.container, orient="horizontal").pack(fill="x", pady=(0, 15))
 
-        scroll = ctk.CTkScrollableFrame(self.container, fg_color="transparent")
+        content = ctk.CTkFrame(self.container, fg_color="transparent")
+        content.pack(fill="both", expand=True)
+        
+        scroll = ctk.CTkScrollableFrame(content, fg_color="transparent")
         scroll.pack(fill="both", expand=True)
-
+        
         form_frame = ctk.CTkFrame(scroll, fg_color=self.colors['card_bg'],
                                    corner_radius=14, border_width=1,
                                    border_color=COLORS['border'], width=920)
@@ -66,11 +85,18 @@ class FormularioMixin:
                                 titulos.get(self.rol_actual, "Datos adicionales"), color)
             self._add_fields_grid(form_frame, campos_rol, columns=2)
 
-        ctk.CTkButton(self.container, text=t("continuar_fotos"),
-                      fg_color=color, hover_color=darken(color),
-                      text_color=self.colors['white'],
-                      font=FontScale.fb(13), corner_radius=10, height=42,
-                      command=self._validar_y_continuar).pack(pady=20)
+        # 👇 SOLO CAMBIÉ ESTO: ahora el botón vive dentro de "content"
+        ctk.CTkButton(
+            content,
+            text=t("continuar_fotos"),
+            fg_color=color,
+            hover_color=darken(color),
+            text_color=self.colors['white'],
+            font=FontScale.fb(13),
+            corner_radius=10,
+            height=42,
+            command=self._validar_y_continuar
+        ).pack(pady=(30, 20))  # más abajo
 
         # Restaurar valores previos si los hay
         if hasattr(self, 'valores_form') and self.valores_form:
