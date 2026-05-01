@@ -736,44 +736,65 @@ class MainView:
                      font=("Segoe UI", 10, "bold"),
                      text_color="#ffffff").pack(padx=4, pady=3)
 
-        # Confianza del reconocimiento (face_recognition: 0-100%, mayor = mejor)
+    # Confianza
         if confianza is not None:
-            ctk.CTkLabel(scroll, text=f"Confianza: {confianza:.1f}%",
-                         font=("Segoe UI", 10), text_color=c['text_gray']).pack()
+            ctk.CTkLabel(
+                scroll,
+                text=f"{t('confianza')}: {confianza:.1f}%",
+                font=("Segoe UI", 10),
+                text_color=c['text_gray']
+            ).pack()
 
         sep()
-        fila("Matrícula", datos_bd.get('matricula'))
-        fila("Teléfono",  datos_bd.get('telefono'))
-        fila("Correo",    datos_bd.get('correo'))
+        fila(t("matricula"), datos_bd.get('matricula'))
+        fila(t("telefono"),  datos_bd.get('telefono'))
+        fila(t("correo"),    datos_bd.get('correo'))
 
         if rol == 'alumno':
             sep()
-            ctk.CTkLabel(scroll, text="Información académica",
-                         font=("Segoe UI", 10, "bold"),
-                         text_color=color_tipo).pack(anchor="w", pady=(0, 4))
-            fila("Facultad", datos_bd.get('facultad'))
-            fila("Carrera",  datos_bd.get('carrera'))
-            fila("Grado",    datos_bd.get('grado'))
-            fila("Grupo",    datos_bd.get('grupo'))
+            ctk.CTkLabel(
+                scroll,
+                text=t("info_academica"),
+                font=("Segoe UI", 10, "bold"),
+                text_color=color_tipo
+            ).pack(anchor="w", pady=(0, 4))
+
+            fila(t("facultad"), datos_bd.get('facultad'))
+            fila(t("carrera"),  datos_bd.get('carrera'))
+            fila(t("grado"),    datos_bd.get('grado'))
+            fila(t("grupo"),    datos_bd.get('grupo'))
+
         elif rol == 'maestro':
             sep()
-            ctk.CTkLabel(scroll, text="Información docente",
-                         font=("Segoe UI", 10, "bold"),
-                         text_color=color_tipo).pack(anchor="w", pady=(0, 4))
-            fila("Materia",       datos_bd.get('materia'))
-            fila("Grado imparte", datos_bd.get('grado'))
+            ctk.CTkLabel(
+                scroll,
+                text=t("info_docente"),
+                font=("Segoe UI", 10, "bold"),
+                text_color=color_tipo
+            ).pack(anchor="w", pady=(0, 4))
+
+            fila(t("materia"),        datos_bd.get('materia'))
+            fila(t("grado_imparte"),  datos_bd.get('grado'))
+
         elif rol == 'personal':
             sep()
-            ctk.CTkLabel(scroll, text="Información laboral",
-                         font=("Segoe UI", 10, "bold"),
-                         text_color=color_tipo).pack(anchor="w", pady=(0, 4))
-            fila("Puesto", datos_bd.get('puesto'))
-            fila("Área",   datos_bd.get('area'))
+            ctk.CTkLabel(
+                scroll,
+                text=t("info_laboral"),
+                font=("Segoe UI", 10, "bold"),
+                text_color=color_tipo
+            ).pack(anchor="w", pady=(0, 4))
+
+            fila(t("puesto"), datos_bd.get('puesto'))
+            fila(t("area"),   datos_bd.get('area'))
 
         sep()
-        ctk.CTkLabel(scroll, text=f"🕐  {datetime.now().strftime('%H:%M:%S')}",
-                     font=("Segoe UI", 11), text_color=c['text_gray']).pack()
-
+        ctk.CTkLabel(
+            scroll,
+            text=f"🕐 {datetime.now().strftime('%H:%M:%S')}",
+            font=("Segoe UI", 11),
+            text_color=c['text_gray']
+        ).pack()
     # ── Animación borde cámara ────────────────────────────────────────────────
     def _animar_borde(self, color_hex, pasos=6):
         if self._borde_job:

@@ -181,7 +181,121 @@ TEXTOS = {
         "error_vaciar_papelera": "No se pudo vaciar: {}",
 
         "vaciar_papelera": "Vaciar papelera",
-    },
+        "error_haar": "No se encontró Haar cascade",
+        "instalar_opencv": "Instala opencv-data",
+        "desc_estudiante": "Alumno registrado",
+        "desc_docente": "Profesor registrado",
+        "desc_personal": "Personal administrativo",
+          # ── General ─────────────────────────
+        "titulo": "Panel Principal",
+        "salir": "← Salir",
+        "inicio": "Inicio",
+        "nuevo": "Nuevo Registro",
+        "info": "Información Escolar",
+        "historial": "Historial de Accesos",
+        "pantalla": "Pantalla de Accesos",
+        "bienvenida": "Le da la Bienvenida al Sistema",
+        "seleccion": "Seleccione una opción del menú para comenzar",
+
+        # ── Botones ─────────────────────────
+        "agregar": "➕ Agregar nuevo usuario",
+        "iniciar": "▶ Iniciar",
+        "detener": "⏹ Detener",
+        "guardar": "Guardar",
+        "cancelar": "Cancelar",
+        "editar": "Editar",
+        "eliminar": "Eliminar",
+        "confirmar": "Confirmar",
+
+        # ── Cámara ─────────────────────────
+        "camara_on": "⬤ Cámara en línea",
+        "camara_off": "⬤ Cámara apagada",
+        "iniciando_camara": "Iniciando cámara",
+        "error_iniciar_camara": "Error al iniciar cámara",
+
+        # ── Estados ─────────────────────────
+        "esperando": "Esperando reconocimiento",
+        "colocate": "Colócate frente a la cámara",
+        "presiona_iniciar": "Presiona ▶ Iniciar para comenzar",
+
+        # ── Roles ─────────────────────────
+        "estudiante": "Estudiante",
+        "docente": "Docente",
+        "personal": "Personal",
+
+        "desc_estudiante": "Alumno registrado en el sistema",
+        "desc_docente": "Profesor registrado en el sistema",
+        "desc_personal": "Personal administrativo",
+
+        # ── Campos ─────────────────────────
+        "nombre": "Nombre",
+        "apellido_paterno": "Apellido Paterno",
+        "apellido_materno": "Apellido Materno",
+        "matricula": "Matrícula",
+        "telefono": "Teléfono",
+        "correo": "Correo Electrónico",
+        "fecha_nacimiento": "Fecha de Nacimiento",
+        "tipo_sangre": "Tipo de Sangre",
+        "direccion": "Dirección",
+
+        "facultad": "Facultad",
+        "carrera": "Carrera",
+        "grado": "Grado",
+        "grupo": "Grupo",
+        "materia": "Materia",
+        "puesto": "Puesto",
+        "area": "Área",
+        "grado_imparte": "Grado que imparte",
+
+        # ── Posturas ─────────────────────────
+        "frontal": "Frontal",
+        "izquierda": "Izquierda",
+        "derecha": "Derecha",
+        "perfil_izquierda": "Perfil Izquierdo",
+        "perfil_derecha": "Perfil Derecho",
+
+        "inst_frontal": "Mira directamente al frente",
+        "inst_izquierda": "Gira ligeramente a la izquierda",
+        "inst_derecha": "Gira ligeramente a la derecha",
+        "inst_perfil_izq": "Muestra tu perfil izquierdo",
+        "inst_perfil_der": "Muestra tu perfil derecho",
+
+        # ── Mensajes ─────────────────────────
+        "error": "Error",
+        "registro_exitoso": "Registro exitoso",
+        "guardando_auto": "Guardando automáticamente...",
+
+        # ── Haar / OpenCV ───────────────────
+        "error_haar": "No se encontró el archivo Haar cascade",
+        "instalar_opencv": "Instala con: sudo apt install opencv-data",
+        "confirm_deletion": "Confirmar eliminación",
+        "delete_user_msg": "¿Eliminar usuario?",
+        "error_deleting_user": "Error al eliminar usuario",
+        "confirm_restoration": "Confirmar restauración",
+        "restore_user_msg": "¿Restaurar a {nombre}?",
+        "error_restaurar": "No se pudo restaurar: {}",
+        "ver_detalles": "Ver detalles",
+        "ocultar_detalles": "Ocultar detalles",
+        "selecciona_usuario": "Selecciona un usuario",
+        "detalles": "Detalles",
+        "activos": "Activos",
+        "inactivos": "Inactivos",
+        "procesando_imagenes": "Procesando imágenes biométricas...",
+        "sin_rostros": "No se pudieron extraer rostros.",
+        "generando_modelo": "Generando modelo LBPH...",
+        "sin_usuarios": "No hay usuarios con biometría en la BD",
+        "modelo_corrupto": "Modelo corrupto — regenerando...",
+        "cerrado": "Sistema cerrado",
+        "sin_camara": "No se pudo abrir la cámara",
+        "camara_iniciada": "Cámara iniciada",
+        "acceso_permitido": "ACCESO PERMITIDO",
+        "acceso_denegado": "ACCESO DENEGADO",
+        "tolerancia": "Tolerancia",
+        "ajustar": "ajustar",
+        "salir": "salir",
+        "modelo_listo": "Modelo listo",
+        "sin_datos": "Sin datos — registra usuarios primero"
+                },
     "en": {
         "titulo": "Main Panel",
         "salir": "← Logout",
@@ -359,6 +473,121 @@ TEXTOS = {
         "error_vaciar_papelera": "Could not empty trash: {}",
 
         "vaciar_papelera": "Empty trash",
+        "error_haar": "Haar cascade not found",
+        "instalar_opencv": "Install opencv-data",
+        "desc_estudiante": "Registered student",
+        "desc_docente": "Registered teacher",
+        "desc_personal": "Administrative staff",
+                # ── General ─────────────────────────
+        "titulo": "Main Panel",
+        "salir": "← Logout",
+        "inicio": "Home",
+        "nuevo": "New Register",
+        "info": "School Info",
+        "historial": "Access History",
+        "pantalla": "Access Screen",
+        "bienvenida": "Welcome to the System",
+        "seleccion": "Select an option from the menu",
+
+        # ── Botones ─────────────────────────
+        "agregar": "➕ Add new user",
+        "iniciar": "▶ Start",
+        "detener": "⏹ Stop",
+        "guardar": "Save",
+        "cancelar": "Cancel",
+        "editar": "Edit",
+        "eliminar": "Delete",
+        "confirmar": "Confirm",
+
+        # ── Cámara ─────────────────────────
+        "camara_on": "⬤ Camera online",
+        "camara_off": "⬤ Camera off",
+        "iniciando_camara": "Starting camera",
+        "error_iniciar_camara": "Error starting camera",
+
+        # ── Estados ─────────────────────────
+        "esperando": "Waiting for recognition",
+        "colocate": "Stand in front of the camera",
+        "presiona_iniciar": "Press ▶ Start to begin",
+
+        # ── Roles ─────────────────────────
+        "estudiante": "Student",
+        "docente": "Teacher",
+        "personal": "Staff",
+
+        "desc_estudiante": "Student registered in the system",
+        "desc_docente": "Teacher registered in the system",
+        "desc_personal": "Administrative staff",
+
+        # ── Campos ─────────────────────────
+        "nombre": "First Name",
+        "apellido_paterno": "Last Name",
+        "apellido_materno": "Second Last Name",
+        "matricula": "Student ID",
+        "telefono": "Phone",
+        "correo": "Email",
+        "fecha_nacimiento": "Birth Date",
+        "tipo_sangre": "Blood Type",
+        "direccion": "Address",
+
+        "facultad": "Faculty",
+        "carrera": "Major",
+        "grado": "Grade",
+        "grupo": "Group",
+        "materia": "Subject",
+        "puesto": "Position",
+        "area": "Area",
+        "grado_imparte": "Grade taught",
+
+        # ── Posturas ─────────────────────────
+        "frontal": "Front",
+        "izquierda": "Left",
+        "derecha": "Right",
+        "perfil_izquierda": "Left Profile",
+        "perfil_derecha": "Right Profile",
+
+        "inst_frontal": "Look straight ahead",
+        "inst_izquierda": "Turn slightly left",
+        "inst_derecha": "Turn slightly right",
+        "inst_perfil_izq": "Show your left profile",
+        "inst_perfil_der": "Show your right profile",
+
+        # ── Mensajes ─────────────────────────
+        "error": "Error",
+        "registro_exitoso": "Successful registration",
+        "guardando_auto": "Saving automatically...",
+
+        # ── Haar / OpenCV ───────────────────
+        "error_haar": "Haar cascade file not found",
+        "instalar_opencv": "Install with: sudo apt install opencv-data",
+        "confirm_deletion": "Confirm deletion",
+        "delete_user_msg": "Delete user?",
+        "error_deleting_user": "Error deleting user",
+        "confirm_restoration": "Confirm restoration",
+        "restore_user_msg": "Restore {nombre}?",
+        "error_restaurar": "Could not restore: {}",
+        "view_details": "View details",
+        "hide_details": "Hide details",
+        "select_user": "Select a user",
+        "details": "Details",
+        "active": "Active",
+        "inactive": "Inactive",
+         "procesando_imagenes": "Processing biometric images...",
+        "sin_rostros": "No faces could be extracted.",
+        "generando_modelo": "Generating LBPH model...",
+        "sin_usuarios": "No users with biometrics in DB",
+        "modelo_corrupto": "Corrupt model — regenerating...",
+        "cerrado": "System closed",
+        "sin_camara": "Could not open camera",
+        "camara_iniciada": "Camera started",
+        "acceso_permitido": "ACCESS GRANTED",
+        "acceso_denegado": "ACCESS DENIED",
+        "tolerancia": "Tolerance",
+        "ajustar": "adjust",
+        "salir": "quit",
+        "modelo_listo": "Model ready",
+        "sin_datos": "No data — register users first"
+
     }
     }
 

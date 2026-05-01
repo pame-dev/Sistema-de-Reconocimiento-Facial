@@ -521,7 +521,7 @@ class InformacionEscolarView:
 
         estado = self.filtro_estado.get()
 
-        if estado == "Inactivos":
+        if estado == "Inactive":
             #  SOLO RESTAURAR
             self.btn_restaurar.pack(side="left")
         else:
@@ -879,8 +879,8 @@ class InformacionEscolarView:
             return
         u = self.usuario_seleccionado
         if not messagebox.askyesno(
-            t("confirmar_eliminacion"),
-            t("eliminar_usuario_msg").format(
+            t("confirm_deletion"),
+            t("delete_user_msg").format(
                 nombre=u['nombre'],
                 apellido=u.get('apellido_paterno',''),
                 rol=u['rol']
@@ -895,7 +895,7 @@ class InformacionEscolarView:
             self.usuario_seleccionado = None
             self.ocultar_detalles_panel()
             self.cargar_datos()
-            messagebox.showinfo("✅ Eliminado", f"{u['nombre']} eliminado correctamente.")
+            messagebox.showinfo(t("eliminado"), t("usuario_eliminado").format(u['nombre']))
         except Exception as e:
             messagebox.showerror(t("error"), t("error_eliminar").format(e))
 
@@ -972,8 +972,8 @@ class InformacionEscolarView:
             self.actualizar_tabla()
 
         except Exception as e:
-            messagebox.showerror("Error", f"Error cargando inactivos: {e}")
-            
+            messagebox.showerror(t("error"), t("error_cargar_inactivos").format(e))
+
     def restaurar_usuario(self):
         if not self.usuario_seleccionado:
             return
@@ -981,8 +981,8 @@ class InformacionEscolarView:
         u = self.usuario_seleccionado
 
         if not messagebox.askyesno(
-            "Restaurar usuario",
-            f"¿Deseas restaurar a {u['nombre']}?"
+            t("confirm_restoration"),
+            t("restore_user_msg").format(nombre=u['nombre'])
         ):
             return
 
@@ -992,14 +992,14 @@ class InformacionEscolarView:
             conn.commit()
             conn.close()
 
-            messagebox.showinfo("✅ Restaurado", "Usuario restaurado correctamente")
+            messagebox.showinfo(t("restaurado"), t("usuario_restaurado").format(u['nombre']))
 
             self.usuario_seleccionado = None
             self.ocultar_detalles_panel()
 
             # 🔥 Regresar automáticamente a activos
-            self.filtro_estado.set("Activos")
+            self.filtro_estado.set(t("activos"))
             self.cargar_datos()
 
         except Exception as e:
-            messagebox.showerror("Error", f"No se pudo restaurar: {e}")
+            messagebox.showerror(t("error"), t("error_restaurar").format(e))

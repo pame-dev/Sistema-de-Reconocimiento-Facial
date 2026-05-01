@@ -9,6 +9,7 @@ import pickle
 import hashlib
 from collections import Counter
 import time
+from idiomas import t
 
 _PROJECT_ROOT = os.path.dirname(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -368,7 +369,7 @@ class ReconocerFacial:
         nombres_tmp = {}
         fallback_directo = 0
 
-        print(f"📸 Procesando {len(filas)} imágenes biométricas...")
+        print(t("procesando_imagenes"))
 
         for fila in filas:
             user_id = fila[0]
@@ -417,7 +418,7 @@ class ReconocerFacial:
                 continue
 
         if not faces_tmp:
-            print("❌ No se pudieron extraer rostros.")
+            print(t("sin_rostros"))
             return False
 
         self.faces = faces_tmp
@@ -439,9 +440,9 @@ class ReconocerFacial:
         fp_bd               = self._fingerprint_en_bd()
 
         if not ids_bd:
-            print("⚠️  No hay usuarios con biometría en la BD")
+            print(t("sin_usuarios"))
             if self.on_status:
-                self.on_status("Sin datos — registra usuarios primero")
+                self.on_status(t("sin_datos"))
             return False
 
         archivo_ok = os.path.exists(self.model_path) and os.path.exists(self.data_path)
@@ -481,19 +482,19 @@ class ReconocerFacial:
 
                 print(f"✅ Modelo LBPH cargado · {len(self.nombres)} usuarios (incluye inactivos)")
                 if self.on_status:
-                    self.on_status(f"Modelo listo · {len(self.nombres)} usuarios")
+                    self.on_status(t("modelo_listo"))
                 return True
 
             except Exception as e:
-                print(f"⚠️  Modelo corrupto ({e}) — regenerando...")
+                print(t("modelo_corrupto"))
                 self._borrar_archivos_modelo()
 
         return self._generar_y_guardar()
 
     def _generar_y_guardar(self):
         if self.on_status:
-            self.on_status("Generando modelo LBPH...")
-        print("🔄 Generando modelo LBPH desde cero...")
+            self.on_status(t("generando_modelo"))
+        print(t("generando_modelo"))
 
         ok = self.preparar_datos()
         if not ok:
@@ -661,7 +662,7 @@ class ReconocerFacial:
 
             if estado == "aceptado":
                 self.total_aceptados  += 1
-                self._overlay_texto    = "ACCESO PERMITIDO"
+                self._overlay_texto = t("acceso_permitido")
                 self._overlay_color    = (30, 200, 60)
                 self._overlay_frames   = self._overlay_duracion
                 self._ultimo_registro.pop("desconocido", None)
@@ -670,7 +671,7 @@ class ReconocerFacial:
                 self._abrir_cerradura()
             else:
                 self.total_denegados += 1
-                self._overlay_texto   = "ACCESO DENEGADO"
+                self._overlay_texto = t("acceso_denegado")
                 self._overlay_color   = (40, 40, 220)
                 self._overlay_frames  = 8
                 self._votos = []
@@ -879,9 +880,9 @@ class ReconocerFacial:
             self.camara = Camera()
             self.camara.start()
             time.sleep(1)
-            print("📷 Cámara iniciada")
+            print(t("camara_iniciada"))
         except Exception as e:
-            print(f"❌ No se pudo abrir la cámara: {e}")
+            print(t("sin_camara"))
             return
 
         if not self.cargar_o_reentrenar():
@@ -901,7 +902,7 @@ class ReconocerFacial:
 
                 cv2.putText(
                     frame,
-                    f"Tolerancia: {self.tolerancia:.1f}  |  +/- ajustar  |  q salir",
+                    f"{t('tolerancia')}: {self.tolerancia:.1f}  |  +/- {t('ajustar')}  |  q {t('salir')}",
                     (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.52, (255, 255, 0), 2
                 )
                 cv2.imshow("Reconocimiento Facial — UnimoraAccess", frame)
@@ -927,7 +928,7 @@ class ReconocerFacial:
                 except Exception:
                     pass
             cv2.destroyAllWindows()
-            print("👋 Sistema cerrado")
+            print(t("cerrado"))
 
 
 if __name__ == "__main__":
