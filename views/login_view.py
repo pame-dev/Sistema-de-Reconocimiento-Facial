@@ -50,11 +50,11 @@ class LoginView:
         self.left = ctk.CTkFrame(
             self.frame, fg_color=_NAVY, corner_radius=0
         )
-        self.left.place(relx=0, rely=0, relwidth=0.42, relheight=1.0)
+        self.left.place(relx=0, rely=0, relwidth=0.48, relheight=1.0)
 
-        # Área derecha (58 %)
+        # Área derecha (52 %)
         self.right = ctk.CTkFrame(self.frame, fg_color=_CARD_BG, corner_radius=0)
-        self.right.place(relx=0.42, rely=0, relwidth=0.58, relheight=1.0)
+        self.right.place(relx=0.48, rely=0, relwidth=0.52, relheight=1.0)
 
         # Círculos decorativos sobre el canvas del panel izquierdo
         self._circles_canvas = None
@@ -136,7 +136,7 @@ class LoginView:
         # Nombre del sistema
         ctk.CTkLabel(
             self._left_inner, text="UnimoraAccess",
-            font=("Georgia", 28, "bold"),
+            font=("Georgia", 15, "bold"),
             text_color="#E6F1FB"
         ).pack()
 
@@ -158,17 +158,17 @@ class LoginView:
         ctk.CTkLabel(
             self._left_inner,
             text="Control de acceso biométrico\npara instituciones educativas",
-            font=("Segoe UI", 11),
+            font=("Segoe UI", 8),
             text_color=_BLUE_GLOW,
             justify="center"
         ).pack(pady=(0, 22))
 
         # Feature chips
         features = [
-            ("⊙", "Reconocimiento facial en tiempo real"),
-            ("⊠", "Acceso seguro y registrado"),
-            ("≡", "Historial completo de entradas"),
-            ("⊞", "Gestión de alumnos y personal"),
+            ("⊙", "Reconocimiento facial"),
+            ("⊠", "Acceso seguro "),
+            ("≡", "Historial de entradas"),
+            ("⊞", "Gestión de usuarios"),
         ]
         for sym, txt in features:
             chip = ctk.CTkFrame(
@@ -184,7 +184,7 @@ class LoginView:
                 chip, text=sym,
                 font=("Courier New", 16, "bold"),
                 text_color=_BLUE,
-                width=28,
+                width=6,
             ).pack(side="left", padx=(12, 6))
 
             ctk.CTkLabel(
@@ -227,14 +227,14 @@ class LoginView:
 
         ctk.CTkLabel(
             center, text="Acceso directo",
-            font=("Georgia", 20, "bold"),
+            font=("Georgia", 16, "bold"),
             text_color=_TEXT_DARK
         ).pack()
 
         ctk.CTkLabel(
             center,
             text="Sistema de control de acceso institucional",
-            font=("Segoe UI", 11),
+            font=("Segoe UI", 8),
             text_color=_GRAY_TEXT
         ).pack(pady=(4, 24))
 
@@ -249,7 +249,7 @@ class LoginView:
         session_card.pack(fill="x", pady=(0, 16))
 
         session_inner = ctk.CTkFrame(session_card, fg_color="transparent")
-        session_inner.pack(fill="x", padx=16, pady=14)
+        session_inner.pack(fill="x", padx=2, pady=14)
 
         # Avatar azul marino
         avatar = ctk.CTkFrame(
@@ -258,7 +258,7 @@ class LoginView:
             corner_radius=18,
             fg_color="transparent",
         )
-        avatar.pack(side="left", padx=(0, 12))
+        avatar.pack(side="left", padx=(8, 4))
         avatar.pack_propagate(False)
         # Intentar cargar imagen de avatar proporcionada, si falla usar la letra por defecto
         try:
@@ -278,30 +278,20 @@ class LoginView:
         info.pack(side="left")
         ctk.CTkLabel(
             info, text="Administrador",
-            font=("Segoe UI", 12, "bold"),
+            font=("Segoe UI", 10, "bold"),
             text_color=_TEXT_SEMI
         ).pack(anchor="w")
         ctk.CTkLabel(
             info, text="Acceso total al sistema",
-            font=("Segoe UI", 10),
+            font=("Segoe UI", 8),
             text_color=_GRAY_TEXT
         ).pack(anchor="w")
-
-        # Punto verde activo
-        dot_frame = ctk.CTkFrame(session_inner, fg_color="transparent")
-        dot_frame.pack(side="right")
-        ctk.CTkFrame(
-            dot_frame,
-            width=9, height=9,
-            corner_radius=5,
-            fg_color=_GREEN_DOT,
-        ).pack()
 
         # Leyenda sesión automática
         ctk.CTkLabel(
             session_card,
             text="Sesión iniciada automáticamente",
-            font=("Segoe UI", 10),
+            font=("Segoe UI", 8),
             text_color=_GRAY_MID
         ).pack(pady=(0, 12))
 
@@ -314,7 +304,7 @@ class LoginView:
             fg_color=_NAVY,
             hover_color=_NAVY_LIGHT,
             text_color="#E6F1FB",
-            font=FontScale.fb(13),
+            font=FontScale.fb(10),
             command=self.login,
         ).pack(fill="x", pady=(0, 20))
 
