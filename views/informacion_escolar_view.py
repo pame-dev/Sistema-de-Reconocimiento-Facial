@@ -521,7 +521,7 @@ class InformacionEscolarView:
 
         estado = self.filtro_estado.get()
 
-        if estado == "Inactive":
+        if estado == "Inactivos":
             #  SOLO RESTAURAR
             self.btn_restaurar.pack(side="left")
         else:
