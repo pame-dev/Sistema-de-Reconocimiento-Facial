@@ -122,14 +122,14 @@ class HistorialAccesosView:
         ctk.CTkLabel(
             left,
             text="📊 " + t("historial"),
-            font=("Segoe UI", 24, "bold"),
+            font=("Segoe UI", 16, "bold"),
             text_color=c['text_dark']
         ).pack(anchor="w")
 
         ctk.CTkLabel(
             left,
             text=t("registro_intentos"),
-            font=("Segoe UI", 11),
+            font=("Segoe UI", 8),
             text_color=c['text_gray']
         ).pack(anchor="w", pady=(2, 0))
 
@@ -138,16 +138,16 @@ class HistorialAccesosView:
 
         ctk.CTkButton(
             btn_row,
-            text="🗑️ " + t("limpiar"),
+            text="🗑️",
             fg_color=c['danger'],
             hover_color=COLORS['danger_dark'],
             text_color="#ffffff",
             font=("Segoe UI", 12, "bold"),
-            corner_radius=10,
-            width=100,
+            width=36,
             height=38,
+            corner_radius=8,
             command=self.limpiar_historial
-        ).pack(side="left", padx=(0, 8))
+        ).pack(side="left", padx=(4, 4))
 
         ctk.CTkButton(
             btn_row,
@@ -185,7 +185,7 @@ class HistorialAccesosView:
             filtros,
             text="🔍 " + t("buscar"),
             text_color=c['text_dark'],
-            font=("Segoe UI", 12, "bold")
+            font=("Segoe UI", 10, "bold")
         ).pack(side="left", padx=(14, 6), pady=10)
 
         self.busqueda_var = tk.StringVar()
@@ -193,8 +193,8 @@ class HistorialAccesosView:
         self.entrada_busqueda = ctk.CTkEntry(
             filtros,
             textvariable=self.busqueda_var,
-            font=("Segoe UI", 12),
-            width=200,
+            font=("Segoe UI", 10),
+            width=60,
             height=36,
             corner_radius=10,
             fg_color=c['content_bg'],
@@ -212,14 +212,14 @@ class HistorialAccesosView:
             filtros,
             text=t("estado"),
             text_color=c['text_dark'],
-            font=("Segoe UI", 12, "bold")
+            font=("Segoe UI", 10, "bold")
         ).pack(side="left", padx=(0, 6), pady=10)
 
         self.filtro_estado = ttk.Combobox(
             filtros,
             values=[t("todos"), t("aceptado"), t("denegado")],
             state="readonly",
-            width=14,
+            width=10,
             font=("Segoe UI", 12),
             style='Dark.TCombobox'
         )
@@ -315,7 +315,7 @@ class HistorialAccesosView:
         card.grid(row=0, column=col, padx=6, sticky="ew")
 
         inner = ctk.CTkFrame(card, fg_color="transparent")
-        inner.pack(padx=16, pady=12, fill="x")
+        inner.pack(padx=8, pady=12, fill="x")
 
         top = ctk.CTkFrame(inner, fg_color="transparent")
         top.pack(fill="x")
