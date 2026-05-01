@@ -22,6 +22,17 @@ try:
     from contro_cerradura import ejecutar_cerradura as ejecutar_test_cerradura
 except Exception:
     ejecutar_test_cerradura = None
+try:
+    from test_buzzer import beep as ejecutar_buzzer_concedido
+except Exception as e:
+    print(f"⚠️ Buzzer concedido no disponible: {e}")
+    ejecutar_buzzer_concedido = None
+
+try:
+    from test_buzzer2 import beep as ejecutar_buzzer_denegado
+except Exception as e:
+    print(f"⚠️ Buzzer denegado no disponible: {e}")
+    ejecutar_buzzer_denegado = None
 
 
 # ── Haar cascades (multiplataforma: Windows + Debian/Raspberry) ──────────────
@@ -695,12 +706,16 @@ class ReconocerFacial:
                 self._ultimo_usuario_aceptado = user_id
                 self._ultimo_aceptado_ts = datetime.now()
                 self._abrir_cerradura()
+                if ejecutar_buzzer_concedido:
+                    threading.Thread(target=ejecutar_buzzer_concedido, daemon=True).start()
             else:
                 self.total_denegados += 1
                 self._overlay_texto = t("acceso_denegado")
                 self._overlay_color   = (40, 40, 220)
                 self._overlay_frames  = 8
                 self._votos = []
+                if ejecutar_buzzer_denegado:
+                    threading.Thread(target=ejecutar_buzzer_denegado, daemon=True).start()
                 # IMPORTANTE: ya no “aceleramos” desconocido hacia atrás.
                 # Eso causaba spam por frame y el efecto de “se bloquea”.
 
