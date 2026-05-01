@@ -543,6 +543,7 @@ class CapturaBiometricaMixin:
             conn.commit()
             conn.close()
 
+            # ── Guardar el ID del usuario para posibles reintentosself._user_id_creado = user_id
             cfg             = ROL_CONFIG[rol]
             nombre_completo = f"{val('nombreUsuario')} {val('apellidoPaternoUsuario')}"
             self.container.after(0, lambda: self._fin_guardado(
@@ -557,9 +558,110 @@ class CapturaBiometricaMixin:
             self._guardando = False
 
     def _fin_guardado(self, titulo, mensaje):
-        messagebox.showinfo(titulo, mensaje)
         self._guardando = False
+        self._mostrar_resultado_final(titulo, mensaje)
+
+    def _mostrar_resultado_final(self, titulo, mensaje):
+        """Pantalla de resultado final con opciones de Aceptar, Cancelar y Repetir"""
+        self._detener_camara_silencio()
+        self._limpiar_container()
+
+        c = self.colors
+        cfg = ROL_CONFIG[self.rol_actual]
+        color = cfg["color"]
+
+        # Container principal centrado
+        outer = ctk.CTkFrame(self.container, fg_color="transparent")
+        outer.pack(fill="both", expand=True, padx=30, pady=30)
+
+        # Card con el resultado
+        card = ctk.CTkFrame(
+            outer, fg_color=c['card_bg'], corner_radius=16,
+            border_width=2, border_color=color
+        )
+        card.pack(fill="both", expand=True, padx=20, pady=20)
+
+        # Contenido interior
+        inner = ctk.CTkFrame(card, fg_color="transparent")
+        inner.pack(fill="both", expand=True, padx=32, pady=32)
+
+        # Título con icono
+        header_frame = ctk.CTkFrame(inner, fg_color="transparent")
+        header_frame.pack(fill="x", pady=(0, 20))
+        ctk.CTkLabel(
+            header_frame,
+            text="✅" if "exitoso" in titulo.lower() or "actualizadas" in titulo.lower() else "ℹ️",
+            font=("Segoe UI Emoji", 48)
+        ).pack(pady=(0, 12))
+        ctk.CTkLabel(
+            header_frame,
+            text=titulo,
+            font=("Segoe UI", 20, "bold"),
+            text_color=color
+        ).pack()
+
+        # Mensaje
+        ctk.CTkLabel(
+            inner,
+            text=mensaje,
+            font=("Segoe UI", 12),
+            text_color=c['text_dark'],
+            wraplength=400,
+            justify="center"
+        ).pack(fill="x", pady=20)
+
+        # Separador
+        ctk.CTkFrame(
+            inner, fg_color=COLORS['border'], height=1, corner_radius=0
+        ).pack(fill="x", pady=20)
+
+        # Botones
+        btn_frame = ctk.CTkFrame(inner, fg_color="transparent")
+        btn_frame.pack(fill="x")
+        btn_frame.grid_columnconfigure((0, 1), weight=1, uniform="btn")
+
+        # Botón Repetir (izquierda)
+        ctk.CTkButton(
+            btn_frame,
+            text="🔄 Repetir",
+            fg_color="#F59E0B",
+            hover_color="#D97706",
+            text_color="#ffffff",
+            font=("Segoe UI", 12, "bold"),
+            corner_radius=8,
+            height=40,
+            command=self._accion_repetir
+        ).grid(row=0, column=0, padx=4, sticky="ew")
+
+        # Botón Aceptar (derecha)
+        ctk.CTkButton(
+            btn_frame,
+            text=t("aceptar"),
+            fg_color="#16A34A",
+            hover_color="#15803D",
+            text_color="#ffffff",
+            font=("Segoe UI", 12, "bold"),
+            corner_radius=8,
+            height=40,
+            command=self._accion_aceptar
+        ).grid(row=0, column=1, padx=4, sticky="ew")
+
+    def _accion_aceptar(self):
+        """Usuario acepta el registro, vuelve a selección de rol"""
+        # Limpiar el ID guardado si existe
+        self._user_id_creado = None
         self._mostrar_seleccion_rol()
+
+    def _accion_repetir(self):
+        """Usuario quiere repetir captura, limpia fotos y vuelve a capturar"""
+        # Preparar para actualizar fotos del usuario creado
+        if hasattr(self, '_user_id_creado') and self._user_id_creado:
+            self.modo_retomar_fotos = True
+            self.user_id_existente = self._user_id_creado
+        
+        # Reiniciar el estado de captura para volver a tomar fotos
+        self._reset_estado_captura()
+        self._mostrar_captura()
 
     # ── Helpers cámara ────────────────────────────────────────────────────────
     def _detener_camara_silencio(self):
