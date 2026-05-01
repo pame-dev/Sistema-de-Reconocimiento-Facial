@@ -51,6 +51,7 @@ class NuevoRegistroView(
         self._guardando       = False
         self._pausado         = False
         self._ultima_muestra_gray = None
+        self._user_id_creado  = None
 
         # ── Detectores Haar ────────────────────────────────────────────────────
         self.detector_frontal = cv2.CascadeClassifier(
