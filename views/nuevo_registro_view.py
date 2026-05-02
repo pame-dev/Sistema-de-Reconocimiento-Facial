@@ -11,6 +11,7 @@ Toda la lógica de cada pantalla vive en los mixins:
     captura_biometrica.py — Pantalla 4: detección, captura y guardado
 """
 import cv2
+import hashlib
 import customtkinter as ctk
 
 from config import get_colors
@@ -52,6 +53,11 @@ class NuevoRegistroView(
         self._pausado         = False
         self._ultima_muestra_gray = None
         self._user_id_creado  = None
+        self._engine_duplicados = None
+        self._engine_inactivos = None
+        self._engine_inactivos_fp = None
+        self._alerta_duplicado_abierta = False
+        self._usuario_duplicado_detectado = None
 
         # ── Detectores Haar ────────────────────────────────────────────────────
         self.detector_frontal = cv2.CascadeClassifier(

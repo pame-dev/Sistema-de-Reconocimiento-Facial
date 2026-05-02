@@ -48,6 +48,7 @@ class MainView:
         self._zoom_popover  = None
         self._nuevo_registro_view  = None
         self._nuevo_registro_state = None
+        self._informacion_escolar_view = None
 
         self._panel_reset_job = None
         self._borde_job       = None
@@ -571,12 +572,15 @@ class MainView:
         self._nuevo_registro_view  = NuevoRegistroView(self.content_frame,
                                                        initial_state=estado)
 
-    def show_informacion_escolar(self):
+    def show_informacion_escolar(self, preselect_user_id=None):
         self._vista_actual = "info_escolar"
         self.clear_content()
         vista = InformacionEscolarView(self.content_frame)
+        self._informacion_escolar_view = vista
         self.content_frame.update()
         vista.cargar_datos()
+        if preselect_user_id is not None:
+            vista.mostrar_edicion_por_id(preselect_user_id)
 
     def show_historial_accesos(self):
         self._vista_actual = "historial"
