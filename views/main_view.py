@@ -338,55 +338,60 @@ class MainView:
         header.pack(fill="x", side="top")
         header.pack_propagate(False)
 
-        ctk.CTkButton(header, text="☰", font=("Segoe UI", 22, "bold"),
-                      fg_color="transparent", hover_color=COLORS['header_hover'],
-                      text_color=c['white'], width=52, height=44, corner_radius=8,
-                      command=self.toggle_menu).pack(side="left", padx=0)
+        ctk.CTkButton(header, text="☰", font=("Segoe UI", 12, "bold"),
+              fg_color="transparent", hover_color=COLORS['header_hover'],
+              text_color=c['white'], width=20, height=28, corner_radius=8,
+              command=self.toggle_menu).pack(side="left", padx=0)
 
         title_frame = ctk.CTkFrame(header, fg_color="transparent")
         title_frame.pack(side="left", padx=0)
         try:
             logo_path = os.path.join(os.path.dirname(__file__), "..", "assets",
                                      "sentinelSystemIconoo.png")
-            img = Image.open(logo_path).resize((32, 32), Image.LANCZOS)
-            self._header_logo = ctk.CTkImage(light_image=img, dark_image=img, size=(32, 32))
+            img = Image.open(logo_path).resize((28, 28), Image.LANCZOS)
+            self._header_logo = ctk.CTkImage(light_image=img, dark_image=img, size=(28, 28))
             ctk.CTkLabel(title_frame, image=self._header_logo, text="").pack(side="left", padx=(0, 0))
         except Exception:
             pass
         ctk.CTkLabel(title_frame, text=t("titulo"),
-                     font=("Segoe UI", 18, "bold"), text_color=c['white']).pack(side="left")
+                     font=("Segoe UI", 10, "bold"), text_color=c['white']).pack(side="left")
 
         self.btn_salir = ctk.CTkButton(
-            header, text=t("salir"), font=("Segoe UI", 12, "bold"),
+            header, text=t("salir"), font=("Segoe UI", 8, "bold"),
             fg_color=c['danger'], hover_color=COLORS['danger_dark'],
-            text_color=c['white'], width=90, height=34, corner_radius=8,
+            text_color=c['white'], width=20, height=34, corner_radius=8,
             command=self.logout)
-        self.btn_salir.pack(side="right", padx=(0, 12))
+        self.btn_salir.pack(side="right", padx=(4, 4))
 
-        self.lbl_reloj = ctk.CTkLabel(header, text="", font=("Segoe UI", 12),
-                                       text_color=c['white'])
-        self.lbl_reloj.pack(side="right", padx=(0, 16))
+        self.lbl_reloj = ctk.CTkLabel(
+            header,
+            text="",
+            font=("Segoe UI", 8),
+            text_color=c['white'],
+            justify="center",
+        )
+        self.lbl_reloj.pack(side="right", padx=(0, 4))
         self._actualizar_reloj()
 
         self._btn_zoom = ctk.CTkButton(header,
             text=f"🔍 {round(FontScale.get()*100)}%",
-            font=("Segoe UI", 11), fg_color="#1d4ed8", hover_color="#1e40af",
-            text_color="white", width=82, height=28, corner_radius=8,
+            font=("Segoe UI", 8), fg_color="#1d4ed8", hover_color="#1e40af",
+            text_color="white", width=30, height=28, corner_radius=8,
             command=self._toggle_zoom_popover)
-        self._btn_zoom.pack(side="right", padx=(0, 8))
+        self._btn_zoom.pack(side="right", padx=(4, 4))
 
-        ctk.CTkButton(header, text="🌐", font=("Segoe UI", 14),
+        ctk.CTkButton(header, text="🌐", font=("Segoe UI", 9),
                       fg_color="transparent", hover_color=COLORS['header_hover'],
-                      text_color=c['white'], width=40, height=34, corner_radius=8,
-                      command=self.traducir_app).pack(side="right", padx=(0, 6))
+                      text_color=c['white'], width=15, height=34, corner_radius=8,
+                      command=self.traducir_app).pack(side="right", padx=(0, 2))
 
-        ctk.CTkButton(header, text="🌙", font=("Segoe UI", 14),
+        ctk.CTkButton(header, text="🌙", font=("Segoe UI", 9),
                       fg_color="transparent", hover_color=COLORS['header_hover'],
-                      text_color=c['white'], width=40, height=34, corner_radius=8,
-                      command=self.modo_oscuro).pack(side="right", padx=(0, 6))
+                      text_color=c['white'], width=15, height=34, corner_radius=8,
+                      command=self.modo_oscuro).pack(side="right", padx=(0, 2))
 
     def _actualizar_reloj(self):
-        self.lbl_reloj.configure(text=datetime.now().strftime("%d/%m/%Y  %H:%M:%S"))
+        self.lbl_reloj.configure(text=datetime.now().strftime("%d/%m/%Y\n%H:%M:%S"))
         self.main_frame.after(1000, self._actualizar_reloj)
 
     # ══════════════════════════════════════════════════════════════════════════
