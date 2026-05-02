@@ -14,6 +14,7 @@ class SentinelApp:
     
     def __init__(self, root):  
         self.root = root
+        self.root.sentinel_app = self
         self.root.title("UnimoraAccess - Sistema de Reconocimiento Facial")
         self.root.configure(fg_color="#F4F7FB")
 
@@ -104,12 +105,13 @@ class SentinelApp:
     def show_login_view(self):
         """Muestra la pantalla de inicio de sesión"""
         self.clear_container()
+        self.main_view = None
         LoginView(self.main_container, self)
     
     def show_main_view(self):
         """Muestra la pantalla principal con menú"""
         self.clear_container()
-        MainView(self.main_container, self)
+        self.main_view = MainView(self.main_container, self)
 
 
 def main():

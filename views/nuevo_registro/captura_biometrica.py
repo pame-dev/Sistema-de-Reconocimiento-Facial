@@ -2,6 +2,7 @@
 import os
 import time
 import threading
+import hashlib
 from datetime import datetime
 
 import cv2
@@ -14,6 +15,7 @@ import customtkinter as ctk
 from camera import Camera
 from config import COLORS, get_colors, get_db
 from idiomas import t
+from admin.biometric_system.reconocimiento import ReconocerFacial
 from views.nuevo_registro.constants import (
     ROL_CONFIG, POSTURAS, TOTAL_FOTOS,
     FRAMES_ESTABLE, CAPTURE_DELAY, haar_path,
@@ -24,6 +26,7 @@ from database.queries import (
     sp_insertar_maestro,
     sp_insertar_personal,
     sp_insertar_biometria,
+    sp_restaurar_usuario,
 )
 
 
@@ -126,7 +129,22 @@ class CapturaBiometricaMixin:
                       command=self._mostrar_seleccion_rol).pack(side="right", padx=(0, 4))
 
         self._construir_panel_guia(color)
+        self._precache_engines_duplicado()
         self._iniciar_camara_auto()
+
+    def _precache_engines_duplicado(self):
+        # Precarga en segundo plano para que la alerta de inactivos no llegue tarde.
+        def _warmup():
+            try:
+                self._obtener_engine_duplicados()
+            except Exception:
+                pass
+            try:
+                self._obtener_engine_inactivos()
+            except Exception:
+                pass
+
+        threading.Thread(target=_warmup, daemon=True).start()
 
     def _reset_estado_captura(self):
         self.fotos_temp           = []
@@ -314,6 +332,321 @@ class CapturaBiometricaMixin:
         except Exception:
             return True, ""
 
+    def _obtener_engine_duplicados(self):
+        if getattr(self, "_engine_duplicados", None) is None:
+            try:
+                engine = ReconocerFacial()
+                if not engine.cargar_o_reentrenar():
+                    self._engine_duplicados = False
+                    return None
+                self._engine_duplicados = engine
+            except Exception:
+                self._engine_duplicados = False
+                return None
+        if self._engine_duplicados is False:
+            return None
+        return self._engine_duplicados
+
+    def _fingerprint_inactivos(self):
+        conn = get_db()
+        if not conn:
+            return None
+        try:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT u.idUsuario, b.encodeBiometria
+                FROM usuarios u
+                INNER JOIN biometria b ON u.idUsuario = b.fkIdUsuario
+                WHERE b.encodeBiometria IS NOT NULL
+                  AND LOWER(TRIM(u.estadoUsuario)) = 'inactivo'
+                ORDER BY u.idUsuario ASC, b.idBiometria ASC
+            """)
+            items = []
+            for user_id, imagen_bytes in cursor.fetchall():
+                if imagen_bytes is None:
+                    continue
+                items.append((int(user_id), hashlib.md5(imagen_bytes).hexdigest()))
+            return tuple(items)
+        except Exception:
+            return None
+        finally:
+            conn.close()
+
+    def _obtener_engine_inactivos(self):
+        fingerprint = self._fingerprint_inactivos()
+        if fingerprint is None:
+            self._engine_inactivos = False
+            self._engine_inactivos_fp = None
+            return None
+
+        if (getattr(self, "_engine_inactivos", None) not in (None, False)
+                and self._engine_inactivos_fp == fingerprint):
+            return self._engine_inactivos
+
+        conn = get_db()
+        if not conn:
+            self._engine_inactivos = False
+            self._engine_inactivos_fp = fingerprint
+            return None
+
+        try:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT
+                    u.idUsuario,
+                    u.nombreUsuario,
+                    u.apellidoPaternoUsuario,
+                    u.apellidoMaternoUsuario,
+                    b.encodeBiometria
+                FROM usuarios u
+                INNER JOIN biometria b ON u.idUsuario = b.fkIdUsuario
+                WHERE b.encodeBiometria IS NOT NULL
+                  AND LOWER(TRIM(u.estadoUsuario)) = 'inactivo'
+                ORDER BY u.idUsuario ASC, b.idBiometria ASC
+            """)
+            filas = cursor.fetchall()
+        except Exception:
+            self._engine_inactivos = False
+            self._engine_inactivos_fp = fingerprint
+            return None
+        finally:
+            conn.close()
+
+        if not filas:
+            self._engine_inactivos = False
+            self._engine_inactivos_fp = fingerprint
+            return None
+
+        engine = ReconocerFacial()
+        faces_tmp = []
+        labels_tmp = []
+        nombres_tmp = {}
+
+        for fila in filas:
+            user_id = int(fila[0])
+            nombre_completo = f"{fila[1]} {fila[2] or ''} {fila[3] or ''}".strip()
+            nombres_tmp[user_id] = nombre_completo
+
+            imagen_bytes = fila[4]
+            if not imagen_bytes:
+                continue
+
+            try:
+                nparr = np.frombuffer(imagen_bytes, np.uint8)
+                img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                if img is None:
+                    continue
+
+                gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+                gray = cv2.equalizeHist(gray)
+                caras = engine._detectar_caras(img, gray)
+                if len(caras) > 0:
+                    x, y, w, h = max(caras, key=lambda item: item[2] * item[3])
+                    fh, fw = gray.shape[:2]
+                    pad = int(min(w, h) * 0.08)
+                    x1 = max(0, x - pad)
+                    y1 = max(0, y - pad)
+                    x2 = min(fw, x + w + pad)
+                    y2 = min(fh, y + h + pad)
+                    rostro_gray = gray[y1:y2, x1:x2]
+                    if rostro_gray.size == 0:
+                        continue
+                else:
+                    rostro_gray = gray
+
+                rostro_gray = cv2.resize(rostro_gray, (100, 100))
+                faces_tmp.append(rostro_gray)
+                labels_tmp.append(user_id)
+
+            except Exception:
+                continue
+
+        if not faces_tmp:
+            self._engine_inactivos = False
+            self._engine_inactivos_fp = fingerprint
+            return None
+
+        engine.faces = faces_tmp
+        engine.labels = labels_tmp
+        engine.nombres = nombres_tmp
+
+        try:
+            engine.recognizer.train(faces_tmp, np.array(labels_tmp, dtype=np.int32))
+            engine._ajustar_tolerancia_post_entreno()
+        except Exception:
+            self._engine_inactivos = False
+            self._engine_inactivos_fp = fingerprint
+            return None
+
+        self._engine_inactivos = engine
+        self._engine_inactivos_fp = fingerprint
+        return engine
+
+    def _detectar_usuario_duplicado(self, rostro_bgr):
+        engine = self._obtener_engine_duplicados()
+        if engine:
+            try:
+                user_id, conf = engine._reconocer_rostro(rostro_bgr)
+                if user_id != "Desconocido":
+                    if self.modo_retomar_fotos and self.user_id_existente == user_id:
+                        return None
+
+                    activo = engine._usuario_activo(user_id)
+
+                    return {
+                        "user_id": user_id,
+                        "nombre": engine.nombres.get(user_id, "Usuario"),
+                        "confianza": conf,
+                        "estado": "activo" if activo else "inactivo",
+                    }
+
+            except Exception:
+                pass
+
+        backup = self._obtener_engine_inactivos()
+        if not backup:
+            return None
+
+        try:
+            user_id, conf = backup._reconocer_rostro(rostro_bgr)
+            if user_id == "Desconocido":
+                return None
+
+            if self.modo_retomar_fotos and self.user_id_existente == user_id:
+                return None
+
+            return {
+                "user_id": user_id,
+                "nombre": backup.nombres.get(user_id, "Usuario"),
+                "confianza": conf,
+                "estado": "inactivo",
+            }
+        except Exception:
+            return None
+
+    def _abrir_alerta_duplicado(self, duplicado):
+        if self._alerta_duplicado_abierta:
+            return
+
+        self._alerta_duplicado_abierta = True
+        self._usuario_duplicado_detectado = duplicado.get("user_id")
+        self._detener_camara_silencio()
+
+        win = ctk.CTkToplevel(self.parent)
+        es_activo = duplicado.get("estado") == "activo"
+        titulo = "Usuario ya registrado con esa cara" if es_activo else "Usuario inactivo con esa cara"
+        win.title(titulo)
+        win.geometry("460x240")
+        win.resizable(False, False)
+        win.grab_set()
+        win.focus_force()
+
+        def _cerrar():
+            self._alerta_duplicado_abierta = False
+            try:
+                win.destroy()
+            except Exception:
+                pass
+
+        win.protocol("WM_DELETE_WINDOW", _cerrar)
+
+        c = self.colors
+        card = ctk.CTkFrame(win, fg_color=c['background'])
+        card.pack(fill="both", expand=True, padx=16, pady=16)
+
+        ctk.CTkLabel(card, text="⚠️", font=("Segoe UI Emoji", 38)).pack(pady=(6, 2))
+        ctk.CTkLabel(
+            card,
+            text=titulo,
+            font=("Segoe UI", 16, "bold"),
+            text_color=self.colors['text_dark'],
+        ).pack(pady=(0, 4))
+        ctk.CTkLabel(
+            card,
+            text=(
+                f"Se detectó: {duplicado.get('nombre', 'Usuario')}\n"
+                + ("¿Deseas editar su usuario o cancelar el registro?" if es_activo
+                   else "¿Deseas restaurar su usuario o cancelar el registro?")
+            ),
+            font=("Segoe UI", 11),
+            text_color=self.colors['text_gray'],
+            justify="center",
+        ).pack(pady=(0, 16))
+
+        btns = ctk.CTkFrame(card, fg_color="transparent")
+        btns.pack(fill="x", padx=8, pady=(0, 4))
+        btns.grid_columnconfigure((0, 1), weight=1, uniform="dup")
+
+        def _editar():
+            _cerrar()
+            self._ir_a_editar_usuario_duplicado(duplicado.get("user_id"))
+
+        def _restaurar():
+            _cerrar()
+            self._restaurar_usuario_duplicado(duplicado.get("user_id"), duplicado.get("nombre", "Usuario"))
+
+        def _cancelar():
+            _cerrar()
+            self._cancelar_registro_duplicado()
+
+        primary_text = "✏️ Editar usuario" if es_activo else "🔄 Restaurar usuario"
+        primary_color = "#16A34A" if es_activo else "#2563EB"
+        primary_hover = "#15803D" if es_activo else "#1D4ED8"
+
+        ctk.CTkButton(
+            btns,
+            text=primary_text,
+            fg_color=primary_color,
+            hover_color=primary_hover,
+            text_color="#ffffff",
+            command=_editar if es_activo else _restaurar,
+        ).grid(row=0, column=0, padx=(0, 6), sticky="ew")
+
+        ctk.CTkButton(
+            btns,
+            text="Cancelar registro",
+            fg_color="#DC2626",
+            hover_color="#B91C1C",
+            text_color="#ffffff",
+            command=_cancelar,
+        ).grid(row=0, column=1, padx=(6, 0), sticky="ew")
+
+    def _ir_a_editar_usuario_duplicado(self, user_id):
+        app = getattr(self.parent.winfo_toplevel(), "sentinel_app", None)
+        if not app or not getattr(app, "main_view", None):
+            messagebox.showinfo("Editar usuario", "No se pudo abrir la vista de edición.")
+            self._cancelar_registro_duplicado()
+            return
+
+        try:
+            app.main_view.show_informacion_escolar(preselect_user_id=user_id)
+        except Exception as e:
+            messagebox.showerror("Editar usuario", f"No se pudo abrir la edición: {e}")
+            self._cancelar_registro_duplicado()
+
+    def _restaurar_usuario_duplicado(self, user_id, nombre):
+        try:
+            conn = get_db()
+            if not conn:
+                raise RuntimeError("No se pudo abrir la base de datos")
+
+            sp_restaurar_usuario(conn, user_id)
+            conn.commit()
+            conn.close()
+            self._engine_inactivos = None
+            self._engine_inactivos_fp = None
+            messagebox.showinfo("Usuario restaurado", f"Se restauró a {nombre}. Ahora puedes editarlo.")
+            self._ir_a_editar_usuario_duplicado(user_id)
+        except Exception as e:
+            messagebox.showerror("Restaurar usuario", f"No se pudo restaurar el usuario: {e}")
+            self._cancelar_registro_duplicado()
+
+    def _cancelar_registro_duplicado(self):
+        self._alerta_duplicado_abierta = False
+        self._usuario_duplicado_detectado = None
+        self._reset_estado_captura()
+        self._mostrar_seleccion_rol()
+
     # ── Loop de video ─────────────────────────────────────────────────────────
     def _actualizar_video(self):
         if not self.capturando or self.camara is None:
@@ -355,6 +688,11 @@ class CapturaBiometricaMixin:
                 if not apto:
                     self._set_sub(msg)
                     self.video_label.after(15, self._actualizar_video)
+                    return
+
+                duplicado = self._detectar_usuario_duplicado(rostro_bgr)
+                if duplicado:
+                    self._abrir_alerta_duplicado(duplicado)
                     return
 
                 _, buf = cv2.imencode('.jpg', rostro_bgr,
