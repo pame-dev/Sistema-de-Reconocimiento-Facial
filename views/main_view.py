@@ -354,8 +354,13 @@ class MainView:
             ctk.CTkLabel(title_frame, image=self._header_logo, text="").pack(side="left", padx=(0, 0))
         except Exception:
             pass
-        ctk.CTkLabel(title_frame, text=t("titulo"),
-                     font=("Segoe UI", 10, "bold"), text_color=c['white']).pack(side="left")
+        self.lbl_titulo = ctk.CTkLabel(
+            title_frame,
+            text=t("titulo"),
+            font=("Segoe UI", 10, "bold"),
+            text_color=c['white']
+        )
+        self.lbl_titulo.pack(side="left")
 
         self.btn_salir = ctk.CTkButton(
             header, text=t("salir"), font=("Segoe UI", 8, "bold"),
@@ -699,9 +704,8 @@ class MainView:
         c           = self.colors
         es_aceptado = (tipo == "aceptado")
         color_tipo  = "#16a34a" if es_aceptado else "#dc2626"
-        icono_tipo  = "✓  ACCESO PERMITIDO" if es_aceptado else "✗  ACCESO DENEGADO"
-        rol         = datos_bd.get('rol', 'usuario')
-
+        icono_tipo = f"✓  {t('acceso_permitido')}" if es_aceptado else f"✗  {t('acceso_denegado')}"
+        rol = t(datos_bd.get('rol', 'usuario'))
         ICONOS_ROL = {"alumno": "🎓", "maestro": "📚", "personal": "🏢"}
         LABEL_ROL  = {
             "alumno":   "Estudiante",
@@ -905,7 +909,11 @@ class MainView:
                 text="⬤  Error: No se pudo abrir cámara",
                 text_color=self.colors['danger'])
             self._anim_running = False
-            self._btn_iniciar.configure(text="▶  Iniciar", fg_color="#16a34a", state="normal")
+            self._btn_iniciar.configure(
+    text=f"▶  {t('iniciar')}",
+    fg_color="#16a34a",
+    state="normal"
+)
             return
 
         self._cam_running = True
@@ -928,8 +936,12 @@ class MainView:
                 pass
             self._cap = None
         try:
-            self._btn_iniciar.configure(text="▶  Iniciar", fg_color="#16a34a",
-                                         hover_color="#15803d", state="normal")
+            self._btn_iniciar.configure(
+    text=f"▶  {t('iniciar')}",
+    fg_color="#16a34a",
+    hover_color="#15803d",
+    state="normal"
+)
             self._lbl_cam.configure(text=t("camara_off"), text_color=self.colors['danger'])
         except Exception:
             pass
@@ -1147,7 +1159,12 @@ class MainView:
     def _anim_btn(self, step=0):
         if not self._anim_running:
             return
-        frames = ["⏳ Iniciando", "⏳ Iniciando.", "⏳ Iniciando..", "⏳ Iniciando..."]
+        frames = [
+    f"⏳ {t('iniciando')}",
+    f"⏳ {t('iniciando')}.",
+    f"⏳ {t('iniciando')}..",
+    f"⏳ {t('iniciando')}..."
+]
         try:
             self._btn_iniciar.configure(text=frames[step % len(frames)], fg_color="#f59e0b")
         except Exception:
@@ -1252,6 +1269,8 @@ class MainView:
 
     def traducir_app(self):
         cambiar_idioma()
+        self.lbl_titulo.configure(text=t("titulo"))
+
         self._actualizar_sidebar_idioma()
         try:
             self.btn_salir.configure(text=t("salir"))

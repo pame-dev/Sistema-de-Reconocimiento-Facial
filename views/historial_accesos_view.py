@@ -368,17 +368,17 @@ class HistorialAccesosView:
             cursor = conn.cursor()
 
             cursor.execute("""
-                SELECT
-                    a.idAcceso,
-                    COALESCE(u.nombreUsuario || ' ' || u.apellidoPaternoUsuario, 'Desconocido'),
-                    a.fechaHoraIntentoAcceso,
-                    a.estado_acceso,
-                    a.confianzaAcceso,
-                    a.umbralConfianzaUsado
-                FROM accesos a
-                LEFT JOIN usuarios u ON a.fkIdUsuario = u.idUsuario
-                ORDER BY a.fechaHoraIntentoAcceso DESC
-            """)
+            SELECT
+                a.idAcceso,
+                COALESCE(u.nombreUsuario || ' ' || u.apellidoPaternoUsuario, ?),
+                a.fechaHoraIntentoAcceso,
+                a.estado_acceso,
+                a.confianzaAcceso,
+                a.umbralConfianzaUsado
+            FROM accesos a
+            LEFT JOIN usuarios u ON a.fkIdUsuario = u.idUsuario
+            ORDER BY a.fechaHoraIntentoAcceso DESC
+        """, (t("desconocido"),))
 
             self.datos = cursor.fetchall()
             conn.close()
