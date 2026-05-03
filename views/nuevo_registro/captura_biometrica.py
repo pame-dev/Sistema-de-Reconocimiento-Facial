@@ -126,10 +126,11 @@ class CapturaBiometricaMixin:
                       text_color="#ffffff",
                       font=("Segoe UI", 11, "bold"),
                       corner_radius=8, height=32, width=110,
-                      command=self._mostrar_seleccion_rol).pack(side="right", padx=(0, 4))
+                      command=self._cancelar_captura).pack(side="right", padx=(0, 4))
 
         self._construir_panel_guia(color)
         self._precache_engines_duplicado()
+        self._disable_top_controls()
         self._iniciar_camara_auto()
 
     def _precache_engines_duplicado(self):
@@ -901,6 +902,7 @@ class CapturaBiometricaMixin:
 
     def _mostrar_resultado_final(self, titulo, mensaje):
         """Pantalla de resultado final con opciones de Aceptar, Cancelar y Repetir"""
+        self._enable_top_controls()
         self._detener_camara_silencio()
         self._limpiar_container()
 
@@ -1020,5 +1022,11 @@ class CapturaBiometricaMixin:
             pass
 
     def _volver_formulario(self):
+        self._enable_top_controls()
         self._detener_camara()
         self._mostrar_formulario()
+
+    def _cancelar_captura(self):
+        self._enable_top_controls()
+        self._detener_camara()
+        self._mostrar_seleccion_rol()

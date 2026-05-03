@@ -38,8 +38,12 @@ class InformacionEscolarView:
         self.usuario_seleccionado = None
         self.datos                = []
         self._placeholder_activo  = True
+        self._small_layout        = False
 
         self.crear_interfaz()
+        self.parent.winfo_toplevel().bind("<Configure>", self._on_root_resize)
+        self._apply_responsive_layout(self.parent.winfo_toplevel().winfo_width())
+
         self.btn_restaurar = ctk.CTkButton(
         self.acciones_frame,
         text="🔄 Restaurar",
@@ -106,28 +110,68 @@ class InformacionEscolarView:
         win.option_add("*TCombobox*Listbox.selectForeground", c['tree_sel_fg'])
         win.option_add("*TCombobox*Listbox.font",             ("Segoe UI", 13))
 
+    def _on_root_resize(self, event):
+        if event.widget == self.parent.winfo_toplevel():
+            self._apply_responsive_layout(event.width)
+
+    def _is_small_screen(self):
+        return self.parent.winfo_toplevel().winfo_width() < 900
+
+    def _apply_responsive_layout(self, width):
+        small = width < 900
+        if small == self._small_layout:
+            return
+
+        self._small_layout = small
+        if small:
+            self.header_left.pack_forget()
+            self.btn_row.pack_forget()
+            self.header_left.pack(side="top", fill="x", padx=0, pady=(0, 10))
+            self.btn_row.pack(side="top", fill="x")
+            self.btn_toggle_detalles.pack_configure(side="left", padx=(0, 8))
+            self.btn_toggle_detalles.configure(width=120)
+            self.filtros_top.pack_configure(fill="x", pady=(10, 4))
+            self.filtros_bottom.pack_configure(fill="x", pady=(0, 10))
+            self.filtro_rol.configure(width=12)
+            self.filtro_estado.configure(width=12)
+        else:
+            self.header_left.pack_forget()
+            self.btn_row.pack_forget()
+            self.header_left.pack(side="left", fill="x", expand=True)
+            self.btn_row.pack(side="right")
+            self.btn_toggle_detalles.pack_configure(side="left", padx=(0, 8))
+            self.btn_toggle_detalles.configure(width=70)
+            self.filtros_top.pack_configure(fill="x", pady=(10, 4))
+            self.filtros_bottom.pack_configure(fill="x", pady=(0, 10))
+            self.filtro_rol.configure(width=8)
+            self.filtro_estado.configure(width=10)
+
+        if self.detalles_frame.winfo_ismapped() and self.usuario_seleccionado:
+            self.crear_panel_detalles()
+
     # ── Interfaz ──────────────────────────────────────────────────────────────
     def crear_interfaz(self):
         self._aplicar_estilo_tabla()
         c = self.colors
 
         # Cabecera
-        header = ctk.CTkFrame(self.container, fg_color="transparent")
-        header.pack(fill="x", pady=(0, 14))
+        self.header = ctk.CTkFrame(self.container, fg_color="transparent")
+        self.header.pack(fill="x", pady=(0, 14))
 
-        left = ctk.CTkFrame(header, fg_color="transparent")
-        left.pack(side="left")
+        self.header_left = ctk.CTkFrame(self.header, fg_color="transparent")
+        self.header_left.pack(side="left", fill="x", expand=True)
 
-        ctk.CTkLabel(left, text="📚  " + t("info_escolar"),
+        ctk.CTkLabel(self.header_left, text="📚  " + t("info_escolar"),
                      font=("Segoe UI", 24, "bold"),
                      text_color=c['text_dark']).pack(anchor="w")
-        ctk.CTkLabel(left, text=t("gestion_usuarios"),
+        ctk.CTkLabel(self.header_left, text=t("gestion_usuarios"),
                      font=("Segoe UI", 11),
                      text_color=c['text_gray']).pack(anchor="w", pady=(2, 0))
 
-        btn_row = ctk.CTkFrame(header, fg_color="transparent")
+        self.btn_row = ctk.CTkFrame(self.header, fg_color="transparent")
+        self.btn_row.pack(side="right")
 
-        self.btn_toggle_detalles = ctk.CTkButton(btn_row, text=t("ver_detalles"),
+        self.btn_toggle_detalles = ctk.CTkButton(self.btn_row, text=t("ver_detalles"),
                       fg_color=c['header'], hover_color=COLORS['header_hover'],
                       text_color="#ffffff",
                       font=("Segoe UI", 12, "bold"),
@@ -136,7 +180,7 @@ class InformacionEscolarView:
                       command=self.toggle_detalles)
         self.btn_toggle_detalles.pack(side="left", padx=(0, 8))
 
-        ctk.CTkButton(btn_row, text="🔄",
+        ctk.CTkButton(self.btn_row, text="🔄",
                       fg_color=c['primary'], hover_color=COLORS['primary_dark'],
                       text_color="#ffffff",
                       font=("Segoe UI", 12, "bold"),
@@ -149,46 +193,51 @@ class InformacionEscolarView:
                                border_color=COLORS['border'])
         filtros.pack(fill="x", pady=(0, 12))
 
-        ctk.CTkLabel(filtros, text="🔍  " + t("buscar"),
+        self.filtros_top = ctk.CTkFrame(filtros, fg_color="transparent")
+        self.filtros_top.pack(fill="x", pady=(10, 4))
+        self.filtros_bottom = ctk.CTkFrame(filtros, fg_color="transparent")
+        self.filtros_bottom.pack(fill="x", pady=(0, 10))
+
+        ctk.CTkLabel(self.filtros_top, text="🔍  " + t("buscar"),
                      text_color=c['text_dark'],
                      font=("Segoe UI", 10, "bold")).pack(side="left", padx=(2, 6), pady=10)
 
         self.busqueda_var = tk.StringVar()
-        self.entrada_busqueda = ctk.CTkEntry(filtros,
+        self.entrada_busqueda = ctk.CTkEntry(self.filtros_top,
             textvariable=self.busqueda_var,
-            font=("Segoe UI", 10), width=50, height=36,
+            font=("Segoe UI", 10), width=200, height=36,
             corner_radius=10,
             fg_color=c['content_bg'],
             border_color=COLORS['border'],
             text_color=c['text_gray'])
-        self.entrada_busqueda.pack(side="left", padx=(0, 3), pady=10)
+        self.entrada_busqueda.pack(side="left", padx=(0, 3), pady=10, fill="x", expand=True)
         self.entrada_busqueda.insert(0, t("placeholder_busqueda"))
         self.entrada_busqueda.bind("<FocusIn>",    self.limpiar_placeholder)
         self.entrada_busqueda.bind("<FocusOut>",   self.restaurar_placeholder)
         self.entrada_busqueda.bind("<KeyRelease>", lambda e: self.filtrar_tabla())
 
-        ctk.CTkLabel(filtros, text=t("rol"),
+        ctk.CTkLabel(self.filtros_bottom, text=t("rol"),
                      text_color=c['text_dark'],
                      font=("Segoe UI", 10, "bold")).pack(side="left", padx=(3, 3), pady=10)
 
-        self.filtro_rol = ttk.Combobox(filtros,
+        self.filtro_rol = ttk.Combobox(self.filtros_bottom,
             values=[t("todos"), t("estudiante"), t("docente"), t("personal")],
-            state="readonly", width=6,
+            state="readonly", width=8,
             font=("Segoe UI", 12),
             style='Dark.TCombobox')
         self.filtro_rol.set(t("todos")),
         self.filtro_rol.pack(side="left", pady=10)
         self.filtro_rol.bind('<<ComboboxSelected>>', lambda e: self.filtrar_tabla())
         
-        ctk.CTkLabel(filtros, text=t("estado"),
+        ctk.CTkLabel(self.filtros_bottom, text=t("estado"),
              text_color=c['text_dark'],
              font=("Segoe UI", 10, "bold")).pack(side="left", padx=(3, 3), pady=10)
 
         self.filtro_estado = ttk.Combobox(
-            filtros,
+            self.filtros_bottom,
             values=[t("activos"), t("inactivos")],
             state="readonly",
-            width=8,
+            width=10,
             font=("Segoe UI", 12),
             style='Dark.TCombobox'
         )
@@ -200,7 +249,7 @@ class InformacionEscolarView:
             lambda e: self.cambiar_estado()
         )
 
-        self.lbl_conteo = ctk.CTkLabel(filtros, text="",
+        self.lbl_conteo = ctk.CTkLabel(self.filtros_bottom, text="",
                                         font=("Segoe UI", 11),
                                         text_color=c['text_gray'])
         self.lbl_conteo.pack(side="right", padx=14)
@@ -318,9 +367,11 @@ class InformacionEscolarView:
         body = ctk.CTkFrame(self.detalles_frame, fg_color="transparent")
         body.pack(fill="x", padx=16, pady=10)
 
+        is_small = self._is_small_screen()
         for ci, col_items in enumerate(self._get_cols_data(u, rol)):
             col_frame = ctk.CTkFrame(body, fg_color="transparent")
-            col_frame.pack(side="left", fill="x", expand=True, padx=(0, 16))
+            side = "top" if is_small else "left"
+            col_frame.pack(side=side, fill="x", expand=True, padx=(0, 16), pady=(0, 8) if is_small else 0)
             for label, valor in col_items:
                 self._detail_item(col_frame, label, valor, color)
 
@@ -555,6 +606,15 @@ class InformacionEscolarView:
             #  EDITAR Y ELIMINAR
             self.btn_editar.pack(side="left", padx=(0, 8))
             self.btn_eliminar.pack(side="left")
+
+        # Botón ocultar detalles
+        btn_ocultar = ctk.CTkButton(self.acciones_frame, text="❌ " + t("ocultar_detalles"),
+                      fg_color=self.colors['danger'], hover_color=COLORS['danger_dark'],
+                      text_color="#ffffff",
+                      font=("Segoe UI", 12, "bold"),
+                      corner_radius=10, height=36,
+                      command=self.ocultar_detalles_panel)
+        btn_ocultar.pack(side="left", padx=(8, 0))
 
         self.btn_toggle_detalles.configure(state="normal", text=t("ocultar_detalles"))
         self.container.update_idletasks()
