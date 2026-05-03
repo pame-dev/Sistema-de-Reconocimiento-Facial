@@ -669,7 +669,7 @@ class ReconocerFacial:
             # Aunque no se escriba en BD por cooldown, mantener UI actualizada
             self._ultimo_tipo = estado
             if hubo_cambio_estado and self.on_resultado:
-                nombre = self.nombres.get(user_id, "Desconocido")
+                nombre = self.nombres.get(user_id, t("desconocido"))
                 self.on_resultado(nombre, confianza, estado)
             return
 
@@ -720,7 +720,7 @@ class ReconocerFacial:
                 # Eso causaba spam por frame y el efecto de “se bloquea”.
 
             if self.on_resultado:
-                nombre = self.nombres.get(user_id, "Desconocido")
+                nombre = self.nombres.get(user_id, t("desconocido"))
                 self.on_resultado(nombre, confianza, estado)
 
         except Exception as e:

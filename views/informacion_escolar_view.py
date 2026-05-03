@@ -180,19 +180,19 @@ class InformacionEscolarView:
         self.filtro_rol.pack(side="left", pady=10)
         self.filtro_rol.bind('<<ComboboxSelected>>', lambda e: self.filtrar_tabla())
         
-        ctk.CTkLabel(filtros, text="Estado",
+        ctk.CTkLabel(filtros, text=t("estado"),
              text_color=c['text_dark'],
              font=("Segoe UI", 10, "bold")).pack(side="left", padx=(3, 3), pady=10)
 
         self.filtro_estado = ttk.Combobox(
             filtros,
-            values=["Activos", "Inactivos"],
+            values=[t("activos"), t("inactivos")],
             state="readonly",
             width=8,
             font=("Segoe UI", 12),
             style='Dark.TCombobox'
         )
-        self.filtro_estado.set("Activos")
+        self.filtro_estado.set(t("activos"))
         self.filtro_estado.pack(side="left", pady=10)
 
         self.filtro_estado.bind(
@@ -477,7 +477,7 @@ class InformacionEscolarView:
     def cambiar_estado(self):
         estado = self.filtro_estado.get()
 
-        if estado == "Activos":
+        if estado == t("activos"):
             self.cargar_datos()
         else:
             self.cargar_inactivos()
@@ -548,7 +548,7 @@ class InformacionEscolarView:
 
         estado = self.filtro_estado.get()
 
-        if estado == "Inactivos":
+        if estado == t("inactivos"):
             #  SOLO RESTAURAR
             self.btn_restaurar.pack(side="left")
         else:

@@ -51,13 +51,13 @@ class CapturaBiometricaMixin:
 
         header = ctk.CTkFrame(self.container, fg_color="transparent")
         header.pack(fill="x", pady=(0, 8))
-        ctk.CTkButton(header, text="← Volver al formulario",
+        ctk.CTkButton(header, text="← " + t("volver_formulario"),
                       fg_color='#16A34A', hover_color="#15803D",
                       text_color="#ffffff",
                       font=("Segoe UI", 15, "bold"),
                       corner_radius=8, height=32,
                       command=self._volver_formulario).pack(side="left")
-        ctk.CTkLabel(header, text="Paso 2/2 — Captura biométrica automática",
+        ctk.CTkLabel(header,text=t("paso_captura"),
                      font=("Segoe UI", 12),
                      text_color=c['text_gray']).pack(side="left", padx=15)
 
@@ -174,9 +174,9 @@ class CapturaBiometricaMixin:
         c       = self.colors
 
         ctk.CTkLabel(self.panel_guia,
-                     text=f"Postura {self.postura_idx + 1} / {len(POSTURAS)}",
+                     text=f"{t('postura')} {self.postura_idx + 1} / {len(POSTURAS)}" ,
                      font=("Segoe UI", 10), text_color=c['text_gray']).pack(pady=(12, 0))
-        ctk.CTkLabel(self.panel_guia, text=postura["titulo"],
+        ctk.CTkLabel(self.panel_guia, text=t(postura["titulo"]),
                      font=("Segoe UI", 13, "bold"),
                      text_color=color, wraplength=220, justify="center").pack(pady=(2, 8))
 
@@ -196,7 +196,7 @@ class CapturaBiometricaMixin:
             ctk.CTkLabel(self.panel_guia, text=postura["icono"],
                          font=("Segoe UI Emoji", 54)).pack(pady=8)
 
-        ctk.CTkLabel(self.panel_guia, text=postura["instruccion"],
+        ctk.CTkLabel(self.panel_guia, text=t(postura["instruccion"]),
                      font=("Segoe UI", 10), text_color=c['text_dark'],
                      wraplength=210, justify="center").pack(pady=(4, 10))
 
@@ -211,7 +211,7 @@ class CapturaBiometricaMixin:
             else:
                 icono, fg = "○", COLORS['text_gray']
             ctk.CTkLabel(self.panel_guia,
-                         text=f" {icono}  {p['titulo']}",
+                         text=f" {icono}  {t(p['titulo'])}",
                          font=("Segoe UI", 10),
                          text_color=fg, anchor="w").pack(fill="x", padx=14, pady=1)
 
@@ -238,7 +238,7 @@ class CapturaBiometricaMixin:
         if not self.capturando:
             return
         if self._countdown > 0:
-            self._set_sub(f"Comenzando en {self._countdown}...")
+            self._set_sub(f"{t('comenzando_en')} {self._countdown}...")
             self._countdown -= 1
             self._countdown_job = self.container.after(900, self._tick_countdown)
         else:
@@ -323,10 +323,10 @@ class CapturaBiometricaMixin:
         try:
             gray = cv2.cvtColor(rostro_bgr, cv2.COLOR_BGR2GRAY)
             if float(cv2.Laplacian(gray, cv2.CV_64F).var()) < 40.0:
-                return False, "Rostro borroso"
+                return False, t("rostro_borroso")
             brillo = float(np.mean(gray))
             if brillo < 45.0 or brillo > 215.0:
-                return False, "Ajusta la iluminacion"
+               return False, t("ajusta_iluminacion")
             self._ultima_muestra_gray = gray
             return True, ""
         except Exception:
@@ -487,7 +487,7 @@ class CapturaBiometricaMixin:
         if engine:
             try:
                 user_id, conf = engine._reconocer_rostro(rostro_bgr)
-                if user_id != "Desconocido":
+                if user_id != t("desconocido"):
                     if self.modo_retomar_fotos and self.user_id_existente == user_id:
                         return None
 
@@ -495,7 +495,7 @@ class CapturaBiometricaMixin:
 
                     return {
                         "user_id": user_id,
-                        "nombre": engine.nombres.get(user_id, "Usuario"),
+                        "nombre": engine.nombres.get(user_id, t("usuario")),
                         "confianza": conf,
                         "estado": "activo" if activo else "inactivo",
                     }
@@ -509,7 +509,7 @@ class CapturaBiometricaMixin:
 
         try:
             user_id, conf = backup._reconocer_rostro(rostro_bgr)
-            if user_id == "Desconocido":
+            if user_id == t("desconocido"):
                 return None
 
             if self.modo_retomar_fotos and self.user_id_existente == user_id:
@@ -517,7 +517,7 @@ class CapturaBiometricaMixin:
 
             return {
                 "user_id": user_id,
-                "nombre": backup.nombres.get(user_id, "Usuario"),
+                "nombre": backup.nombres.get(user_id, t("usuario")),
                 "confianza": conf,
                 "estado": "inactivo",
             }
@@ -534,7 +534,7 @@ class CapturaBiometricaMixin:
 
         win = ctk.CTkToplevel(self.parent)
         es_activo = duplicado.get("estado") == "activo"
-        titulo = "Usuario ya registrado con esa cara" if es_activo else "Usuario inactivo con esa cara"
+        titulo = t("usuario_ya_registrado") if es_activo else t("usuario_inactivo_detectado")
         win.title(titulo)
         win.geometry("460x240")
         win.resizable(False, False)
@@ -564,9 +564,9 @@ class CapturaBiometricaMixin:
         ctk.CTkLabel(
             card,
             text=(
-                f"Se detectó: {duplicado.get('nombre', 'Usuario')}\n"
-                + ("¿Deseas editar su usuario o cancelar el registro?" if es_activo
-                   else "¿Deseas restaurar su usuario o cancelar el registro?")
+                f"{t('se_detecto')}: {duplicado.get('nombre', t('usuario'))}\n"
+                + (t("pregunta_editar_usuario") if es_activo
+                   else t("pregunta_restaurar_usuario"))
             ),
             font=("Segoe UI", 11),
             text_color=self.colors['text_gray'],
@@ -583,13 +583,13 @@ class CapturaBiometricaMixin:
 
         def _restaurar():
             _cerrar()
-            self._restaurar_usuario_duplicado(duplicado.get("user_id"), duplicado.get("nombre", "Usuario"))
+            self._restaurar_usuario_duplicado(duplicado.get("user_id"), duplicado.get("nombre", t("usuario")))
 
         def _cancelar():
             _cerrar()
             self._cancelar_registro_duplicado()
 
-        primary_text = "✏️ Editar usuario" if es_activo else "🔄 Restaurar usuario"
+        primary_text = t("editar_usuario")if es_activo else t("restaurar_usuario")
         primary_color = "#16A34A" if es_activo else "#2563EB"
         primary_hover = "#15803D" if es_activo else "#1D4ED8"
 
@@ -604,7 +604,7 @@ class CapturaBiometricaMixin:
 
         ctk.CTkButton(
             btns,
-            text="Cancelar registro",
+            text=t("cancelar_registro"),
             fg_color="#DC2626",
             hover_color="#B91C1C",
             text_color="#ffffff",
@@ -614,31 +614,31 @@ class CapturaBiometricaMixin:
     def _ir_a_editar_usuario_duplicado(self, user_id):
         app = getattr(self.parent.winfo_toplevel(), "sentinel_app", None)
         if not app or not getattr(app, "main_view", None):
-            messagebox.showinfo("Editar usuario", "No se pudo abrir la vista de edición.")
+            messagebox.showinfo(t("editar_usuario"), t("error_abrir_edicion"))
             self._cancelar_registro_duplicado()
             return
 
         try:
             app.main_view.show_informacion_escolar(preselect_user_id=user_id)
         except Exception as e:
-            messagebox.showerror("Editar usuario", f"No se pudo abrir la edición: {e}")
+            messagebox.showerror(t("editar_usuario"), t("error_abrir_edicion"))
             self._cancelar_registro_duplicado()
 
     def _restaurar_usuario_duplicado(self, user_id, nombre):
         try:
             conn = get_db()
             if not conn:
-                raise RuntimeError("No se pudo abrir la base de datos")
+                raise RuntimeError(t("error_db"))
 
             sp_restaurar_usuario(conn, user_id)
             conn.commit()
             conn.close()
             self._engine_inactivos = None
             self._engine_inactivos_fp = None
-            messagebox.showinfo("Usuario restaurado", f"Se restauró a {nombre}. Ahora puedes editarlo.")
+            messagebox.showinfo(t("usuario_restaurado"), t("usuario_restaurado_mensaje").format(nombre))
             self._ir_a_editar_usuario_duplicado(user_id)
         except Exception as e:
-            messagebox.showerror("Restaurar usuario", f"No se pudo restaurar el usuario: {e}")
+            messagebox.showerror(t("restaurar_usuario"), t("error_restaurar_usuario").format(e))
             self._cancelar_registro_duplicado()
 
     def _cancelar_registro_duplicado(self):
@@ -755,7 +755,7 @@ class CapturaBiometricaMixin:
             siguiente = POSTURAS[self.postura_idx + 1]
             self._set_estado(
                 t("postura_completada"),
-                f"Prepárate para: {siguiente['titulo']} — cambiando en 2s...", "ok")
+                f"{t('preparate_para')} {siguiente['titulo']} — {t('cambiando_en_2s')}")
             self.container.after(1800, self._pasar_a_siguiente_postura)
         else:
             self.bar_total_ctk.set(1.0)
@@ -782,11 +782,11 @@ class CapturaBiometricaMixin:
         if not self.capturando:
             return
         if self._countdown > 0:
-            self._set_sub(f"Comenzando en {self._countdown}...")
+            self._set_sub(f"{t('comenzando_en')} {self._countdown}...")
             self._countdown -= 1
             self._countdown_job = self.container.after(900, self._tick_countdown_postura)
         else:
-            self._set_sub("¡Mantén la posición!")
+            self._set_sub(t("manten_posicion"))
             self._auto_activo = True
             self._actualizar_video()
 
@@ -887,7 +887,7 @@ class CapturaBiometricaMixin:
             self.container.after(0, lambda: self._fin_guardado(
                 t("registro_exitoso"),
                 f"{cfg['icono']} {nombre_completo} ({cfg['titulo']})\n"
-                f"{t('fotos_registradas')} {len(self.fotos_temp)} fotos."
+                f"{t('fotos_registradas')} {len(self.fotos_temp)} {t('fotos')}"
             ))
 
         except Exception as e:
@@ -961,7 +961,7 @@ class CapturaBiometricaMixin:
         # Botón Repetir (izquierda)
         ctk.CTkButton(
             btn_frame,
-            text="🔄 Repetir",
+            text="🔄 " + t("repetir"),
             fg_color="#F59E0B",
             hover_color="#D97706",
             text_color="#ffffff",
