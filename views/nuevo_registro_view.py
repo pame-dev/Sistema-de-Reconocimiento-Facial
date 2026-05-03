@@ -28,9 +28,10 @@ class NuevoRegistroView(
     AnimacionCamaraMixin,
     CapturaBiometricaMixin,
 ):
-    def __init__(self, parent, initial_state=None):
+    def __init__(self, parent, main_view=None, initial_state=None):
         self.colors    = get_colors()
         self.parent    = parent
+        self.main_view = main_view or getattr(parent, 'main_view', None)
         self.container = ctk.CTkFrame(parent, fg_color=self.colors['background'])
         self.container.pack(fill="both", expand=True, padx=1, pady=30)
 
@@ -89,6 +90,20 @@ class NuevoRegistroView(
             self._mostrar_formulario()
         else:
             self._mostrar_seleccion_rol()
+
+    def _disable_top_controls(self):
+        if getattr(self, 'main_view', None):
+            try:
+                self.main_view.disable_top_controls()
+            except Exception:
+                pass
+
+    def _enable_top_controls(self):
+        if getattr(self, 'main_view', None):
+            try:
+                self.main_view.enable_top_controls()
+            except Exception:
+                pass
 
     def export_state(self):
         """Exporta el estado del formulario para restaurarlo tras recargar la vista."""

@@ -386,15 +386,33 @@ class MainView:
             command=self._toggle_zoom_popover)
         self._btn_zoom.pack(side="right", padx=(4, 4))
 
-        ctk.CTkButton(header, text="🌐", font=("Segoe UI", 9),
+        self._btn_traducir = ctk.CTkButton(header, text="🌐", font=("Segoe UI", 9),
                       fg_color="transparent", hover_color=COLORS['header_hover'],
                       text_color=c['white'], width=15, height=34, corner_radius=8,
-                      command=self.traducir_app).pack(side="right", padx=(0, 2))
+                      command=self.traducir_app)
+        self._btn_traducir.pack(side="right", padx=(0, 2))
 
-        ctk.CTkButton(header, text="🌙", font=("Segoe UI", 9),
+        self._btn_modo_oscuro = ctk.CTkButton(header, text="🌙", font=("Segoe UI", 9),
                       fg_color="transparent", hover_color=COLORS['header_hover'],
                       text_color=c['white'], width=15, height=34, corner_radius=8,
-                      command=self.modo_oscuro).pack(side="right", padx=(0, 2))
+                      command=self.modo_oscuro)
+        self._btn_modo_oscuro.pack(side="right", padx=(0, 2))
+
+    def disable_top_controls(self):
+        try:
+            self._btn_zoom.pack_forget()
+            self._btn_traducir.pack_forget()
+            self._btn_modo_oscuro.pack_forget()
+        except Exception:
+            pass
+
+    def enable_top_controls(self):
+        try:
+            self._btn_modo_oscuro.pack(side="right", padx=(0, 2))
+            self._btn_traducir.pack(side="right", padx=(0, 2))
+            self._btn_zoom.pack(side="right", padx=(4, 4))
+        except Exception:
+            pass
 
     def _actualizar_reloj(self):
         self.lbl_reloj.configure(text=datetime.now().strftime("%d/%m/%Y\n%H:%M:%S"))
@@ -467,6 +485,7 @@ class MainView:
         self.content_frame = ctk.CTkFrame(self.body_frame,
                                           fg_color=self.colors['background'])
         self.content_frame.pack(fill="both", expand=True, side="left")
+        self.content_frame.main_view = self
 
     def toggle_menu(self):
         if self.menu_visible:
@@ -575,6 +594,7 @@ class MainView:
         estado = self._nuevo_registro_state
         self._nuevo_registro_state = None
         self._nuevo_registro_view  = NuevoRegistroView(self.content_frame,
+                                                       main_view=self,
                                                        initial_state=estado)
 
     def show_informacion_escolar(self, preselect_user_id=None):
@@ -894,6 +914,7 @@ class MainView:
     def _start_camera(self):
         if self._cam_running or not self._engine:
             return
+        self.disable_top_controls()
         self._anim_running = True
         self._btn_iniciar.configure(state="disabled")
         self._anim_btn()
@@ -945,6 +966,7 @@ class MainView:
             self._lbl_cam.configure(text=t("camara_off"), text_color=self.colors['danger'])
         except Exception:
             pass
+        self.enable_top_controls()
         try:
             self.main_frame.after(100, self._draw_placeholder)
         except Exception:
