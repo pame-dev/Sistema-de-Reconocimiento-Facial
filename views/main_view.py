@@ -102,6 +102,7 @@ class MainView:
         FontScale.set(nueva)
         self._actualizar_btn_zoom()
         self._recargar_vista()
+        self._cerrar_popover()
 
     def _zoom_reset(self):
         if FontScale.get() == 1.0:
@@ -109,6 +110,7 @@ class MainView:
         FontScale.set(1.0)
         self._actualizar_btn_zoom()
         self._recargar_vista()
+        self._cerrar_popover()
 
     def _actualizar_btn_zoom(self):
         pct = round(FontScale.get() * 100)
@@ -258,8 +260,7 @@ class MainView:
     # ── Popover zoom ──────────────────────────────────────────────────────────
     def _toggle_zoom_popover(self):
         if self._zoom_popover and self._zoom_popover.winfo_exists():
-            self._zoom_popover.destroy()
-            self._zoom_popover = None
+            self._cerrar_popover()
             return
 
         btn = self._btn_zoom
@@ -268,40 +269,39 @@ class MainView:
 
         pop = tk.Toplevel(self.main_frame)
         pop.overrideredirect(True)
-        pop.geometry(f"230x170+{x}+{y}")
+        pop.geometry(f"250x160+{x}+{y}")
         pop.configure(bg="#1e3a5f")
         pop.attributes("-topmost", True)
         self._zoom_popover = pop
-        pop.bind("<FocusOut>", lambda e: self._cerrar_popover())
+        pop.bind("<Escape>", lambda e: self._cerrar_popover())
+        pop.focus_force()
 
         inner = tk.Frame(pop, bg="#1e3a5f")
         inner.pack(fill="both", expand=True, padx=2, pady=2)
 
-        tk.Label(inner, text="Tamaño de interfaz", bg="#1e3a5f", fg="#93c5fd",
-                 font=("Segoe UI", 10, "bold")).pack(pady=(10, 2))
+        header_row = tk.Frame(inner, bg="#1e3a5f")
+        header_row.pack(fill="x", padx=8, pady=(8, 4))
+        tk.Label(header_row, text="Zoom", bg="#1e3a5f", fg="#93c5fd",
+                 font=("Segoe UI", 10, "bold")).pack(side="left")
+        tk.Button(header_row, text="✕", bg="#1e3a5f", fg="#ffffff", relief="flat",
+                  activebackground="#2563eb", activeforeground="white",
+                  font=("Segoe UI", 10, "bold"), bd=0, padx=4, pady=0,
+                  command=self._cerrar_popover, takefocus=0).pack(side="right")
+
         self._zoom_pct_lbl = tk.Label(inner, text=f"{round(FontScale.get()*100)}%",
             bg="#1e3a5f", fg="#ffffff", font=("Segoe UI", 26, "bold"))
-        self._zoom_pct_lbl.pack()
+        self._zoom_pct_lbl.pack(pady=(0, 6))
+
         self._zoom_slider = tk.Scale(inner,
             from_=int(ZOOM_MIN*100), to=int(ZOOM_MAX*100),
             orient="horizontal", resolution=10,
             bg="#1e3a5f", fg="#93c5fd", troughcolor="#1d4ed8",
             highlightthickness=0, bd=0, sliderrelief="flat",
-            activebackground="#60a5fa", length=200, showvalue=False,
+            activebackground="#60a5fa", length=220, showvalue=False, takefocus=0,
             command=self._zoom_desde_slider)
-        self._zoom_slider.set(round(FontScale.get()*100))
-        self._zoom_slider.pack(padx=12, pady=(2, 6))
-
-        btn_row = tk.Frame(inner, bg="#1e3a5f")
-        btn_row.pack()
-        estilo = dict(bg="#1d4ed8", fg="white", relief="flat",
-                      font=("Segoe UI", 14, "bold"),
-                      activebackground="#3b82f6", activeforeground="white",
-                      cursor="hand2", bd=0, padx=14, pady=3, width=2)
-        tk.Button(btn_row, text="−", command=lambda: self._zoom(-ZOOM_STEP), **estilo).pack(side="left", padx=5)
-        tk.Button(btn_row, text="↺", command=self._zoom_reset, **estilo).pack(side="left", padx=5)
-        tk.Button(btn_row, text="+", command=lambda: self._zoom(ZOOM_STEP), **estilo).pack(side="left", padx=5)
-        pop.after(100, pop.focus_set)
+        current_pct = round(FontScale.get() * 100)
+        self._zoom_slider.set(current_pct)
+        self._zoom_slider.pack(padx=12, pady=(2, 10))
 
     def _cerrar_popover(self):
         try:
@@ -312,7 +312,10 @@ class MainView:
         self._zoom_popover = None
 
     def _zoom_desde_slider(self, val):
-        nueva = round(int(val) / 100, 2)
+        try:
+            nueva = round(float(val) / 100, 2)
+        except Exception:
+            return
         if nueva == FontScale.get():
             return
         FontScale.set(nueva)
@@ -408,9 +411,9 @@ class MainView:
 
     def enable_top_controls(self):
         try:
-            self._btn_modo_oscuro.pack(side="right", padx=(0, 2))
-            self._btn_traducir.pack(side="right", padx=(0, 2))
             self._btn_zoom.pack(side="right", padx=(4, 4))
+            self._btn_traducir.pack(side="right", padx=(0, 2))
+            self._btn_modo_oscuro.pack(side="right", padx=(0, 2))
         except Exception:
             pass
 
