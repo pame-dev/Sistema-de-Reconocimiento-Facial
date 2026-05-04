@@ -854,8 +854,7 @@ class CapturaBiometricaMixin:
                 'telefono':  val('telefonoUsuario',  upper=False),
                 'correo':    val('correoUsuario',    upper=False),
                 'fecha_nacimiento': val('fechaNacimientoUsuario', upper=False),
-                'tipo_sangre': val('tipoSangreUsuario', upper=False),
-                'direccion': val('direccionUsuario', upper=False)
+                'tipo_sangre': val('tipoSangreUsuario', upper=False)
             })
 
             if rol == "alumno":
@@ -882,7 +881,8 @@ class CapturaBiometricaMixin:
             conn.commit()
             conn.close()
 
-            # ── Guardar el ID del usuario para posibles reintentosself._user_id_creado = user_id
+            # ── Guardar el ID del usuario para posibles reintentos
+            self._user_id_creado = user_id
             cfg             = ROL_CONFIG[rol]
             nombre_completo = f"{val('nombreUsuario')} {val('apellidoPaternoUsuario')}"
             self.container.after(0, lambda: self._fin_guardado(
@@ -892,8 +892,8 @@ class CapturaBiometricaMixin:
             ))
 
         except Exception as e:
-            self.container.after(0, lambda: messagebox.showerror(
-                t("error"), f"{t('error_guardar')} {e}"))
+            self.container.after(0, lambda err=str(e): messagebox.showerror(
+                t("error"), f"{t('error_guardar')} {err}"))
             self._guardando = False
 
     def _fin_guardado(self, titulo, mensaje):
