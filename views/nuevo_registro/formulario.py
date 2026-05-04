@@ -201,8 +201,10 @@ class FormularioMixin:
         requeridos = {
             'nombreUsuario': 'nombre',
             'apellidoPaternoUsuario': 'apellido_paterno',
+            'matriculaUsuario': 'matricula',
             'telefonoUsuario': 'telefono',
             'correoUsuario': 'correo',
+            'tipoSangreUsuario': 'tipo_sangre',
         }
 
         # ─────────────────────────────
@@ -219,7 +221,7 @@ class FormularioMixin:
                 )
                 return
 
-            if len(valor) < 3:
+            if key != "tipoSangreUsuario" and len(valor) < 3:
                 messagebox.showwarning(
                     "Error",
                     f"{t(nombre_clave)} debe tener mínimo 3 caracteres"
@@ -244,7 +246,7 @@ class FormularioMixin:
             if required and len(valor) < 3:
                 messagebox.showwarning(
                     "Error",
-                    f"{label} debe tener mínimo 3 caracteres"
+                    t("campo_min_caracteres").format(campo=label, min=3)
                 )
                 return
 
@@ -252,32 +254,49 @@ class FormularioMixin:
         # 3. VALIDAR FORMATO
         # ─────────────────────────────
 
-        # 📧 Correo
-        correo = self.entries.get('correoUsuario').get().strip()
-        if not re.match(r"^[^@]+@[a-zA-Z]{3,}\.[a-zA-Z]{2,}$", correo):
+        # Matrícula
+        matricula = self.entries.get('matriculaUsuario').get().strip()
+
+        if not matricula.isdigit():
             messagebox.showwarning(
                 "Error",
-                "El correo debe contener '@' y al menos 3 letras después"
+                t("matricula_num")
+            )
+            return
+        
+        if len(matricula) < 6:
+            messagebox.showwarning(
+                "Error",
+                t("matricula_min")
             )
             return
 
-        # 📱 Teléfono
+        #  Teléfono
         telefono = self.entries.get('telefonoUsuario').get().strip()
 
         if not telefono.isdigit():
             messagebox.showwarning(
                 "Error",
-                "El teléfono solo debe contener números"
+                t("telefono_num")
             )
             return
 
         if len(telefono) < 10:
             messagebox.showwarning(
                 "Error",
-                "El teléfono debe tener al menos 10 dígitos"
+                t("telefono_min")
             )
             return
 
+        # Correo
+        correo = self.entries.get('correoUsuario').get().strip()
+        if not re.match(r"^[^@]+@[a-zA-Z]{3,}\.[a-zA-Z]{2,}$", correo):
+            messagebox.showwarning(
+                "Error",
+                t("correo_invalido")
+            )
+            return
+        
         #  Nombre y apellido
         regex_nombre = r"^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$"
 
@@ -285,26 +304,13 @@ class FormularioMixin:
         apellido = self.entries.get('apellidoPaternoUsuario').get().strip()
 
         if not re.match(regex_nombre, nombre):
-            messagebox.showwarning("Error", "El nombre solo debe contener letras")
+            messagebox.showwarning("Error", t("nombre_invalido"))
             return
 
         if not re.match(regex_nombre, apellido):
-            messagebox.showwarning("Error", "El apellido solo debe contener letras")
+            messagebox.showwarning("Error", t("apellido_invalido"))
             return
 
-        # Matrícula
-        matricula = self.entries.get('matriculaUsuario').get().strip()
-
-        if not matricula:
-            messagebox.showwarning("Error", "La matrícula es requerida")
-            return
-
-        if not matricula.isdigit():
-            messagebox.showwarning(
-                "Error",
-                "La matrícula solo debe contener números"
-            )
-            return
 
         # ─────────────────────────────
         # 4. VALIDACIONES EN BASE DE DATOS
@@ -317,15 +323,15 @@ class FormularioMixin:
 
         try:
             if sp_existe_correo(conn, correo):
-                messagebox.showwarning("Error", "El correo ya existe")
+                messagebox.showwarning("Error", t("correo_existe"))
                 return
 
             if sp_existe_telefono(conn, telefono):
-                messagebox.showwarning("Error", "El teléfono ya existe")
+                messagebox.showwarning("Error", t("telefono_existe"))
                 return
 
             if sp_existe_matricula(conn, matricula):
-                messagebox.showwarning("Error", "La matrícula ya existe")
+                messagebox.showwarning("Error", t("matricula_existe"))
                 return
 
         finally:
