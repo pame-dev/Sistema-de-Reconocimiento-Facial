@@ -5,12 +5,12 @@ from datetime import datetime
 import customtkinter as ctk
 from tkcalendar import DateEntry
 
-from config import COLORS, get_colors
+from config import COLORS, get_colors, get_db
 from idiomas import t
 from views.nuevo_registro.constants import ROL_CONFIG, CAMPOS_COMUNES, CAMPOS_POR_ROL
 from views.font_scale import FontScale
 from views.nuevo_registro.utils import darken
-
+from database.queries import sp_existe_matricula, sp_existe_telefono, sp_existe_correo
 
 class FormularioMixin:
 
@@ -150,7 +150,7 @@ class FormularioMixin:
         frame = ctk.CTkFrame(parent, fg_color="transparent")
         frame.grid(row=row, column=col, sticky="ew", padx=8, pady=6)
 
-        # 🔥 TRADUCCIÓN AQUÍ
+        # TRADUCCIÓN AQUÍ
         texto_label = t(label_text)
 
         ctk.CTkLabel(
@@ -191,9 +191,12 @@ class FormularioMixin:
             entry.pack(fill="x", expand=True)
 
         self.entries[key] = entry
+        self.entries[key].label = label_text  # 👈 GUARDAMOS EL NOMBRE BONITO
 
     # ────────────────────────────────────────────────
     def _validar_y_continuar(self):
+
+        import re
 
         requeridos = {
             'nombreUsuario': 'nombre',
@@ -202,24 +205,135 @@ class FormularioMixin:
             'correoUsuario': 'correo',
         }
 
-        # Validar campos básicos
+        # ─────────────────────────────
+        # 1. VALIDAR CAMPOS BÁSICOS
+        # ─────────────────────────────
         for key, nombre_clave in requeridos.items():
-            if not self.entries.get(key, tk.Entry()).get().strip():
+            entry = self.entries.get(key)
+            valor = entry.get().strip()
+
+            if not valor:
                 messagebox.showwarning(
                     t("campo_requerido"),
                     f"{t('campo_requerido')}: {t(nombre_clave)}"
                 )
                 return
 
-        # Validar campos por rol
-        for _, key, required in CAMPOS_POR_ROL.get(self.rol_actual, []):
-            if required and not self.entries.get(key, tk.Entry()).get().strip():
+            if len(valor) < 3:
                 messagebox.showwarning(
-                    t("campo_requerido"),
-                    f"{t('campo_requerido')}: {t(key)}"
+                    "Error",
+                    f"{t(nombre_clave)} debe tener mínimo 3 caracteres"
                 )
                 return
 
-        self.valores_form  = {k: e.get().strip() for k, e in self.entries.items()}
+        # ─────────────────────────────
+        # 2. VALIDAR CAMPOS POR ROL
+        # ─────────────────────────────
+        for _, key, required in CAMPOS_POR_ROL.get(self.rol_actual, []):
+            entry = self.entries.get(key)
+            valor = entry.get().strip()
+            label = t(entry.label)
+
+            if required and not valor:
+                messagebox.showwarning(
+                    t("campo_requerido"),
+                    f"{t('campo_requerido')}: {label}"
+                )
+                return
+
+            if required and len(valor) < 3:
+                messagebox.showwarning(
+                    "Error",
+                    f"{label} debe tener mínimo 3 caracteres"
+                )
+                return
+
+        # ─────────────────────────────
+        # 3. VALIDAR FORMATO
+        # ─────────────────────────────
+
+        # 📧 Correo
+        correo = self.entries.get('correoUsuario').get().strip()
+        if not re.match(r"^[^@]+@[a-zA-Z]{3,}\.[a-zA-Z]{2,}$", correo):
+            messagebox.showwarning(
+                "Error",
+                "El correo debe contener '@' y al menos 3 letras después"
+            )
+            return
+
+        # 📱 Teléfono
+        telefono = self.entries.get('telefonoUsuario').get().strip()
+
+        if not telefono.isdigit():
+            messagebox.showwarning(
+                "Error",
+                "El teléfono solo debe contener números"
+            )
+            return
+
+        if len(telefono) < 10:
+            messagebox.showwarning(
+                "Error",
+                "El teléfono debe tener al menos 10 dígitos"
+            )
+            return
+
+        #  Nombre y apellido
+        regex_nombre = r"^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$"
+
+        nombre = self.entries.get('nombreUsuario').get().strip()
+        apellido = self.entries.get('apellidoPaternoUsuario').get().strip()
+
+        if not re.match(regex_nombre, nombre):
+            messagebox.showwarning("Error", "El nombre solo debe contener letras")
+            return
+
+        if not re.match(regex_nombre, apellido):
+            messagebox.showwarning("Error", "El apellido solo debe contener letras")
+            return
+
+        # Matrícula
+        matricula = self.entries.get('matriculaUsuario').get().strip()
+
+        if not matricula:
+            messagebox.showwarning("Error", "La matrícula es requerida")
+            return
+
+        if not matricula.isdigit():
+            messagebox.showwarning(
+                "Error",
+                "La matrícula solo debe contener números"
+            )
+            return
+
+        # ─────────────────────────────
+        # 4. VALIDACIONES EN BASE DE DATOS
+        # ─────────────────────────────
+        conn = get_db()
+
+        if not conn:
+            messagebox.showerror("Error", "No se pudo conectar a la base de datos")
+            return
+
+        try:
+            if sp_existe_correo(conn, correo):
+                messagebox.showwarning("Error", "El correo ya existe")
+                return
+
+            if sp_existe_telefono(conn, telefono):
+                messagebox.showwarning("Error", "El teléfono ya existe")
+                return
+
+            if sp_existe_matricula(conn, matricula):
+                messagebox.showwarning("Error", "La matrícula ya existe")
+                return
+
+        finally:
+            conn.close()
+
+        # ─────────────────────────────
+        # 5. TODO CORRECTO
+        # ─────────────────────────────
+        self.valores_form = {k: e.get().strip() for k, e in self.entries.items()}
         self._camara_lista = False
         self._mostrar_animacion_camara()
