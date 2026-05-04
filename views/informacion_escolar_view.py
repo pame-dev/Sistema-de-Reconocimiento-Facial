@@ -33,6 +33,7 @@ class InformacionEscolarView:
         self.colors = get_colors()
         self.parent    = parent
         self.container = ctk.CTkFrame(parent, fg_color=self.colors['background'])
+        self.container.view = self
         self.container.pack(fill="both", expand=True, padx=24, pady=20)
 
         self.usuario_seleccionado = None
@@ -41,8 +42,9 @@ class InformacionEscolarView:
         self._small_layout        = False
 
         self.crear_interfaz()
-        self.parent.winfo_toplevel().bind("<Configure>", self._on_root_resize)
-        self._apply_responsive_layout(self.parent.winfo_toplevel().winfo_width())
+        self.container.bind("<Configure>", self._on_root_resize)
+        self.container.update_idletasks()
+        self._apply_responsive_layout(self.container.winfo_width())
 
         self.btn_restaurar = ctk.CTkButton(
         self.acciones_frame,
@@ -57,6 +59,30 @@ class InformacionEscolarView:
 )
         self.cargar_datos()
 
+    def destroy(self):
+        try:
+            self.container.unbind("<Configure>")
+        except Exception:
+            pass
+        try:
+            self.entrada_busqueda.unbind("<FocusIn>")
+            self.entrada_busqueda.unbind("<FocusOut>")
+            self.entrada_busqueda.unbind("<KeyRelease>")
+        except Exception:
+            pass
+        try:
+            self.filtro_rol.unbind('<<ComboboxSelected>>')
+            self.filtro_estado.unbind('<<ComboboxSelected>>')
+        except Exception:
+            pass
+        try:
+            self.tabla.unbind('<<TreeviewSelect>>')
+        except Exception:
+            pass
+
+    def _is_alive(self):
+        return getattr(self, 'container', None) is not None and self.container.winfo_exists()
+
     # ── Aplica estilos ttk con colores del tema actual ────────────────────────
     def _aplicar_estilo_tabla(self):
         c = self.colors
@@ -68,12 +94,12 @@ class InformacionEscolarView:
             fieldbackground=c['tree_bg'],
             foreground=c['tree_fg'],
             rowheight=32, borderwidth=0,
-            font=("Segoe UI", 12),
+            font=FontScale.f(12),
         )
         style.configure('Dark.Treeview.Heading',
             background=c['tree_head_bg'],
             foreground=c['tree_head_fg'],
-            font=("Segoe UI", 12, "bold"),
+            font=FontScale.fb(12),
             relief='flat', padding=6,
         )
         style.map('Dark.Treeview',
@@ -111,7 +137,7 @@ class InformacionEscolarView:
         win.option_add("*TCombobox*Listbox.font",             ("Segoe UI", 13))
 
     def _on_root_resize(self, event):
-        if event.widget == self.parent.winfo_toplevel():
+        if event.widget == self.container:
             self._apply_responsive_layout(event.width)
 
     def _is_small_screen(self):
@@ -310,6 +336,8 @@ class InformacionEscolarView:
 
     # ── Panel detalles ────────────────────────────────────────────────────────
     def crear_panel_detalles(self):
+        if not self._is_alive():
+            return
         for w in self.detalles_frame.winfo_children():
             w.destroy()
         if not self.usuario_seleccionado:
@@ -395,6 +423,8 @@ class InformacionEscolarView:
         self.cargar_datos()
 
     def cargar_datos(self):
+        if not self._is_alive():
+            return
         try:
             conn = get_db()
             if not conn:
@@ -470,6 +500,8 @@ class InformacionEscolarView:
             self.datos = []
 
     def actualizar_tabla(self, datos_filtrados=None):
+        if not self._is_alive():
+            return
         for item in self.tabla.get_children():
             self.tabla.delete(item)
 
@@ -509,6 +541,8 @@ class InformacionEscolarView:
             self.ocultar_detalles_panel()
 
     def filtrar_tabla(self):
+        if not self._is_alive():
+            return
         rol_filtro = self.filtro_rol.get()
         texto = "" if self._placeholder_activo else self.busqueda_var.get().lower().strip()
 
@@ -523,6 +557,8 @@ class InformacionEscolarView:
         self.actualizar_tabla(resultado)
         
     def cambiar_estado(self):
+        if not self._is_alive():
+            return
         estado = self.filtro_estado.get()
 
         if estado == t("activos"):
@@ -532,12 +568,16 @@ class InformacionEscolarView:
 
     # ── Placeholder ───────────────────────────────────────────────────────────
     def limpiar_placeholder(self, event):
+        if not self._is_alive():
+            return
         if self._placeholder_activo:
             self.entrada_busqueda.delete(0, tk.END)
             self.entrada_busqueda.configure(text_color=self.colors['text_dark'])
             self._placeholder_activo = False
 
     def restaurar_placeholder(self, event):
+        if not self._is_alive():
+            return
         if not self.busqueda_var.get().strip():
             self.entrada_busqueda.insert(0, t("placeholder_busqueda"))
             self.entrada_busqueda.configure(text_color=self.colors['text_gray'])
@@ -545,6 +585,8 @@ class InformacionEscolarView:
 
     # ── Selección ─────────────────────────────────────────────────────────────
     def on_select(self, event):
+        if not self._is_alive():
+            return
         sel = self.tabla.selection()
         if not sel:
             return
@@ -558,6 +600,8 @@ class InformacionEscolarView:
 
     def mostrar_edicion_por_id(self, user_id):
         """Selecciona un usuario por ID y abre su edición directamente."""
+        if not self._is_alive():
+            return
         if not self.datos:
             self.cargar_datos()
 
@@ -584,6 +628,8 @@ class InformacionEscolarView:
         self.editar_usuario()
 
     def mostrar_detalles_panel(self):
+        if not self._is_alive():
+            return
         if not self.detalles_frame.winfo_ismapped():
             self.detalles_frame.pack(fill="x", pady=(0, 8), before=self.tabla_frame)
 
@@ -616,6 +662,8 @@ class InformacionEscolarView:
         self.container.update_idletasks()
 
     def ocultar_detalles_panel(self):
+        if not self._is_alive():
+            return
         if self.acciones_frame.winfo_ismapped():
             self.acciones_frame.pack_forget()
         if self.detalles_frame.winfo_ismapped():
