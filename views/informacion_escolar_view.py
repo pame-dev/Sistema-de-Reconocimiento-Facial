@@ -125,22 +125,14 @@ class InformacionEscolarView:
         self._small_layout = small
         if small:
             self.header_left.pack_forget()
-            self.btn_row.pack_forget()
             self.header_left.pack(side="top", fill="x", padx=0, pady=(0, 10))
-            self.btn_row.pack(side="top", fill="x")
-            self.btn_toggle_detalles.pack_configure(side="left", padx=(0, 8))
-            self.btn_toggle_detalles.configure(width=120)
             self.filtros_top.pack_configure(fill="x", pady=(10, 4))
             self.filtros_bottom.pack_configure(fill="x", pady=(0, 10))
             self.filtro_rol.configure(width=12)
             self.filtro_estado.configure(width=12)
         else:
             self.header_left.pack_forget()
-            self.btn_row.pack_forget()
             self.header_left.pack(side="left", fill="x", expand=True)
-            self.btn_row.pack(side="right")
-            self.btn_toggle_detalles.pack_configure(side="left", padx=(0, 8))
-            self.btn_toggle_detalles.configure(width=70)
             self.filtros_top.pack_configure(fill="x", pady=(10, 4))
             self.filtros_bottom.pack_configure(fill="x", pady=(0, 10))
             self.filtro_rol.configure(width=8)
@@ -168,24 +160,7 @@ class InformacionEscolarView:
                      font=("Segoe UI", 11),
                      text_color=c['text_gray']).pack(anchor="w", pady=(2, 0))
 
-        self.btn_row = ctk.CTkFrame(self.header, fg_color="transparent")
-        self.btn_row.pack(side="right")
-
-        self.btn_toggle_detalles = ctk.CTkButton(self.btn_row, text=t("ver_detalles"),
-                      fg_color=c['header'], hover_color=COLORS['header_hover'],
-                      text_color="#ffffff",
-                      font=("Segoe UI", 12, "bold"),
-                      corner_radius=10, height=38, width=70,
-                      state="disabled",
-                      command=self.toggle_detalles)
-        self.btn_toggle_detalles.pack(side="left", padx=(0, 8))
-
-        ctk.CTkButton(self.btn_row, text="🔄",
-                      fg_color=c['primary'], hover_color=COLORS['primary_dark'],
-                      text_color="#ffffff",
-                      font=("Segoe UI", 12, "bold"),
-                      corner_radius=10, height=38, width=50,
-                      command=self._actualizar_todo).pack(side="left")
+        
 
         # Filtros
         filtros = ctk.CTkFrame(self.container, fg_color=c['card_bg'],
@@ -516,6 +491,23 @@ class InformacionEscolarView:
             text=t("usuarios_total").format(total, "s" if total != 1 else "")
         )
 
+        # Si hay datos visibles, muestra detalles del primer usuario automáticamente.
+        if lista:
+            first_id = str(lista[0]['id'])
+            try:
+                self.tabla.selection_set(first_id)
+                self.tabla.focus(first_id)
+                self.tabla.see(first_id)
+            except Exception:
+                pass
+
+            self.usuario_seleccionado = lista[0]
+            self.mostrar_detalles_panel()
+            self.crear_panel_detalles()
+        else:
+            self.usuario_seleccionado = None
+            self.ocultar_detalles_panel()
+
     def filtrar_tabla(self):
         rol_filtro = self.filtro_rol.get()
         texto = "" if self._placeholder_activo else self.busqueda_var.get().lower().strip()
@@ -621,7 +613,6 @@ class InformacionEscolarView:
                       command=self.ocultar_detalles_panel)
         btn_ocultar.pack(side="left", padx=(8, 0))
 
-        self.btn_toggle_detalles.configure(state="normal", text=t("ocultar_detalles"))
         self.container.update_idletasks()
 
     def ocultar_detalles_panel(self):
@@ -629,7 +620,6 @@ class InformacionEscolarView:
             self.acciones_frame.pack_forget()
         if self.detalles_frame.winfo_ismapped():
             self.detalles_frame.pack_forget()
-        self.btn_toggle_detalles.configure(text=t("ver_detalles"))
 
     def toggle_detalles(self):
         if self.detalles_frame.winfo_ismapped():
