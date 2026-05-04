@@ -11,7 +11,7 @@ from views import nuevo_registro_view
 from idiomas import t   
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import COLORS, get_colors, toggle_theme, get_db
+from config import COLORS, WINDOW_WIDTH, WINDOW_HEIGHT, get_colors, toggle_theme, get_db
 from database.queries import (
     sp_get_usuarios,
     sp_actualizar_usuario,
@@ -673,10 +673,21 @@ class InformacionEscolarView:
         # ── Ventana ───────────────────────────────────────────────────────────
         win = ctk.CTkToplevel(self.parent)
         win.title(t("editar_usuario"))
-        win.geometry("520x660")
         win.configure(fg_color=c['background'])
         win.grab_set()
-        win.resizable(False, False)
+        win.resizable(True, True)
+
+        root = self.parent.winfo_toplevel()
+        root.update_idletasks()
+        width = min(root.winfo_width(), WINDOW_WIDTH)
+        height = min(root.winfo_height(), WINDOW_HEIGHT)
+        if width <= 1 or height <= 1:
+            width = min(getattr(root, "desired_width", WINDOW_WIDTH), WINDOW_WIDTH)
+            height = min(getattr(root, "desired_height", WINDOW_HEIGHT), WINDOW_HEIGHT)
+        x = root.winfo_rootx()
+        y = root.winfo_rooty()
+        win.geometry(f"{width}x{height}+{x}+{y}")
+        win.minsize(width, height)
 
         # Header con color de rol
         wh = ctk.CTkFrame(win, fg_color=color, corner_radius=0, height=54)
