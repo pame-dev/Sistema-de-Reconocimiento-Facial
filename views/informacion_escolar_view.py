@@ -237,7 +237,7 @@ class InformacionEscolarView:
             self.filtros_bottom,
             values=[t("activos"), t("inactivos")],
             state="readonly",
-            width=10,
+            width=8,
             font=("Segoe UI", 12),
             style='Dark.TCombobox'
         )
@@ -301,7 +301,7 @@ class InformacionEscolarView:
         scroll_x.pack(side="bottom", fill="x", pady=(0, 4))
 
         self.tabla = ttk.Treeview(self.tabla_frame,
-            columns=("nombre", "matricula", "fecha_nacimiento", "tipo_sangre", "rol", "fotos"),
+            columns=("nombre", "matricula", "direccion", "fecha_nacimiento", "tipo_sangre", "rol", "fotos"),
             show="headings",
             yscrollcommand=scroll_y.set,
             xscrollcommand=scroll_x.set,
@@ -314,6 +314,7 @@ class InformacionEscolarView:
             ("nombre",    t("nombre_completo"), 260, "w"),
             ("matricula", t("matricula"), 130, "center"),
             ("fecha_nacimiento", t("fecha_nacimiento"), 115, "center"),
+            ("direccion", t("direccion"), 200, "w"),
             ("tipo_sangre", t("tipo_sangre"), 95, "center"),
             ("rol",       t("rol"), 110, "center"),
             ("fotos", f"📸 {t('fotos')}", 80, "center"),
@@ -381,7 +382,8 @@ class InformacionEscolarView:
                 (t("apellido_materno"), u.get('apellido_materno','—')),]
         col2 = [(t("matricula"), u.get('matricula','—')),
                 (t("telefono"), u.get('telefono','—')),
-            (t("fecha_nacimiento"), u.get('fecha_nacimiento','—')),
+                ("Dirección", u.get('direccion','—')),
+                (t("fecha_nacimiento"), u.get('fecha_nacimiento','—')),
             (t("tipo_sangre"), u.get('tipo_sangre','—')),
                 (t("rol"), rol.capitalize()),]
         col3 = []
@@ -439,6 +441,7 @@ class InformacionEscolarView:
                     correo,
                     fecha_nacimiento,
                     tipo_sangre,
+                    direccion,
                     carrera,
                     grado,
                     grupo,
@@ -474,6 +477,7 @@ class InformacionEscolarView:
                     'telefono':        telefono or '—',
                     'correo':          correo or '—',
                     'fecha_nacimiento': fecha_nacimiento or '—',
+                    'direccion': direccion or '—',
                     'tipo_sangre':     tipo_sangre or '—',
                     'carrera':         carrera,
                     'grado':           grado,
@@ -500,6 +504,7 @@ class InformacionEscolarView:
             self.tabla.insert("", "end", iid=str(u['id']), values=(
                 nombre_completo,
                 u['matricula'],
+                u.get('direccion', '—'),
                 u.get('fecha_nacimiento', '—'),
                 u.get('tipo_sangre', '—'),
                 u['rol'],
@@ -641,223 +646,201 @@ class InformacionEscolarView:
             messagebox.showwarning(t("atencion"), t("selecciona_usuario"))
             return
 
-        c     = self.colors
-        u     = self.usuario_seleccionado
+        c = self.colors
+        u = self.usuario_seleccionado
         color = ROL_COLOR.get(u.get('rol', ''), COLORS['primary'])
 
         def _val(key):
             v = u.get(key, '')
             return '' if v in ('—', None) else str(v)
 
-        # ── Variables compartidas ─────────────────────────────────────────────
         vars_ = {
-            'nombre':    tk.StringVar(value=_val('nombre')),
-            'paterno':   tk.StringVar(value=_val('apellido_paterno')),
-            'materno':   tk.StringVar(value=_val('apellido_materno')),
+            'nombre': tk.StringVar(value=_val('nombre')),
+            'paterno': tk.StringVar(value=_val('apellido_paterno')),
+            'materno': tk.StringVar(value=_val('apellido_materno')),
             'matricula': tk.StringVar(value=_val('matricula')),
-            'telefono':  tk.StringVar(value=_val('telefono')),
+            'telefono': tk.StringVar(value=_val('telefono')),
             'fecha_nacimiento': tk.StringVar(value=_val('fecha_nacimiento')),
+            'direccion': tk.StringVar(value=_val('direccion')),
             'tipo_sangre': tk.StringVar(value=_val('tipo_sangre')),
-            'rol':       tk.StringVar(value=u['rol']),
-            # específicos — se rellenan/vacían al cambiar rol
-            'facultad':  tk.StringVar(value=_val('facultad')),
-            'carrera':   tk.StringVar(value=_val('carrera')),
-            'grado':     tk.StringVar(value=_val('grado')),
-            'grupo':     tk.StringVar(value=_val('grupo')),
-            'materia':   tk.StringVar(value=_val('materia')),
-            'puesto':    tk.StringVar(value=_val('puesto')),
-            'area':      tk.StringVar(value=_val('area')),
+            'rol': tk.StringVar(value=u['rol']),
+            'facultad': tk.StringVar(value=_val('facultad')),
+            'carrera': tk.StringVar(value=_val('carrera')),
+            'grado': tk.StringVar(value=_val('grado')),
+            'grupo': tk.StringVar(value=_val('grupo')),
+            'materia': tk.StringVar(value=_val('materia')),
+            'puesto': tk.StringVar(value=_val('puesto')),
+            'area': tk.StringVar(value=_val('area')),
         }
+
         originales = {k: v.get() for k, v in vars_.items()}
 
-        # ── Ventana ───────────────────────────────────────────────────────────
+        # 🔥 MÁS CHICA PERO UTIL
         win = ctk.CTkToplevel(self.parent)
-        win.title(t("editar_usuario"))
         win.configure(fg_color=c['background'])
         win.grab_set()
-        win.resizable(True, True)
+        win.overrideredirect(True)
 
+        width, height = 340, 460
         root = self.parent.winfo_toplevel()
         root.update_idletasks()
-        width = min(root.winfo_width(), WINDOW_WIDTH)
-        height = min(root.winfo_height(), WINDOW_HEIGHT)
-        if width <= 1 or height <= 1:
-            width = min(getattr(root, "desired_width", WINDOW_WIDTH), WINDOW_WIDTH)
-            height = min(getattr(root, "desired_height", WINDOW_HEIGHT), WINDOW_HEIGHT)
-        x = root.winfo_rootx()
-        y = root.winfo_rooty()
-        win.geometry(f"{width}x{height}+{x}+{y}")
+        win.geometry(f"{width}x{height}+{root.winfo_rootx()}+{root.winfo_rooty()}")
         win.minsize(width, height)
+        win.maxsize(width, height)
 
-        # Header con color de rol
-        wh = ctk.CTkFrame(win, fg_color=color, corner_radius=0, height=54)
-        wh.pack(fill="x")
-        wh.pack_propagate(False)
+        # HEADER
+        header = ctk.CTkFrame(win, fg_color=color, height=42)
+        header.pack(fill="x")
 
-        icono_rol = ROL_ICONO.get(u['rol'], '👤')
-        nombre_completo = f"{_val('nombre')} {_val('apellido_paterno')}".strip()
-        ctk.CTkLabel(wh,
-        text=f"  {icono_rol}  {t('editar')} — {nombre_completo}",
-        font=FontScale.fb(13), text_color="white"
-    ).pack(side="left", padx=16, pady=14)
+        ctk.CTkLabel(
+            header,
+            text=f"{ROL_ICONO.get(u['rol'],'👤')} Editar",
+            text_color="white",
+            font=("Segoe UI", 11, "bold")
+        ).pack(side="left", padx=10)
 
-        # ── Scroll principal ──────────────────────────────────────────────────
-        scroll_outer = ctk.CTkScrollableFrame(win, fg_color="transparent")
-        scroll_outer.pack(fill="both", expand=True, padx=0, pady=0)
+        ctk.CTkButton(
+            header,
+            text="✕",
+            width=26,
+            height=24,
+            fg_color="transparent",
+            text_color="white",
+            command=win.destroy
+        ).pack(side="right", padx=6)
 
-        # ── Sección: Datos personales ─────────────────────────────────────────
-        def section_header(parent, texto, sec_color):
-            f = ctk.CTkFrame(parent, fg_color="transparent")
-            f.pack(fill="x", padx=20, pady=(14, 4))
-            ctk.CTkLabel(f, text=texto,
-                         font=("Segoe UI", 11, "bold"),
-                         text_color=sec_color).pack(side="left")
-            ctk.CTkFrame(f, fg_color=COLORS['border'],
-                         height=1, corner_radius=0).pack(side="left", fill="x", expand=True, padx=(8, 0))
+        scroll = ctk.CTkFrame(win, fg_color="transparent")
+        scroll.pack(fill="both", expand=True)
 
-        def make_entry(parent, label_text, var, key=None):
-            """Crea una fila label + entry y devuelve el CTkEntry."""
+        def make_entry(parent, label, var, key=None):
             row = ctk.CTkFrame(parent, fg_color="transparent")
-            row.pack(fill="x", padx=20, pady=4)
-            ctk.CTkLabel(row, text=label_text,
-                         font=("Segoe UI", 10),
-                         text_color=c['text_gray'],
-                         width=130, anchor="w").pack(side="left")
-            if key == "fecha_nacimiento":
-                e = DateEntry(
-                    row,
-                    date_pattern='dd-mm-yyyy',
-                    maxdate=datetime.now(),
-                    font=("Segoe UI", 11),
-                    textvariable=var,
-                )
-                if var.get().strip() not in ('', '—'):
-                    valor = var.get().strip()
-                    for fmt in ('%d-%m-%Y', '%Y-%m-%d'):
-                        try:
-                            e.set_date(datetime.strptime(valor, fmt))
-                            break
-                        except Exception:
-                            pass
-                e.bind("<<DateEntrySelected>>", lambda _event, v=var, widget=e: v.set(widget.get()))
+            row.pack(fill="x", padx=8, pady=1)
 
+            ctk.CTkLabel(
+                row,
+                text=label,
+                width=95,
+                anchor="w",
+                font=("Segoe UI", 9),
+                text_color=c['text_gray']
+            ).pack(side="left")
+
+            if key == "fecha_nacimiento":
+                e = DateEntry(row, date_pattern='dd-mm-yyyy',
+                              textvariable=var, width=9)
             elif key == "tipo_sangre":
                 e = ttk.Combobox(
                     row,
-                    values=[
-                        "A+", "A-",
-                        "B+", "B-",
-                        "AB+", "AB-",
-                        "O+", "O-"
-                    ],
+                    values=["A+","A-","B+","B-","AB+","AB-","O+","O-"],
                     state="readonly",
-                    font=("Segoe UI", 11),
                     textvariable=var,
+                    width=4
                 )
-                if var.get().strip() in e['values']:
-                    e.set(var.get().strip())
-
             else:
-                e = ctk.CTkEntry(row, textvariable=var,
-                                 font=("Segoe UI", 11), height=34,
-                                 corner_radius=8,
-                                 border_color=COLORS['border'],
-                                 fg_color=c['content_bg'],
-                                 text_color=c['text_dark'])
+                e = ctk.CTkEntry(row, textvariable=var, height=24,
+                                 font=("Segoe UI", 9))
             e.pack(side="left", fill="x", expand=True)
-            return e
 
-        section_header(scroll_outer, t("datos_personales"), color)
-        make_entry(scroll_outer, t("nombre_req"), vars_['nombre'])
-        make_entry(scroll_outer, t("apellido_paterno_req"), vars_['paterno'])
-        make_entry(scroll_outer, t("apellido_materno"), vars_['materno'])
-        make_entry(scroll_outer, t("matricula"), vars_['matricula'])
-        make_entry(scroll_outer, t("telefono"), vars_['telefono'])
-        make_entry(scroll_outer, t("fecha_nacimiento"), vars_['fecha_nacimiento'], key="fecha_nacimiento")
-        make_entry(scroll_outer, t("tipo_sangre"), vars_['tipo_sangre'], key="tipo_sangre")
+        # PERSONALES
+        make_entry(scroll, t("nombre_req"), vars_['nombre'])
+        make_entry(scroll, t("apellido_paterno_req"), vars_['paterno'])
+        make_entry(scroll, t("apellido_materno"), vars_['materno'])
+        make_entry(scroll, t("matricula"), vars_['matricula'])
+        make_entry(scroll, t("telefono"), vars_['telefono'])
+        make_entry(scroll, "Dirección", vars_['direccion'])
+        make_entry(scroll, t("fecha_nacimiento"), vars_['fecha_nacimiento'], "fecha_nacimiento")
+        make_entry(scroll, t("tipo_sangre"), vars_['tipo_sangre'], "tipo_sangre")
 
-        # Rol — combobox
-        rol_row = ctk.CTkFrame(scroll_outer, fg_color="transparent")
-        rol_row.pack(fill="x", padx=20, pady=4)
-        ctk.CTkLabel(rol_row, text=t("rol"),
-                     font=("Segoe UI", 10),
-                     text_color=c['text_gray'],
-                     width=130, anchor="w").pack(side="left")
-        combo_rol = ttk.Combobox(rol_row, textvariable=vars_['rol'],
-                                  values=["alumno", "maestro", "personal"],
-                                  state="readonly", width=24,
-                                  font=("Segoe UI", 11),
-                                  style='Dark.TCombobox')
+        # 🔹 ROL (FIX)
+        rol_row = ctk.CTkFrame(scroll, fg_color="transparent")
+        rol_row.pack(fill="x", padx=8, pady=4)
+
+        ctk.CTkLabel(
+            rol_row,
+            text=t("rol"),
+            width=95,
+            anchor="w",
+            font=("Segoe UI", 9),
+            text_color=c['text_gray']
+        ).pack(side="left")
+
+        combo_rol = ttk.Combobox(
+            rol_row,
+            textvariable=vars_['rol'],
+            values=["alumno", "maestro", "personal"],
+            state="readonly",
+            width=10
+        )
         combo_rol.pack(side="left")
 
-        # ── Sección dinámica (se destruye y recrea al cambiar rol) ────────────
-        self._sec_rol_frame = ctk.CTkFrame(scroll_outer, fg_color="transparent")
-        self._sec_rol_frame.pack(fill="x")
+        role_frame = ctk.CTkFrame(scroll, fg_color="transparent")
+        role_frame.pack(fill="x")
 
-        def construir_seccion_rol(*_):
-            # Limpiar sección anterior
-            for w in self._sec_rol_frame.winfo_children():
+        def build_role(*_):
+            for w in role_frame.winfo_children():
                 w.destroy()
 
             rol = vars_['rol'].get()
 
-            TITULOS = {
-                'alumno':   (t("info_academica"), "#4A90D9"),
-                'maestro':  (t("info_docente"), "#27AE60"),
-                'personal': (t("info_laboral"), "#E67E22"),
-            }
-            titulo, col_sec = TITULOS.get(rol, ("Datos adicionales", color))
-            section_header(self._sec_rol_frame, titulo, col_sec)
+            if rol == "alumno":
+                make_entry(role_frame, t("facultad"), vars_['facultad'])
+                make_entry(role_frame, t("carrera"), vars_['carrera'])
+                make_entry(role_frame, t("grado"), vars_['grado'])
+                make_entry(role_frame, t("grupo"), vars_['grupo'])
 
-            if rol == 'alumno':
-                make_entry(self._sec_rol_frame, t("facultad"),  vars_['facultad'])
-                make_entry(self._sec_rol_frame, t("carrera"),   vars_['carrera'])
-                make_entry(self._sec_rol_frame, t("grado"),     vars_['grado'])
-                make_entry(self._sec_rol_frame, t("grupo"),     vars_['grupo'])
+            elif rol == "maestro":
+                make_entry(role_frame, t("grado_imparte"), vars_['grado'])
+                make_entry(role_frame, t("materia"), vars_['materia'])
 
-            elif rol == 'maestro':
-                make_entry(self._sec_rol_frame, t("grado_imparte"), vars_['grado'])
-                make_entry(self._sec_rol_frame, t("materia"),        vars_['materia'])
+            else:
+                make_entry(role_frame, t("puesto"), vars_['puesto'])
+                make_entry(role_frame, t("area"), vars_['area'])
 
-            elif rol == 'personal':
-                make_entry(self._sec_rol_frame, t("puesto"), vars_['puesto'])
-                make_entry(self._sec_rol_frame, t("area"),   vars_['area'])
+        combo_rol.bind("<<ComboboxSelected>>", build_role)
+        build_role()
 
-        combo_rol.bind("<<ComboboxSelected>>", construir_seccion_rol)
-        construir_seccion_rol()   # construir con el rol actual
+        # 🔥 BOTONES MEJORADOS
+        btns = ctk.CTkFrame(win, fg_color="transparent")
+        btns.pack(fill="x", padx=6, pady=4)
 
-        # ── Botones ───────────────────────────────────────────────────────────
-        sep = ctk.CTkFrame(win, fg_color=COLORS['border'], height=1, corner_radius=0)
-        sep.pack(fill="x", pady=(8, 0))
+        btn_guardar = ctk.CTkButton(
+            btns,
+            text="💾",
+            width=60,
+            height=26,
+            fg_color=c['primary'],
+            font=("Segoe UI", 9, "bold"),
+            state="disabled",
+            command=lambda: self._guardar_edicion(u['id'], vars_, win)
+        )
+        btn_guardar.pack(side="left", padx=2)
 
-        btn_row = ctk.CTkFrame(win, fg_color=c['card_bg'])
-        btn_row.pack(fill="x", padx=20, pady=12)
+        ctk.CTkButton(
+            btns,
+            text="📸",
+            width=60,
+            height=26,
+            fg_color=c['accent'],
+            font=("Segoe UI", 9, "bold"),
+            command=lambda: self._retomar_fotos(u, win)
+        ).pack(side="left", padx=2)
 
-        btn_guardar = ctk.CTkButton(btn_row, text="💾  " + t("guardar"),
-                      fg_color=c['primary'], hover_color=COLORS['primary_dark'],
-                      text_color="#ffffff", font=("Segoe UI", 12, "bold"),
-                      corner_radius=10, height=38, state="disabled",
-                      command=lambda: self._guardar_edicion(u['id'], vars_, win))
-        btn_guardar.pack(side="left", padx=(0, 8))
+        ctk.CTkButton(
+            btns,
+            text="✖",
+            width=60,
+            height=26,
+            fg_color=c['content_bg'],
+            text_color=c['text_dark'],
+            command=win.destroy
+        ).pack(side="right", padx=2)
 
-        ctk.CTkButton(btn_row, text="🔁  " + t("retomar_fotos"),
-                      fg_color=c['accent'], hover_color="#D97706",
-                      text_color="#ffffff", font=("Segoe UI", 12, "bold"),
-                      corner_radius=10, height=38,
-                      command=lambda: self._retomar_fotos(u, win)).pack(side="left", padx=(0, 8))
-
-        ctk.CTkButton(btn_row, text=t("cancelar"),
-                      fg_color=c['content_bg'], hover_color=COLORS['border'],
-                      text_color=c['text_dark'], font=("Segoe UI", 12, "bold"),
-                      corner_radius=10, height=38,
-                      command=win.destroy).pack(side="left")
-
-        def detectar_cambios(*_):
+        def detectar(*_):
             changed = any(v.get() != originales[k] for k, v in vars_.items())
             btn_guardar.configure(state="normal" if changed else "disabled")
 
         for v in vars_.values():
-            v.trace_add("write", detectar_cambios)
+            v.trace_add("write", detectar)
 
     def _guardar_edicion(self, user_id, vars_, ventana):
         g = lambda k: vars_[k].get().strip()
@@ -1020,6 +1003,7 @@ class InformacionEscolarView:
                     correo,
                     fecha_nacimiento,
                     tipo_sangre,
+                    direccion,
                     carrera,
                     grado,
                     grupo,
