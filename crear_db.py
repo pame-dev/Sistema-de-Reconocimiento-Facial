@@ -13,10 +13,18 @@ def crear_base_datos():
     
     # Ruta donde se creará la DB
     db_path = 'database/sistema_biometrico.db'
-    
+
     # Asegurar que la carpeta existe
     os.makedirs('database', exist_ok=True)
-    
+
+    # Si existe la base de datos, eliminarla para recrear desde cero
+    if os.path.exists(db_path):
+        try:
+            print(f"🗑️  Base de datos existente encontrada. Eliminando: {db_path}")
+            os.remove(db_path)
+        except Exception as e:
+            print(f"⚠️  Error al eliminar la base de datos existente: {e}")
+
     # Conectar (esto crea el archivo si no existe)
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
