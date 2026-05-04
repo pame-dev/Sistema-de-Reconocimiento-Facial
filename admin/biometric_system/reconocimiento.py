@@ -110,8 +110,8 @@ class ReconocerFacial:
 
         # ── Parámetros de reconocimiento ───────────────────────────────────────
         # En LBPH "conf" es una distancia/error: más bajo = mejor match.
-        self.tolerancia           = 90.0   # distancia máxima para considerar match
-        self._TOLERANCIA_MIN      = 90.0
+        self.tolerancia           = 80.0   # distancia máxima para considerar match
+        self._TOLERANCIA_MIN      = 80.0
         self._TOLERANCIA_MAX      = 130.0
 
         # ── Votación ───────────────────────────────────────────────────────────
@@ -574,13 +574,13 @@ class ReconocerFacial:
         if not distancias:
             return
 
-        umbral = float(np.percentile(distancias, 95)) + 20.0
+        umbral = float(np.percentile(distancias, 95)) + 10.0
 
         # Antes había un cap de 92 cuando había pocos usuarios, eso suele
         # causar demasiados "Desconocido" en condiciones reales.
         # Con pocos usuarios, mejor permitir un poco más y luego calibrar.
         if len(self.nombres) <= 2:
-            umbral = min(umbral, 115.0)
+            umbral = min(umbral, 105.0)
 
         self.tolerancia = min(self._TOLERANCIA_MAX,
                               max(self._TOLERANCIA_MIN, umbral))
