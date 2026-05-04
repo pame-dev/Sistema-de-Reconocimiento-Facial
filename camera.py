@@ -113,7 +113,15 @@ class Camera:
             return
         try:
             if self.backend == "picamera2":
-                self.cap.stop()
+                try:
+                    self.cap.stop()
+                except Exception:
+                    pass
+                try:
+                    # clave: liberar el recurso del sistema
+                    self.cap.close()
+                except Exception:
+                    pass
             else:
                 self.cap.release()
         finally:
