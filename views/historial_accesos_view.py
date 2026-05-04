@@ -20,12 +20,28 @@ class HistorialAccesosView:
         self.colors = get_colors()
         self.parent = parent
         self.container = ctk.CTkFrame(parent, fg_color=self.colors['background'])
+        self.container.view = self
         self.container.pack(fill="both", expand=True, padx=24, pady=20)
 
         self.datos = []
         self._placeholder_activo = True
 
         self.crear_interfaz()
+
+    def destroy(self):
+        try:
+            self.entrada_busqueda.unbind("<FocusIn>")
+            self.entrada_busqueda.unbind("<FocusOut>")
+            self.entrada_busqueda.unbind("<KeyRelease>")
+        except Exception:
+            pass
+        try:
+            self.filtro_estado.unbind('<<ComboboxSelected>>')
+        except Exception:
+            pass
+
+    def _is_alive(self):
+        return getattr(self, 'container', None) is not None and self.container.winfo_exists()
 
     # ── Utilidad: aplica estilo ttk con los colores actuales ──────────────────
     def _aplicar_estilo_tabla(self):
@@ -40,14 +56,14 @@ class HistorialAccesosView:
             foreground=c['tree_fg'],
             rowheight=32,
             borderwidth=0,
-            font=("Segoe UI", 11),
+            font=FontScale.f(11),
         )
 
         style.configure(
             'Dark.Treeview.Heading',
             background=c['tree_head_bg'],
             foreground=c['tree_head_fg'],
-            font=("Segoe UI", 11, "bold"),
+            font=FontScale.fb(11),
             relief='flat',
             padding=6,
         )
@@ -346,18 +362,24 @@ class HistorialAccesosView:
         return lbl
 
     def limpiar_placeholder(self, event):
+        if not self._is_alive():
+            return
         if self._placeholder_activo:
             self.entrada_busqueda.delete(0, tk.END)
             self.entrada_busqueda.configure(text_color=self.colors['text_dark'])
             self._placeholder_activo = False
 
     def restaurar_placeholder(self, event):
+        if not self._is_alive():
+            return
         if not self.entrada_busqueda.get():
             self.entrada_busqueda.insert(0, t("placeholder_usuario"))
             self.entrada_busqueda.configure(text_color=self.colors['text_gray'])
             self._placeholder_activo = True
 
     def cargar_datos(self):
+        if not self._is_alive():
+            return
         try:
             conn = get_db()
 
@@ -397,6 +419,8 @@ class HistorialAccesosView:
             messagebox.showerror(t("error"), f"{str(e)}")
 
     def filtrar_tabla(self):
+        if not self._is_alive():
+            return
         for item in self.tree.get_children():
             self.tree.delete(item)
 
@@ -445,6 +469,8 @@ class HistorialAccesosView:
         )
 
     def limpiar_historial(self):
+        if not self._is_alive():
+            return
         respuesta = messagebox.askyesno(
             t("confirmar"),
             t("pregunta_limpiar_historial")

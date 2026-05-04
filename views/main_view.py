@@ -533,6 +533,12 @@ class MainView:
     def clear_content(self):
         self._stop_camera()
         for w in self.content_frame.winfo_children():
+            view = getattr(w, 'view', None)
+            if view and hasattr(view, 'destroy'):
+                try:
+                    view.destroy()
+                except Exception:
+                    pass
             w.destroy()
 
     # ══════════════════════════════════════════════════════════════════════════
