@@ -74,7 +74,6 @@ CAMPOS_COMUNES = [
     ("correo", "correoUsuario", True),
     ("fecha_nacimiento", "fechaNacimientoUsuario", True),
     ("tipo_sangre", "tipoSangreUsuario", True),
-    ("direccion", "direccionUsuario", True),
 ]
 
 # ─────────────────────────────────────────────
