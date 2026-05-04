@@ -46,6 +46,7 @@ class MainView:
         self._cam_photo     = None
         self._frame_pending = False
         self._zoom_popover  = None
+        self._zoom_manual   = False
         self._nuevo_registro_view  = None
         self._nuevo_registro_state = None
         self._informacion_escolar_view = None
@@ -87,19 +88,34 @@ class MainView:
     # ══════════════════════════════════════════════════════════════════════════
     def _bind_zoom_keys(self):
         root = self.parent.winfo_toplevel()
-        root.bind_all("<Control-plus>",        lambda e: self._zoom(ZOOM_STEP))
-        root.bind_all("<Control-equal>",       lambda e: self._zoom(ZOOM_STEP))
-        root.bind_all("<Control-Shift-equal>", lambda e: self._zoom(ZOOM_STEP))
-        root.bind_all("<Control-KP_Add>",      lambda e: self._zoom(ZOOM_STEP))
-        root.bind_all("<Control-minus>",       lambda e: self._zoom(-ZOOM_STEP))
-        root.bind_all("<Control-KP_Subtract>", lambda e: self._zoom(-ZOOM_STEP))
-        root.bind_all("<Control-0>",           lambda e: self._zoom_reset())
+
+        def zoom_in(event):
+            self._zoom(ZOOM_STEP)
+            return "break"
+
+        def zoom_out(event):
+            self._zoom(-ZOOM_STEP)
+            return "break"
+
+        def zoom_reset(event):
+            self._zoom_reset()
+            return "break"
+
+        root.bind_all("<Control-plus>",        zoom_in)
+        root.bind_all("<Control-equal>",       zoom_in)
+        root.bind_all("<Control-Shift-equal>", zoom_in)
+        root.bind_all("<Control-KP_Add>",      zoom_in)
+        root.bind_all("<Control-minus>",       zoom_out)
+        root.bind_all("<Control-KP_Subtract>", zoom_out)
+        root.bind_all("<Control-0>",           zoom_reset)
+        root.bind_all("<Control-KP_0>",        zoom_reset)
 
     def _zoom(self, delta):
         nueva = round(FontScale.get() + delta, 2)
         if not (ZOOM_MIN <= nueva <= ZOOM_MAX):
             return
         FontScale.set(nueva)
+        self._zoom_manual = True
         self._actualizar_btn_zoom()
         self._recargar_vista()
         self._cerrar_popover()
@@ -108,6 +124,7 @@ class MainView:
         if FontScale.get() == 1.0:
             return
         FontScale.set(1.0)
+        self._zoom_manual = True
         self._actualizar_btn_zoom()
         self._recargar_vista()
         self._cerrar_popover()
@@ -138,6 +155,18 @@ class MainView:
 
     def _on_root_configure(self, event):
         try:
+            if self._zoom_manual:
+                # Si el usuario ya ajustó manualmente el zoom, no sobreescribirlo
+                try:
+                    pct = round(FontScale.get() * 100)
+                    if hasattr(self, '_btn_zoom'):
+                        self._btn_zoom.configure(text=f"🔍 {pct}%")
+                except Exception:
+                    pass
+                if self._vista_actual == "pantalla_accesos":
+                    self._sincronizar_layout_pantalla_accesos()
+                return
+
             # Base design for scaling (use app start size if available)
             base_w, base_h = self._base_w, self._base_h
             w = max(320, event.width)
@@ -319,6 +348,7 @@ class MainView:
         if nueva == FontScale.get():
             return
         FontScale.set(nueva)
+        self._zoom_manual = True
         pct = round(FontScale.get() * 100)
         try:
             self._zoom_pct_lbl.configure(text=f"{pct}%")
