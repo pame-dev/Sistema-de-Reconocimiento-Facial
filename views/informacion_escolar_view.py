@@ -302,7 +302,7 @@ class InformacionEscolarView:
         scroll_x.pack(side="bottom", fill="x", pady=(0, 4))
 
         self.tabla = ttk.Treeview(self.tabla_frame,
-            columns=("nombre", "matricula", "direccion", "fecha_nacimiento", "tipo_sangre", "rol", "fotos"),
+            columns=("nombre", "matricula", "fecha_nacimiento", "tipo_sangre", "rol", "fotos"),
             show="headings",
             yscrollcommand=scroll_y.set,
             xscrollcommand=scroll_x.set,
@@ -315,7 +315,6 @@ class InformacionEscolarView:
             ("nombre",    t("nombre_completo"), 260, "w"),
             ("matricula", t("matricula"), 130, "center"),
             ("fecha_nacimiento", t("fecha_nacimiento"), 115, "center"),
-            ("direccion", t("direccion"), 200, "w"),
             ("tipo_sangre", t("tipo_sangre"), 95, "center"),
             ("rol",       t("rol"), 110, "center"),
             ("fotos", f"📸 {t('fotos')}", 80, "center"),
@@ -385,7 +384,6 @@ class InformacionEscolarView:
                 (t("apellido_materno"), u.get('apellido_materno','—')),]
         col2 = [(t("matricula"), u.get('matricula','—')),
                 (t("telefono"), u.get('telefono','—')),
-                ("Dirección", u.get('direccion','—')),
                 (t("fecha_nacimiento"), u.get('fecha_nacimiento','—')),
             (t("tipo_sangre"), u.get('tipo_sangre','—')),
                 (t("rol"), rol.capitalize()),]
@@ -482,7 +480,6 @@ class InformacionEscolarView:
                     'telefono':        telefono or '—',
                     'correo':          correo or '—',
                     'fecha_nacimiento': fecha_nacimiento or '—',
-                    'direccion': direccion or '—',
                     'tipo_sangre':     tipo_sangre or '—',
                     'carrera':         carrera,
                     'grado':           grado,
@@ -511,7 +508,6 @@ class InformacionEscolarView:
             self.tabla.insert("", "end", iid=str(u['id']), values=(
                 nombre_completo,
                 u['matricula'],
-                u.get('direccion', '—'),
                 u.get('fecha_nacimiento', '—'),
                 u.get('tipo_sangre', '—'),
                 u['rol'],
@@ -699,7 +695,6 @@ class InformacionEscolarView:
             'matricula': tk.StringVar(value=_val('matricula')),
             'telefono': tk.StringVar(value=_val('telefono')),
             'fecha_nacimiento': tk.StringVar(value=_val('fecha_nacimiento')),
-            'direccion': tk.StringVar(value=_val('direccion')),
             'tipo_sangre': tk.StringVar(value=_val('tipo_sangre')),
             'rol': tk.StringVar(value=u['rol']),
             'facultad': tk.StringVar(value=_val('facultad')),
@@ -785,7 +780,6 @@ class InformacionEscolarView:
         make_entry(scroll, t("apellido_materno"), vars_['materno'])
         make_entry(scroll, t("matricula"), vars_['matricula'])
         make_entry(scroll, t("telefono"), vars_['telefono'])
-        make_entry(scroll, "Dirección", vars_['direccion'])
         make_entry(scroll, t("fecha_nacimiento"), vars_['fecha_nacimiento'], "fecha_nacimiento")
         make_entry(scroll, t("tipo_sangre"), vars_['tipo_sangre'], "tipo_sangre")
 
@@ -1041,7 +1035,6 @@ class InformacionEscolarView:
                     correo,
                     fecha_nacimiento,
                     tipo_sangre,
-                    direccion,
                     carrera,
                     grado,
                     grupo,

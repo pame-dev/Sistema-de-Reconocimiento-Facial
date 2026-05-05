@@ -39,6 +39,13 @@ class CapturaBiometricaMixin:
     También espera que la clase base inicialice los detectores Haar.
     """
 
+    _CAPTURA_SMALL_BREAKPOINT = 900
+    # Perfil balanceado en pantalla pequeña: más espacio para la guía.
+    _CAPTURA_SMALL_CAM_RATIO = 0.22
+    _CAPTURA_SMALL_CAM_MIN_H = 140
+    _CAPTURA_SMALL_CAM_MAX_H = 180
+    _CAPTURA_SMALL_GUIA_MIN_H = 220
+
     # ── Pantalla principal de captura ─────────────────────────────────────────
     def _mostrar_captura(self):
         self._anim_activa = False
@@ -54,11 +61,11 @@ class CapturaBiometricaMixin:
         ctk.CTkButton(header, text="← " + t("volver_formulario"),
                       fg_color='#16A34A', hover_color="#15803D",
                       text_color="#ffffff",
-                      font=("Segoe UI", 15, "bold"),
+                      font=("Segoe UI", 8, "bold"),
                       corner_radius=8, height=32,
                       command=self._volver_formulario).pack(side="left")
         ctk.CTkLabel(header,text=t("paso_captura"),
-                     font=("Segoe UI", 12),
+                     font=("Segoe UI", 8),
                      text_color=c['text_gray']).pack(side="left", padx=15)
 
         ttk.Separator(self.container, orient="horizontal").pack(fill="x", pady=(0, 8))
@@ -74,64 +81,155 @@ class CapturaBiometricaMixin:
 
         body = ctk.CTkFrame(self.container, fg_color="transparent")
         body.pack(fill="both", expand=True)
+        self._captura_body = body
 
         self.panel_guia = ctk.CTkFrame(body, fg_color=c['card_bg'],
-                                        width=260, corner_radius=12,
-                                        border_width=1, border_color=COLORS['border'])
+                width=340, height=600, corner_radius=12,
+                        border_width=1, border_color=COLORS['border'])
         self.panel_guia.pack(side="left", fill="y", padx=(0, 10))
         self.panel_guia.pack_propagate(False)
 
-        cam_panel = ctk.CTkFrame(body, fg_color=c['card_bg'],
-                                  corner_radius=12, border_width=1,
-                                  border_color=COLORS['border'])
-        cam_panel.pack(side="left", fill="both", expand=True)
+        # Columna que agrupa cámara arriba y controles (estado+botones) abajo
+        cam_column = ctk.CTkFrame(body, fg_color="transparent")
+        cam_column.pack(side="left", fill="both", expand=True)
+        self._captura_cam_column = cam_column
+
+        cam_panel = ctk.CTkFrame(cam_column, fg_color=c['card_bg'],
+                      corner_radius=12, border_width=1,
+                      border_color=COLORS['border'])
+        cam_panel.pack(side="top", fill="both", expand=True)
+        self._captura_cam_panel = cam_panel
+
+        # Controles (estado, subestado, botones) en una sección separada
+        controls_frame = ctk.CTkFrame(cam_column, fg_color="transparent")
+        controls_frame.pack(side="top", fill="x")
+        self._captura_controls = controls_frame
 
         self.video_label = tk.Label(cam_panel, bg=COLORS['content_bg'])
         self.video_label.pack(fill="both", expand=True, padx=8, pady=(8, 4))
 
-        self.bar_postura_ctk = ctk.CTkProgressBar(cam_panel, height=8,
-                                                    corner_radius=4,
-                                                    progress_color=color,
-                                                    fg_color=COLORS['border'])
+        self.bar_postura_ctk = ctk.CTkProgressBar(self._captura_cam_panel, height=8,
+                                corner_radius=4,
+                                progress_color=color,
+                                fg_color=COLORS['border'])
         self.bar_postura_ctk.set(0)
         self.bar_postura_ctk.pack(fill="x", padx=8, pady=(0, 4))
-
-        estado_panel = ctk.CTkFrame(cam_panel, fg_color=c['content_bg'], corner_radius=8)
-        estado_panel.pack(fill="x", padx=8, pady=(0, 8))
+        estado_panel = ctk.CTkFrame(self._captura_controls, fg_color=c['content_bg'], corner_radius=8)
+        estado_panel.pack(fill="x", padx=6, pady=(2, 2))
 
         self.lbl_estado = ctk.CTkLabel(estado_panel,
-                                        text=t("iniciando_camara_estado"),
-                                        font=("Segoe UI", 13, "bold"),
-                                        text_color=c['text_gray'])
-        self.lbl_estado.pack(pady=6)
+                text=t("iniciando_camara_estado"),
+                font=("Segoe UI", 13, "bold"),
+                text_color=c['text_gray'])
+        self.lbl_estado.pack(pady=(2, 0))
 
         self.lbl_sub_estado = ctk.CTkLabel(estado_panel, text="",
-                                            font=("Segoe UI", 10),
-                                            text_color=c['text_gray'])
-        self.lbl_sub_estado.pack(pady=(0, 6))
+                    font=("Segoe UI", 10),
+                    text_color=c['text_gray'])
+        self.lbl_sub_estado.pack(pady=(0, 2))
 
-        btn_row = ctk.CTkFrame(cam_panel, fg_color="transparent")
-        btn_row.pack(fill="x", padx=8, pady=(0, 8))
+        btn_row = ctk.CTkFrame(estado_panel, fg_color="transparent")
+        btn_row.pack(fill="x", padx=4, pady=(2, 2))
 
         self._btn_pausar = ctk.CTkButton(btn_row, text=t("pausar"),
-                                          fg_color=c['accent'], hover_color="#D97706",
-                                          text_color="#ffffff",
-                                          font=("Segoe UI", 11, "bold"),
-                                          corner_radius=8, height=32, width=110,
-                                          command=self._toggle_pausa)
+                  fg_color=c['accent'], hover_color="#D97706",
+                  text_color="#ffffff",
+                  font=("Segoe UI", 10, "bold"),
+                  corner_radius=6, height=26, width=86,
+                  command=self._toggle_pausa)
         self._btn_pausar.pack(side="right", padx=(4, 0))
 
         ctk.CTkButton(btn_row, text=t("cancelar"),
-                      fg_color="#DC2626", hover_color="#B91C1C",
-                      text_color="#ffffff",
-                      font=("Segoe UI", 11, "bold"),
-                      corner_radius=8, height=32, width=110,
-                      command=self._cancelar_captura).pack(side="right", padx=(0, 4))
+              fg_color="#DC2626", hover_color="#B91C1C",
+              text_color="#ffffff",
+              font=("Segoe UI", 10, "bold"),
+              corner_radius=6, height=26, width=86,
+              command=self._cancelar_captura).pack(side="right", padx=(0, 4))
+
+        self._setup_captura_responsive()
 
         self._construir_panel_guia(color)
         self._precache_engines_duplicado()
         self._disable_top_controls()
         self._iniciar_camara_auto()
+
+    def _setup_captura_responsive(self):
+        # Evita registrar múltiples handlers al volver a abrir la vista de captura.
+        bind_id = getattr(self, "_captura_resize_bind_id", None)
+        if bind_id:
+            try:
+                self.container.unbind("<Configure>", bind_id)
+            except Exception:
+                pass
+
+        self._captura_layout_vertical = None
+        self._captura_resize_bind_id = self.container.bind(
+            "<Configure>", self._on_captura_container_resize, add="+"
+        )
+
+        try:
+            self.container.update_idletasks()
+            width = self.container.winfo_width()
+        except Exception:
+            width = 0
+        self._apply_captura_layout(width)
+
+    def _on_captura_container_resize(self, event):
+        if event.widget is not self.container:
+            return
+        self._apply_captura_layout(event.width)
+
+    def _apply_captura_layout(self, width):
+        body = getattr(self, "_captura_body", None)
+        cam_panel = getattr(self, "_captura_cam_panel", None)
+        cam_column = getattr(self, "_captura_cam_column", None)
+        panel_guia = getattr(self, "panel_guia", None)
+
+        if not body or not cam_panel or not panel_guia:
+            return
+        if not (body.winfo_exists() and cam_panel.winfo_exists() and panel_guia.winfo_exists()):
+            return
+
+        small = width < self._CAPTURA_SMALL_BREAKPOINT
+        if small == getattr(self, "_captura_layout_vertical", None):
+            return
+
+        try:
+            if cam_column and cam_column.winfo_exists():
+                cam_column.pack_forget()
+            panel_guia.pack_forget()
+        except Exception:
+            pass
+
+        if small:
+            # Pantalla compacta: cámara arriba, guía de posturas abajo.
+            try:
+                body_h = body.winfo_height() or self.container.winfo_height() or 640
+            except Exception:
+                body_h = 640
+
+            cam_h = int(body_h * self._CAPTURA_SMALL_CAM_RATIO)
+            cam_h = max(self._CAPTURA_SMALL_CAM_MIN_H, min(self._CAPTURA_SMALL_CAM_MAX_H, cam_h))
+            if cam_panel:
+                cam_panel.configure(height=cam_h)
+                cam_panel.pack_propagate(False)
+            if cam_column:
+                cam_column.pack(side="top", fill="x", expand=False, pady=(0, 8))
+
+            panel_guia.configure(width=0)
+            panel_guia.pack(side="top", fill="x", expand=False, padx=(0, 0), pady=(0, 0))
+            panel_guia.pack_propagate(True)
+        else:
+            panel_guia.configure(width=260)
+            panel_guia.pack(side="left", fill="y", padx=(0, 10), pady=(0, 0))
+            panel_guia.pack_propagate(False)
+            if cam_panel:
+                cam_panel.configure(height=0)
+                cam_panel.pack_propagate(True)
+            if cam_column:
+                cam_column.pack(side="left", fill="both", expand=True, pady=(0, 0))
+
+        self._captura_layout_vertical = small
 
     def _precache_engines_duplicado(self):
         # Precarga en segundo plano para que la alerta de inactivos no llegue tarde.
@@ -173,37 +271,75 @@ class CapturaBiometricaMixin:
 
         postura = POSTURAS[self.postura_idx]
         c       = self.colors
+        small_layout = bool(getattr(self, "_captura_layout_vertical", False))
+        try:
+            guia_h = self.panel_guia.winfo_height()
+        except Exception:
+            guia_h = 0
+        compact = small_layout or (0 < guia_h < self._CAPTURA_SMALL_GUIA_MIN_H + 40)
 
-        ctk.CTkLabel(self.panel_guia,
-                     text=f"{t('postura')} {self.postura_idx + 1} / {len(POSTURAS)}" ,
-                     font=("Segoe UI", 10), text_color=c['text_gray']).pack(pady=(12, 0))
-        ctk.CTkLabel(self.panel_guia, text=t(postura["titulo"]),
-                     font=("Segoe UI", 13, "bold"),
-                     text_color=color, wraplength=220, justify="center").pack(pady=(2, 8))
+        titulo_font = ("Segoe UI", 10 if compact else 13, "bold")
+        text_font = ("Segoe UI", 8 if compact else 10)
+        img_size = 160 if compact else 280
+        wrap_title = 260 if compact else 320
+        wrap_info = 220 if compact else 300
+        side_pad = 2 if compact else 6
 
-        img_path   = os.path.join(os.path.dirname(os.path.dirname(__file__)), postura["imagen"])
+        # Estructura: imagen (izq) | información y lista de posturas (der)
+        top_frame = ctk.CTkFrame(self.panel_guia, fg_color="transparent")
+        top_frame.pack(fill="x", pady=(2 if compact else 8, 2))
+
+        img_frame = ctk.CTkFrame(top_frame, fg_color="transparent", width=img_size)
+        img_frame.pack(side="left", padx=(0, 4))
+        img_frame.pack_propagate(False)
+
+        info_frame = ctk.CTkFrame(top_frame, fg_color="transparent")
+        info_frame.pack(side="left", fill="both", expand=True, padx=(0, max(0, side_pad-2)))
+
+        # Título e instrucción en la columna derecha (más compactos)
+        ctk.CTkLabel(info_frame,
+                 text=f"{t('postura')} {self.postura_idx + 1} / {len(POSTURAS)}",
+                 font=text_font, text_color=c['text_gray']).pack(anchor="w", pady=(0, 0))
+        ctk.CTkLabel(info_frame, text=t(postura["titulo"]),
+                 font=titulo_font,
+                 text_color=color, wraplength=wrap_title, justify="left").pack(anchor="w", pady=(0, 0))
+
+        # Imagen en la columna izquierda
+        img_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), postura["imagen"])
         img_loaded = False
         if os.path.exists(img_path):
             try:
-                img   = Image.open(img_path).resize((160, 160), Image.LANCZOS)
+                img = Image.open(img_path).resize((img_size, img_size), Image.LANCZOS)
                 photo = ImageTk.PhotoImage(img)
-                lbl_img       = tk.Label(self.panel_guia, image=photo, bg=COLORS['card_bg'])
+                lbl_img = tk.Label(img_frame, image=photo, bg=COLORS['card_bg'])
                 lbl_img.image = photo
-                lbl_img.pack(pady=4)
+                lbl_img.pack(expand=True, pady=1, padx=(0, 0))
                 img_loaded = True
             except Exception:
-                pass
+                img_loaded = False
         if not img_loaded:
-            ctk.CTkLabel(self.panel_guia, text=postura["icono"],
-                         font=("Segoe UI Emoji", 54)).pack(pady=8)
+            ctk.CTkLabel(img_frame, text=postura["icono"],
+                         font=("Segoe UI Emoji", 22 if compact else 54)).pack(expand=True, pady=1, padx=(0, 0))
 
-        ctk.CTkLabel(self.panel_guia, text=t(postura["instruccion"]),
-                     font=("Segoe UI", 10), text_color=c['text_dark'],
-                     wraplength=210, justify="center").pack(pady=(4, 10))
+        # Lista compacta de posturas a la derecha, debajo de título/instrucción
+        list_frame = ctk.CTkFrame(info_frame, fg_color="transparent")
+        list_frame.pack(fill="both", expand=True)
 
+        # Separador visual
         ctk.CTkFrame(self.panel_guia, fg_color=COLORS['border'],
-                     height=1, corner_radius=0).pack(fill="x", padx=14, pady=4)
+                     height=1, corner_radius=0).pack(fill="x", padx=max(4, side_pad-2), pady=1)
 
+        # Dos columnas: main_col (frente/izquierda/derecha) y side_col (perfiles)
+        main_col = ctk.CTkFrame(list_frame, fg_color="transparent")
+        side_col = ctk.CTkFrame(list_frame, fg_color="transparent")
+
+        list_frame.grid_columnconfigure(0, weight=1)
+        list_frame.grid_columnconfigure(1, weight=0)
+
+        main_col.grid(row=0, column=0, sticky="nsew")
+        side_col.grid(row=0, column=1, sticky="nsew", padx=(2, 0))
+
+        list_padx = max(0, side_pad-2)
         for i, p in enumerate(POSTURAS):
             if i in self.posturas_completadas:
                 icono, fg = "✅", COLORS['primary']
@@ -211,10 +347,12 @@ class CapturaBiometricaMixin:
                 icono, fg = "▶", color
             else:
                 icono, fg = "○", COLORS['text_gray']
-            ctk.CTkLabel(self.panel_guia,
-                         text=f" {icono}  {t(p['titulo'])}",
-                         font=("Segoe UI", 10),
-                         text_color=fg, anchor="w").pack(fill="x", padx=14, pady=1)
+
+            target = side_col if p.get('id') in ("perfil_izq", "perfil_der") else main_col
+            ctk.CTkLabel(target,
+                         text=f"{icono} {t(p['titulo'])}",
+                         font=text_font,
+                         text_color=fg, anchor="w").pack(fill="x", padx=1, pady=(0, 0))
 
     # ── Cámara y detección ────────────────────────────────────────────────────
     def _iniciar_camara_auto(self):
