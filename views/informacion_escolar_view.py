@@ -253,7 +253,7 @@ class InformacionEscolarView:
         self.lbl_conteo = ctk.CTkLabel(self.filtros_bottom, text="",
                                         font=("Segoe UI", 11),
                                         text_color=c['text_gray'])
-        self.lbl_conteo.pack(side="right", padx=14)
+        self.lbl_conteo.pack(side="right", padx=4)
 
         # Panel de detalles (oculto)
         self.detalles_frame = ctk.CTkFrame(self.container, fg_color=c['card_bg'],
