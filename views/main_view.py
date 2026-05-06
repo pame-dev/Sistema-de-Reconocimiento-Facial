@@ -409,27 +409,27 @@ class MainView:
             text_color=c['white'],
             justify="center",
         )
-        self.lbl_reloj.pack(side="right", padx=(0, 4))
+        self.lbl_reloj.pack(side="right", padx=(0, 2))
         self._actualizar_reloj()
 
         self._btn_zoom = ctk.CTkButton(header,
             text=f"🔍 {round(FontScale.get()*100)}%",
             font=("Segoe UI", 8), fg_color="#1d4ed8", hover_color="#1e40af",
-            text_color="white", width=30, height=28, corner_radius=8,
+            text_color="white", width=25, height=28, corner_radius=8,
             command=self._toggle_zoom_popover)
-        self._btn_zoom.pack(side="right", padx=(4, 4))
+        self._btn_zoom.pack(side="right", padx=(2, 2))
 
-        self._btn_traducir = ctk.CTkButton(header, text="🌐", font=("Segoe UI", 9),
+        self._btn_traducir = ctk.CTkButton(header, text="🌐", font=("Segoe UI Emoji", 13),
                       fg_color="transparent", hover_color=COLORS['header_hover'],
-                      text_color=c['white'], width=15, height=34, corner_radius=8,
+                  text_color=c['white'], width=36, height=38, corner_radius=8,
                       command=self.traducir_app)
-        self._btn_traducir.pack(side="right", padx=(0, 2))
+        self._btn_traducir.pack(side="right", padx=(0, 0))
 
-        self._btn_modo_oscuro = ctk.CTkButton(header, text="🌙", font=("Segoe UI", 9),
+        self._btn_modo_oscuro = ctk.CTkButton(header, text="🌙", font=("Segoe UI Emoji", 13),
                       fg_color="transparent", hover_color=COLORS['header_hover'],
-                      text_color=c['white'], width=15, height=34, corner_radius=8,
+                  text_color=c['white'], width=36, height=38, corner_radius=8,
                       command=self.modo_oscuro)
-        self._btn_modo_oscuro.pack(side="right", padx=(0, 2))
+        self._btn_modo_oscuro.pack(side="right", padx=(0, 0))
 
     def disable_top_controls(self):
         try:
@@ -756,7 +756,7 @@ class MainView:
                      text_color=self.colors['text_light']).pack(pady=(6, 0))
 
     # ── Panel usuario reconocido ──────────────────────────────────────────────
-    def _construir_panel_usuario(self, nombre, datos_bd, tipo, confianza=None):
+    def _construir_panel_usuario(self, nombre, datos_bd, tipo, confianza=None, distancia=None):
         for w in self._user_card.winfo_children():
             w.destroy()
 
@@ -816,14 +816,22 @@ class MainView:
                      font=("Segoe UI", 10, "bold"),
                      text_color="#ffffff").pack(padx=4, pady=3)
 
-    # Confianza
+    # Confianza / distancia LBPH
         if confianza is not None:
-            ctk.CTkLabel(
-                scroll,
-                text=f"{t('confianza')}: {confianza:.1f}%",
-                font=("Segoe UI", 10),
-                text_color=c['text_gray']
-            ).pack()
+            if distancia is not None:
+                ctk.CTkLabel(
+                    scroll,
+                    text=f"{t('distancia_lbph')}: {distancia:.1f} · {t('confianza')}: {confianza:.1f}%",
+                    font=("Segoe UI", 10),
+                    text_color=c['text_gray']
+                ).pack()
+            else:
+                ctk.CTkLabel(
+                    scroll,
+                    text=f"{t('confianza')}: {confianza:.1f}%",
+                    font=("Segoe UI", 10),
+                    text_color=c['text_gray']
+                ).pack()
 
         sep()
         fila(t("matricula"), datos_bd.get('matricula'))
@@ -1094,7 +1102,7 @@ class MainView:
     # ══════════════════════════════════════════════════════════════════════════
     # CALLBACKS DEL MOTOR
     # ══════════════════════════════════════════════════════════════════════════
-    def _cb_resultado(self, nombre, confianza, tipo):
+    def _cb_resultado(self, nombre, confianza, tipo, distancia=None):
         es_aceptado = (tipo == "aceptado")
         color_borde = "#16a34a" if es_aceptado else "#dc2626"
 
@@ -1111,7 +1119,7 @@ class MainView:
                     pass
 
                 datos_bd = self._get_datos_usuario(nombre)
-                self._construir_panel_usuario(nombre, datos_bd, tipo, confianza)
+                self._construir_panel_usuario(nombre, datos_bd, tipo, confianza, distancia)
 
             except Exception as e:
                 print(f"Error en _cb_resultado: {e}")

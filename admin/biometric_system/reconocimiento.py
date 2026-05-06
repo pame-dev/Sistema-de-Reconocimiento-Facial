@@ -110,9 +110,10 @@ class ReconocerFacial:
 
         # ── Parámetros de reconocimiento ───────────────────────────────────────
         # En LBPH "conf" es una distancia/error: más bajo = mejor match.
-        self.tolerancia           = 80.0   # distancia máxima para considerar match
-        self._TOLERANCIA_MIN      = 80.0
+        self.tolerancia           = 95.0   # distancia máxima para considerar match
+        self._TOLERANCIA_MIN      = 90.0
         self._TOLERANCIA_MAX      = 130.0
+        self._MARGEN_RECONOCIMIENTO_SUAVE = 15.0
 
         # ── Votación ───────────────────────────────────────────────────────────
         self._votos         = []   
@@ -620,6 +621,11 @@ class ReconocerFacial:
             if conf <= self.tolerancia:
                 return label, conf
 
+            # Margen suave: si la coincidencia está cerca del umbral, conservar
+            # el label para que la votación pueda estabilizar el reconocimiento.
+            if conf <= (self.tolerancia + self._MARGEN_RECONOCIMIENTO_SUAVE):
+                return label, conf
+
             # Histeresis de recuperación: permitir margen si coincide con el último aceptado.
             if (self._ultimo_usuario_aceptado is not None
                     and label == self._ultimo_usuario_aceptado
@@ -674,7 +680,7 @@ class ReconocerFacial:
             self._ultimo_tipo = estado
             if hubo_cambio_estado and self.on_resultado:
                 nombre = self.nombres.get(user_id, t("desconocido"))
-                self.on_resultado(nombre, confianza, estado)
+                self.on_resultado(nombre, confianza, estado, float(distancia))
             return
 
         conn = self.get_db()
@@ -725,7 +731,7 @@ class ReconocerFacial:
 
             if self.on_resultado:
                 nombre = self.nombres.get(user_id, t("desconocido"))
-                self.on_resultado(nombre, confianza, estado)
+                self.on_resultado(nombre, confianza, estado, float(distancia))
 
         except Exception as e:
             print(f"❌ Error registrando acceso: {e}")

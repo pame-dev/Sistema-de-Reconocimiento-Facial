@@ -519,22 +519,10 @@ class InformacionEscolarView:
             text=t("usuarios_total").format(total, "s" if total != 1 else "")
         )
 
-        # Si hay datos visibles, muestra detalles del primer usuario automáticamente.
-        if lista:
-            first_id = str(lista[0]['id'])
-            try:
-                self.tabla.selection_set(first_id)
-                self.tabla.focus(first_id)
-                self.tabla.see(first_id)
-            except Exception:
-                pass
-
-            self.usuario_seleccionado = lista[0]
-            self.mostrar_detalles_panel()
-            self.crear_panel_detalles()
-        else:
-            self.usuario_seleccionado = None
-            self.ocultar_detalles_panel()
+        # No seleccionar automáticamente al cargar.
+        # Los detalles se muestran solo cuando el usuario selecciona una fila.
+        self.usuario_seleccionado = None
+        self.ocultar_detalles_panel()
 
     def filtrar_tabla(self):
         if not self._is_alive():
