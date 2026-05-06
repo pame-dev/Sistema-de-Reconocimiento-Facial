@@ -163,10 +163,14 @@ class FormularioMixin:
 
         # ── Inputs ─────────────────────────────
         if key == "fechaNacimientoUsuario":
+
+            hoy = datetime.now()
+            fecha_maxima = hoy.replace(year=hoy.year - 17)
+            
             entry = DateEntry(
                 frame,
                 date_pattern='dd-mm-yyyy',
-                maxdate=datetime.now(),
+                maxdate=fecha_maxima,
                 font=("Segoe UI", 11)
             )
             entry.pack(fill="x", expand=True)
@@ -174,7 +178,7 @@ class FormularioMixin:
         elif key == "tipoSangreUsuario":
             entry = ttk.Combobox(
                 frame,
-                values=["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"],
+                values=["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "Desconocido"],
                 state="readonly",
                 font=("Segoe UI", 11)
             )
@@ -191,7 +195,7 @@ class FormularioMixin:
             entry.pack(fill="x", expand=True)
 
         self.entries[key] = entry
-        self.entries[key].label = label_text  # 👈 GUARDAMOS EL NOMBRE BONITO
+        self.entries[key].label = label_text  
 
     # ────────────────────────────────────────────────
     def _validar_y_continuar(self):

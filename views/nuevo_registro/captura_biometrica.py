@@ -1114,7 +1114,7 @@ class CapturaBiometricaMixin:
         # Botón Aceptar (derecha)
         ctk.CTkButton(
             btn_frame,
-            text=t("aceptar"),
+            text=t("Aceptar"),
             fg_color="#16A34A",
             hover_color="#15803D",
             text_color="#ffffff",
