@@ -504,7 +504,7 @@ class MainView:
         self._active_btn = btn
         self._close_sidebar()
         command()
-        self.nav_buttons = []
+        #self.nav_buttons = []
 
     def _close_sidebar(self):
         if self.menu_visible:
@@ -1022,7 +1022,7 @@ class MainView:
                     sin_frame_count += 1
                     if sin_frame_count == 45:
                         self.main_frame.after(0, lambda: self._lbl_cam.configure(
-                            text="⬤  Esperando señal de cámara...",
+                            text="⬤  Cámara no detectada...",
                             text_color=self.colors['accent']))
                     time.sleep(0.02)
                     continue

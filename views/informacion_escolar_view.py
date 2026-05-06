@@ -1035,6 +1035,7 @@ class InformacionEscolarView:
                     correo,
                     fecha_nacimiento,
                     tipo_sangre,
+                    direccion,
                     carrera,
                     grado,
                     grupo,
