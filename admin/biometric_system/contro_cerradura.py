@@ -6,7 +6,7 @@ CHIP = "/dev/gpiochip0"
 LINE = 4
 
 
-def ejecutar_cerradura(segundos=8, chip_path=CHIP, line=LINE):
+def ejecutar_cerradura(segundos=1, chip_path=CHIP, line=LINE):
 	"""Activa la cerradura por una cantidad de segundos y luego la desactiva."""
 	line_request = gpiod.request_lines(
 		chip_path,
