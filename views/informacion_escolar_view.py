@@ -1,34 +1,35 @@
 # views/informacion_escolar_view.py
+"""
+Orquestador de la vista de información escolar.
+Toda la lógica específica vive en los mixins del sub-paquete:
+
+    estilos.py          — ROL_COLOR, ROL_ICONO, _aplicar_estilo_tabla()
+    datos_usuarios.py   — cargar_datos(), cargar_inactivos(), filtrar_tabla()
+    panel_detalles.py   — crear_panel_detalles(), mostrar/ocultar detalles
+    dialogo_edicion.py  — editar_usuario(), _guardar_edicion(), _retomar_fotos()
+    acciones_usuario.py — eliminar_usuario(), restaurar_usuario()
+"""
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk
 import customtkinter as ctk
-import sys
-import os
-from datetime import datetime
-from tkcalendar import DateEntry
+
+from config import COLORS, get_colors
+from idiomas import t
 from views.font_scale import FontScale
-from views import nuevo_registro_view
-from idiomas import t   
-
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import COLORS, WINDOW_WIDTH, WINDOW_HEIGHT, get_colors, toggle_theme, get_db
-from database.queries import (
-    sp_get_usuarios,
-    sp_actualizar_usuario,
-    sp_actualizar_alumno,
-    sp_actualizar_maestro,
-    sp_actualizar_personal,
-    sp_eliminar_usuario,
-    sp_get_usuarios_inactivos,
-    sp_restaurar_usuario, 
-)
-
-ROL_COLOR = {"alumno": "#4A90D9", "maestro": "#27AE60", "personal": "#E67E22"}
-ROL_ICONO = {"alumno": "🎓",      "maestro": "📚",      "personal": "🏢"}
+from views.informacion_escolar.estilos import EstilosMixin
+from views.informacion_escolar.datos_usuarios import DatosUsuariosMixin
+from views.informacion_escolar.panel_detalles import PanelDetallesMixin
+from views.informacion_escolar.dialogo_edicion import DialogoEdicionMixin
+from views.informacion_escolar.acciones_usuario import AccionesUsuarioMixin
 
 
-class InformacionEscolarView:
-
+class InformacionEscolarView(
+    EstilosMixin,
+    DatosUsuariosMixin,
+    PanelDetallesMixin,
+    DialogoEdicionMixin,
+    AccionesUsuarioMixin,
+):
     def __init__(self, parent):
         self.colors = get_colors()
         self.parent    = parent
@@ -46,96 +47,42 @@ class InformacionEscolarView:
         self.container.update_idletasks()
         self._apply_responsive_layout(self.container.winfo_width())
 
+        # Botón restaurar (creado aquí para que acciones_frame ya exista)
         self.btn_restaurar = ctk.CTkButton(
-        self.acciones_frame,
-        text="🔄 Restaurar",
-        fg_color=self.colors['primary'],
-        hover_color=COLORS['primary_dark'],
-        text_color="#ffffff",
-        font=("Segoe UI", 12, "bold"),
-        corner_radius=10,
-        height=36,
-        command=self.restaurar_usuario
-)
+            self.acciones_frame,
+            text="🔄 Restaurar",
+            fg_color=self.colors['primary'],
+            hover_color=COLORS['primary_dark'],
+            text_color="#ffffff",
+            font=("Segoe UI", 12, "bold"),
+            corner_radius=10, height=36,
+            command=self.restaurar_usuario,
+        )
         self.cargar_datos()
 
+    # ── Ciclo de vida ─────────────────────────────────────────────────────────
     def destroy(self):
         try:
             self.container.unbind("<Configure>")
         except Exception:
             pass
-        try:
-            self.entrada_busqueda.unbind("<FocusIn>")
-            self.entrada_busqueda.unbind("<FocusOut>")
-            self.entrada_busqueda.unbind("<KeyRelease>")
-        except Exception:
-            pass
-        try:
-            self.filtro_rol.unbind('<<ComboboxSelected>>')
-            self.filtro_estado.unbind('<<ComboboxSelected>>')
-        except Exception:
-            pass
-        try:
-            self.tabla.unbind('<<TreeviewSelect>>')
-        except Exception:
-            pass
+        for widget_name in ('entrada_busqueda', 'filtro_rol', 'filtro_estado', 'tabla'):
+            try:
+                w = getattr(self, widget_name)
+                for seq in ("<FocusIn>", "<FocusOut>", "<KeyRelease>",
+                            "<<ComboboxSelected>>", "<<TreeviewSelect>>"):
+                    try:
+                        w.unbind(seq)
+                    except Exception:
+                        pass
+            except Exception:
+                pass
 
     def _is_alive(self):
-        return getattr(self, 'container', None) is not None and self.container.winfo_exists()
+        return (getattr(self, 'container', None) is not None
+                and self.container.winfo_exists())
 
-    # ── Aplica estilos ttk con colores del tema actual ────────────────────────
-    def _aplicar_estilo_tabla(self):
-        c = self.colors
-        style = ttk.Style()
-        style.theme_use('default')
-
-        style.configure('Dark.Treeview',
-            background=c['tree_bg'],
-            fieldbackground=c['tree_bg'],
-            foreground=c['tree_fg'],
-            rowheight=32, borderwidth=0,
-            font=FontScale.f(12),
-        )
-        style.configure('Dark.Treeview.Heading',
-            background=c['tree_head_bg'],
-            foreground=c['tree_head_fg'],
-            font=FontScale.fb(12),
-            relief='flat', padding=6,
-        )
-        style.map('Dark.Treeview',
-            background=[('selected', c['tree_sel_bg'])],
-            foreground=[('selected', c['tree_sel_fg'])],
-        )
-        style.map('Dark.Treeview.Heading',
-            background=[('active', c['tree_head_bg'])],
-        )
-
-        style.configure('Dark.Vertical.TScrollbar',
-            background=c['card_bg'], troughcolor=c['background'],
-            arrowcolor=c['text_gray'], borderwidth=0)
-        style.configure('Dark.Horizontal.TScrollbar',
-            background=c['card_bg'], troughcolor=c['background'],
-            arrowcolor=c['text_gray'], borderwidth=0)
-
-        style.configure('Dark.TCombobox',
-            fieldbackground=c['card_bg'], background=c['card_bg'],
-            foreground=c['text_dark'], arrowcolor=c['text_gray'],
-            bordercolor=c['border'], selectbackground=c['tree_sel_bg'],
-            selectforeground=c['tree_sel_fg'],
-        )
-        style.map('Dark.TCombobox',
-            fieldbackground=[('readonly', c['card_bg'])],
-            foreground=[('readonly', c['text_dark'])],
-            background=[('readonly', c['card_bg'])],
-        )
-
-        win = self.parent.winfo_toplevel()
-        win.option_add("*TCombobox*Listbox.background",       c['card_bg'])
-        win.option_add("*TCombobox*Listbox.foreground",       c['text_dark'])
-        win.option_add("*TCombobox*Listbox.selectBackground", c['tree_sel_bg'])
-        win.option_add("*TCombobox*Listbox.selectForeground", c['tree_sel_fg'])
-        win.option_add("*TCombobox*Listbox.font",             ("Segoe UI", 13))
-
+    # ── Layout responsivo ─────────────────────────────────────────────────────
     def _on_root_resize(self, event):
         if event.widget == self.container:
             self._apply_responsive_layout(event.width)
@@ -147,7 +94,6 @@ class InformacionEscolarView:
         small = width < 900
         if small == self._small_layout:
             return
-
         self._small_layout = small
         if small:
             self.header_left.pack_forget()
@@ -167,7 +113,7 @@ class InformacionEscolarView:
         if self.detalles_frame.winfo_ismapped() and self.usuario_seleccionado:
             self.crear_panel_detalles()
 
-    # ── Interfaz ──────────────────────────────────────────────────────────────
+    # ── Construcción de la interfaz ───────────────────────────────────────────
     def crear_interfaz(self):
         self._aplicar_estilo_tabla()
         c = self.colors
@@ -186,8 +132,6 @@ class InformacionEscolarView:
                      font=("Segoe UI", 11),
                      text_color=c['text_gray']).pack(anchor="w", pady=(2, 0))
 
-        
-
         # Filtros
         filtros = ctk.CTkFrame(self.container, fg_color=c['card_bg'],
                                corner_radius=12, border_width=1,
@@ -204,13 +148,15 @@ class InformacionEscolarView:
                      font=("Segoe UI", 10, "bold")).pack(side="left", padx=(2, 6), pady=10)
 
         self.busqueda_var = tk.StringVar()
-        self.entrada_busqueda = ctk.CTkEntry(self.filtros_top,
+        self.entrada_busqueda = ctk.CTkEntry(
+            self.filtros_top,
             textvariable=self.busqueda_var,
             font=("Segoe UI", 10), width=200, height=36,
             corner_radius=10,
             fg_color=c['content_bg'],
             border_color=COLORS['border'],
-            text_color=c['text_gray'])
+            text_color=c['text_gray'],
+        )
         self.entrada_busqueda.pack(side="left", padx=(0, 3), pady=10, fill="x", expand=True)
         self.entrada_busqueda.insert(0, t("placeholder_busqueda"))
         self.entrada_busqueda.bind("<FocusIn>",    self.limpiar_placeholder)
@@ -221,67 +167,64 @@ class InformacionEscolarView:
                      text_color=c['text_dark'],
                      font=("Segoe UI", 10, "bold")).pack(side="left", padx=(3, 3), pady=10)
 
-        self.filtro_rol = ttk.Combobox(self.filtros_bottom,
+        self.filtro_rol = ttk.Combobox(
+            self.filtros_bottom,
             values=[t("todos"), t("estudiante"), t("docente"), t("personal")],
             state="readonly", width=8,
-            font=("Segoe UI", 12),
-            style='Dark.TCombobox')
-        self.filtro_rol.set(t("todos")),
+            font=("Segoe UI", 12), style='Dark.TCombobox',
+        )
+        self.filtro_rol.set(t("todos"))
         self.filtro_rol.pack(side="left", pady=10)
         self.filtro_rol.bind('<<ComboboxSelected>>', lambda e: self.filtrar_tabla())
-        
+
         ctk.CTkLabel(self.filtros_bottom, text=t("estado"),
-             text_color=c['text_dark'],
-             font=("Segoe UI", 10, "bold")).pack(side="left", padx=(3, 3), pady=10)
+                     text_color=c['text_dark'],
+                     font=("Segoe UI", 10, "bold")).pack(side="left", padx=(3, 3), pady=10)
 
         self.filtro_estado = ttk.Combobox(
             self.filtros_bottom,
             values=[t("activos"), t("inactivos")],
-            state="readonly",
-            width=8,
-            font=("Segoe UI", 12),
-            style='Dark.TCombobox'
+            state="readonly", width=8,
+            font=("Segoe UI", 12), style='Dark.TCombobox',
         )
         self.filtro_estado.set(t("activos"))
         self.filtro_estado.pack(side="left", pady=10)
-
-        self.filtro_estado.bind(
-            '<<ComboboxSelected>>',
-            lambda e: self.cambiar_estado()
-        )
+        self.filtro_estado.bind('<<ComboboxSelected>>', lambda e: self.cambiar_estado())
 
         self.lbl_conteo = ctk.CTkLabel(self.filtros_bottom, text="",
                                         font=("Segoe UI", 11),
                                         text_color=c['text_gray'])
         self.lbl_conteo.pack(side="right", padx=4)
 
-        # Panel de detalles (oculto)
+        # Panel detalles (oculto inicialmente)
         self.detalles_frame = ctk.CTkFrame(self.container, fg_color=c['card_bg'],
                                             corner_radius=12, border_width=1,
                                             border_color=COLORS['border'])
         self.crear_panel_detalles()
         self.detalles_frame.pack_forget()
 
-        # Botones de acción (ocultos)
+        # Botones de acción (ocultos inicialmente)
         self.acciones_frame = ctk.CTkFrame(self.container, fg_color="transparent")
 
-        self.btn_editar = ctk.CTkButton(self.acciones_frame, text="✏️  " + t("editar"),
-                      fg_color=c['header'], hover_color=COLORS['header_hover'],
-                      text_color="#ffffff",
-                      font=("Segoe UI", 12, "bold"),
-                      corner_radius=10, height=36,
-                      command=self.editar_usuario)
+        self.btn_editar = ctk.CTkButton(
+            self.acciones_frame, text="✏️  " + t("editar"),
+            fg_color=c['header'], hover_color=COLORS['header_hover'],
+            text_color="#ffffff",
+            font=("Segoe UI", 12, "bold"), corner_radius=10, height=36,
+            command=self.editar_usuario,
+        )
         self.btn_editar.pack(side="left", padx=(0, 8))
 
-        self.btn_eliminar = ctk.CTkButton(self.acciones_frame, text="🗑️  " + t("eliminar"),
-                      fg_color=c['danger'], hover_color=COLORS['danger_dark'],
-                      text_color="#ffffff",
-                      font=("Segoe UI", 12, "bold"),
-                      corner_radius=10, height=36,
-                      command=self.eliminar_usuario)
+        self.btn_eliminar = ctk.CTkButton(
+            self.acciones_frame, text="🗑️  " + t("eliminar"),
+            fg_color=c['danger'], hover_color=COLORS['danger_dark'],
+            text_color="#ffffff",
+            font=("Segoe UI", 12, "bold"), corner_radius=10, height=36,
+            command=self.eliminar_usuario,
+        )
         self.btn_eliminar.pack(side="left")
 
-        # Tabla
+        # Tabla principal
         self.tabla_frame = ctk.CTkFrame(self.container, fg_color=c['card_bg'],
                                          corner_radius=12, border_width=1,
                                          border_color=COLORS['border'])
@@ -301,23 +244,24 @@ class InformacionEscolarView:
                                   style='Dark.Horizontal.TScrollbar')
         scroll_x.pack(side="bottom", fill="x", pady=(0, 4))
 
-        self.tabla = ttk.Treeview(self.tabla_frame,
+        self.tabla = ttk.Treeview(
+            self.tabla_frame,
             columns=("nombre", "matricula", "fecha_nacimiento", "tipo_sangre", "rol", "fotos"),
             show="headings",
             yscrollcommand=scroll_y.set,
             xscrollcommand=scroll_x.set,
-            height=14,
-            style='Dark.Treeview')
+            height=14, style='Dark.Treeview',
+        )
         scroll_y.configure(command=self.tabla.yview)
         scroll_x.configure(command=self.tabla.xview)
 
         for col, label, w, anchor in [
-            ("nombre",    t("nombre_completo"), 260, "w"),
-            ("matricula", t("matricula"), 130, "center"),
-            ("fecha_nacimiento", t("fecha_nacimiento"), 115, "center"),
-            ("tipo_sangre", t("tipo_sangre"), 95, "center"),
-            ("rol",       t("rol"), 110, "center"),
-            ("fotos", f"📸 {t('fotos')}", 80, "center"),
+            ("nombre",           t("nombre_completo"),  260, "w"),
+            ("matricula",        t("matricula"),         130, "center"),
+            ("fecha_nacimiento", t("fecha_nacimiento"),  115, "center"),
+            ("tipo_sangre",      t("tipo_sangre"),        95, "center"),
+            ("rol",              t("rol"),               110, "center"),
+            ("fotos",            f"📸 {t('fotos')}",     80, "center"),
         ]:
             self.tabla.heading(col, text=label)
             self.tabla.column(col, width=w, anchor=anchor)
@@ -325,7 +269,6 @@ class InformacionEscolarView:
         self.tabla.pack(fill="both", expand=True, padx=4)
         self.tabla.bind('<<TreeviewSelect>>', self.on_select)
 
-        # Tags de color por rol
         self.tabla.tag_configure('alumno',
             background=c['tree_aceptado_bg'], foreground=c['tree_fg'])
         self.tabla.tag_configure('maestro',
@@ -333,224 +276,22 @@ class InformacionEscolarView:
         self.tabla.tag_configure('personal',
             background=c['tree_denegado_bg'], foreground=c['tree_fg'])
 
-    # ── Panel detalles ────────────────────────────────────────────────────────
-    def crear_panel_detalles(self):
+    # ── Selección en tabla ────────────────────────────────────────────────────
+    def on_select(self, event):
         if not self._is_alive():
             return
-        for w in self.detalles_frame.winfo_children():
-            w.destroy()
-        if not self.usuario_seleccionado:
+        sel = self.tabla.selection()
+        if not sel:
             return
-
-        c     = self.colors
-        u     = self.usuario_seleccionado
-        rol   = u.get('rol', '')
-        color = ROL_COLOR.get(rol, COLORS['primary'])
-        icono = ROL_ICONO.get(rol, '👤')
-
-        ph = ctk.CTkFrame(self.detalles_frame, fg_color=color, corner_radius=0, height=36)
-        ph.pack(fill="x")
-        ph.pack_propagate(False)
-
-        nombre_completo = f"{u.get('nombre','')} {u.get('apellido_paterno','')} {u.get('apellido_materno','')}".strip()
-        ctk.CTkLabel(ph,
-            text=f"  {icono}  {nombre_completo}  —  {rol.capitalize()}",
-            font=("Segoe UI", 12, "bold"), text_color="#ffffff"
-        ).pack(side="left", padx=14, pady=8)
-
-        stats_row = ctk.CTkFrame(ph, fg_color="transparent")
-        stats_row.pack(side="right", padx=14)
-        for txt, val in [("📸", u.get('fotos', 0)), ("🔐", u.get('accesos', 0))]:
-            chip = ctk.CTkFrame(stats_row, fg_color="white", corner_radius=6)
-            chip.pack(side="left", padx=3)
-            ctk.CTkLabel(chip, text=f"  {txt} {val}  ",
-                         font=("Segoe UI", 10, "bold"),
-                         text_color=color).pack(padx=2, pady=3)
-
-        body = ctk.CTkFrame(self.detalles_frame, fg_color="transparent")
-        body.pack(fill="x", padx=16, pady=10)
-
-        is_small = self._is_small_screen()
-        for ci, col_items in enumerate(self._get_cols_data(u, rol)):
-            col_frame = ctk.CTkFrame(body, fg_color="transparent")
-            side = "top" if is_small else "left"
-            col_frame.pack(side=side, fill="x", expand=True, padx=(0, 16), pady=(0, 8) if is_small else 0)
-            for label, valor in col_items:
-                self._detail_item(col_frame, label, valor, color)
-
-    def _get_cols_data(self, u, rol):
-        col1 = [(t("nombre"), u.get('nombre','—')),
-                (t("apellido_paterno"), u.get('apellido_paterno','—')),
-                (t("apellido_materno"), u.get('apellido_materno','—')),]
-        col2 = [(t("matricula"), u.get('matricula','—')),
-                (t("telefono"), u.get('telefono','—')),
-                (t("fecha_nacimiento"), u.get('fecha_nacimiento','—')),
-            (t("tipo_sangre"), u.get('tipo_sangre','—')),
-                (t("rol"), rol.capitalize()),]
-        col3 = []
-        if rol == 'alumno':
-            col3 = [(t("facultad"), u.get('facultad','—')), (t("carrera"), u.get('carrera','—')),
-                    (t("grado"), u.get('grado','—')), (t("grupo"), u.get('grupo','—'))]
-        elif rol == 'maestro':
-            col3 = [(t("materia"), u.get('materia','—')), (t("grado_imparte"), u.get('grado','—'))]
-        elif rol == 'personal':
-            col3 = [(t("puesto"), u.get('puesto','—')), (t("area"), u.get('area','—'))]
-        return [c for c in [col1, col2, col3] if c]
-
-    def _detail_item(self, parent, label, valor, color):
-        c   = self.colors
-        row = ctk.CTkFrame(parent, fg_color="transparent")
-        row.pack(fill="x", pady=2)
-        ctk.CTkLabel(row, text=label+":",
-                     font=("Segoe UI", 10),
-                     text_color=c['text_gray'],
-                     width=130, anchor="w").pack(side="left")
-        ctk.CTkLabel(row, text=str(valor),
-                     font=("Segoe UI", 10, "bold"),
-                     text_color=c['text_dark'],
-                     anchor="w").pack(side="left")
-
-    # ── Datos ─────────────────────────────────────────────────────────────────
-    def _actualizar_todo(self):
-        self.filtro_rol.set(t("todos"))
-        self.busqueda_var.set("")
-        self.entrada_busqueda.delete(0, tk.END)
-        self.entrada_busqueda.insert(0, t("placeholder_busqueda"))
-        self.entrada_busqueda.configure(text_color=self.colors['text_gray'])
-        self._placeholder_activo = True
-        self.cargar_datos()
-
-    def cargar_datos(self):
-        if not self._is_alive():
-            return
-        try:
-            conn = get_db()
-            if not conn:
-                messagebox.showerror(t("error"), t("error_db"))
-                return
-            resultados = sp_get_usuarios(conn)
-            conn.close()
-
-            self.datos = []
-            for row in resultados:
-                (
-                    user_id,
-                    nombre,
-                    apellido_paterno,
-                    apellido_materno,
-                    matricula,
-                    rol,
-                    telefono,
-                    correo,
-                    fecha_nacimiento,
-                    tipo_sangre,
-                    direccion,
-                    carrera,
-                    grado,
-                    grupo,
-                    facultad,
-                    materia,
-                    grado_impartido,
-                    puesto,
-                    area,
-                    fotos,
-                    accesos,
-                ) = row
-
-                if rol == 'alumno':
-                    carrera = carrera or '—'
-                    grado = grado or '—'
-                    grupo = grupo or '—'
-                elif rol == 'maestro':
-                    carrera = materia or '—'
-                    grado = grado_impartido or '—'
-                    grupo = '—'
-                else:
-                    carrera = puesto or '—'
-                    grado = '—'
-                    grupo = '—'
-
-                self.datos.append({
-                    'id':              user_id,
-                    'nombre':          nombre or '',
-                    'apellido_paterno':apellido_paterno or '—',
-                    'apellido_materno':apellido_materno or '—',
-                    'matricula':       matricula or '—',
-                    'rol':             rol,
-                    'telefono':        telefono or '—',
-                    'correo':          correo or '—',
-                    'fecha_nacimiento': fecha_nacimiento or '—',
-                    'tipo_sangre':     tipo_sangre or '—',
-                    'carrera':         carrera,
-                    'grado':           grado,
-                    'grupo':           grupo,
-                    'materia':         materia or '—',
-                    'puesto':          puesto or '—',
-                    'area':            area or '—',
-                    'facultad':        facultad if rol == 'alumno' else '—',
-                    'fotos':           fotos or 0,
-                    'accesos':         accesos or 0,
-                })
-            self.actualizar_tabla()
-        except Exception as e:
-            messagebox.showerror(t("error"), t("error_cargar_datos").format(e))
-            self.datos = []
-
-    def actualizar_tabla(self, datos_filtrados=None):
-        if not self._is_alive():
-            return
-        for item in self.tabla.get_children():
-            self.tabla.delete(item)
-
-        lista = datos_filtrados if datos_filtrados is not None else self.datos
-        for u in lista:
-            nombre_completo = f"{u.get('nombre','')} {u.get('apellido_paterno','')} {u.get('apellido_materno','')}".strip()
-            self.tabla.insert("", "end", iid=str(u['id']), values=(
-                nombre_completo,
-                u['matricula'],
-                u.get('fecha_nacimiento', '—'),
-                u.get('tipo_sangre', '—'),
-                u['rol'],
-                u['fotos'],
-            ), tags=(u.get('rol',''),))
-
-        total = len(lista)
-        self.lbl_conteo.configure(
-            text=t("usuarios_total").format(total, "s" if total != 1 else "")
+        user_id = int(sel[0])
+        self.usuario_seleccionado = next(
+            (u for u in self.datos if u['id'] == user_id), None
         )
+        if self.usuario_seleccionado:
+            self.mostrar_detalles_panel()
+            self.crear_panel_detalles()
 
-        # No seleccionar automáticamente al cargar.
-        # Los detalles se muestran solo cuando el usuario selecciona una fila.
-        self.usuario_seleccionado = None
-        self.ocultar_detalles_panel()
-
-    def filtrar_tabla(self):
-        if not self._is_alive():
-            return
-        rol_filtro = self.filtro_rol.get()
-        texto = "" if self._placeholder_activo else self.busqueda_var.get().lower().strip()
-
-        resultado = [
-            u for u in self.datos
-            if (rol_filtro == t("todos") or str(u.get('rol','')).lower() == rol_filtro)
-            and (not texto
-                or texto in str(u.get('nombre','')).lower()
-                or texto in str(u.get('matricula','')).lower()
-                or texto in str(u.get('carrera','')).lower())
-        ]
-        self.actualizar_tabla(resultado)
-        
-    def cambiar_estado(self):
-        if not self._is_alive():
-            return
-        estado = self.filtro_estado.get()
-
-        if estado == t("activos"):
-            self.cargar_datos()
-        else:
-            self.cargar_inactivos()
-
-    # ── Placeholder ───────────────────────────────────────────────────────────
+    # ── Placeholder búsqueda ──────────────────────────────────────────────────
     def limpiar_placeholder(self, event):
         if not self._is_alive():
             return
@@ -566,542 +307,3 @@ class InformacionEscolarView:
             self.entrada_busqueda.insert(0, t("placeholder_busqueda"))
             self.entrada_busqueda.configure(text_color=self.colors['text_gray'])
             self._placeholder_activo = True
-
-    # ── Selección ─────────────────────────────────────────────────────────────
-    def on_select(self, event):
-        if not self._is_alive():
-            return
-        sel = self.tabla.selection()
-        if not sel:
-            return
-        user_id = int(sel[0])
-        for u in self.datos:
-            if u['id'] == user_id:
-                self.usuario_seleccionado = u
-                break
-        self.mostrar_detalles_panel()
-        self.crear_panel_detalles()
-
-    def mostrar_edicion_por_id(self, user_id):
-        """Selecciona un usuario por ID y abre su edición directamente."""
-        if not self._is_alive():
-            return
-        if not self.datos:
-            self.cargar_datos()
-
-        usuario = None
-        for u in self.datos:
-            if u['id'] == user_id:
-                usuario = u
-                break
-
-        if not usuario:
-            messagebox.showwarning(t("atencion"), t("selecciona_usuario"))
-            return
-
-        self.usuario_seleccionado = usuario
-        try:
-            self.tabla.selection_set(str(user_id))
-            self.tabla.focus(str(user_id))
-            self.tabla.see(str(user_id))
-        except Exception:
-            pass
-
-        self.mostrar_detalles_panel()
-        self.crear_panel_detalles()
-        self.editar_usuario()
-
-    def mostrar_detalles_panel(self):
-        if not self._is_alive():
-            return
-        if not self.detalles_frame.winfo_ismapped():
-            self.detalles_frame.pack(fill="x", pady=(0, 8), before=self.tabla_frame)
-
-        if not self.acciones_frame.winfo_ismapped():
-            self.acciones_frame.pack(fill="x", pady=(0, 6), before=self.detalles_frame)
-
-        # LIMPIAR BOTONES
-        for widget in self.acciones_frame.winfo_children():
-            widget.pack_forget()
-
-        estado = self.filtro_estado.get()
-
-        if estado == t("inactivos"):
-            #  SOLO RESTAURAR
-            self.btn_restaurar.pack(side="left")
-        else:
-            #  EDITAR Y ELIMINAR
-            self.btn_editar.pack(side="left", padx=(0, 8))
-            self.btn_eliminar.pack(side="left")
-
-        # Botón ocultar detalles
-        btn_ocultar = ctk.CTkButton(self.acciones_frame, text="❌ " + t("ocultar_detalles"),
-                      fg_color=self.colors['danger'], hover_color=COLORS['danger_dark'],
-                      text_color="#ffffff",
-                      font=("Segoe UI", 12, "bold"),
-                      corner_radius=10, height=36,
-                      command=self.ocultar_detalles_panel)
-        btn_ocultar.pack(side="left", padx=(8, 0))
-
-        self.container.update_idletasks()
-
-    def ocultar_detalles_panel(self):
-        if not self._is_alive():
-            return
-        if self.acciones_frame.winfo_ismapped():
-            self.acciones_frame.pack_forget()
-        if self.detalles_frame.winfo_ismapped():
-            self.detalles_frame.pack_forget()
-
-    def toggle_detalles(self):
-        if self.detalles_frame.winfo_ismapped():
-            self.ocultar_detalles_panel()
-        elif self.usuario_seleccionado:
-            self.mostrar_detalles_panel()
-            self.crear_panel_detalles()
-        else:
-            messagebox.showinfo(t("detalles"), t("selecciona_usuario"))
-
-    # ── Editar ────────────────────────────────────────────────────────────────
-    def editar_usuario(self):
-        if not self.usuario_seleccionado:
-            messagebox.showwarning(t("atencion"), t("selecciona_usuario"))
-            return
-
-        c = self.colors
-        u = self.usuario_seleccionado
-        color = ROL_COLOR.get(u.get('rol', ''), COLORS['primary'])
-
-        def _val(key):
-            v = u.get(key, '')
-            return '' if v in ('—', None) else str(v)
-
-        vars_ = {
-            'nombre': tk.StringVar(value=_val('nombre')),
-            'paterno': tk.StringVar(value=_val('apellido_paterno')),
-            'materno': tk.StringVar(value=_val('apellido_materno')),
-            'matricula': tk.StringVar(value=_val('matricula')),
-            'telefono': tk.StringVar(value=_val('telefono')),
-            'fecha_nacimiento': tk.StringVar(value=_val('fecha_nacimiento')),
-            'tipo_sangre': tk.StringVar(value=_val('tipo_sangre')),
-            'rol': tk.StringVar(value=u['rol']),
-            'facultad': tk.StringVar(value=_val('facultad')),
-            'carrera': tk.StringVar(value=_val('carrera')),
-            'grado': tk.StringVar(value=_val('grado')),
-            'grupo': tk.StringVar(value=_val('grupo')),
-            'materia': tk.StringVar(value=_val('materia')),
-            'puesto': tk.StringVar(value=_val('puesto')),
-            'area': tk.StringVar(value=_val('area')),
-        }
-
-        originales = {k: v.get() for k, v in vars_.items()}
-
-        # 🔥 MÁS CHICA PERO UTIL
-        win = ctk.CTkToplevel(self.parent)
-        win.configure(fg_color=c['background'])
-        win.grab_set()
-        win.overrideredirect(True)
-
-        width, height = 340, 460
-        root = self.parent.winfo_toplevel()
-        root.update_idletasks()
-        win.geometry(f"{width}x{height}+{root.winfo_rootx()}+{root.winfo_rooty()}")
-        win.minsize(width, height)
-        win.maxsize(width, height)
-
-        # HEADER
-        header = ctk.CTkFrame(win, fg_color=color, height=42)
-        header.pack(fill="x")
-
-        ctk.CTkLabel(
-            header,
-            text=f"{ROL_ICONO.get(u['rol'],'👤')} Editar",
-            text_color="white",
-            font=("Segoe UI", 11, "bold")
-        ).pack(side="left", padx=10)
-
-        ctk.CTkButton(
-            header,
-            text="✕",
-            width=26,
-            height=24,
-            fg_color="transparent",
-            text_color="white",
-            command=win.destroy
-        ).pack(side="right", padx=6)
-
-        scroll = ctk.CTkFrame(win, fg_color="transparent")
-        scroll.pack(fill="both", expand=True)
-
-        def make_entry(parent, label, var, key=None):
-            row = ctk.CTkFrame(parent, fg_color="transparent")
-            row.pack(fill="x", padx=8, pady=1)
-
-            ctk.CTkLabel(
-                row,
-                text=label,
-                width=95,
-                anchor="w",
-                font=("Segoe UI", 9),
-                text_color=c['text_gray']
-            ).pack(side="left")
-
-            if key == "fecha_nacimiento":
-                e = DateEntry(row, date_pattern='dd-mm-yyyy',
-                              textvariable=var, width=9)
-            elif key == "tipo_sangre":
-                e = ttk.Combobox(
-                    row,
-                    values=["A+","A-","B+","B-","AB+","AB-","O+","O-"],
-                    state="readonly",
-                    textvariable=var,
-                    width=4
-                )
-            else:
-                e = ctk.CTkEntry(row, textvariable=var, height=24,
-                                 font=("Segoe UI", 9))
-            e.pack(side="left", fill="x", expand=True)
-
-        # PERSONALES
-        make_entry(scroll, t("nombre_req"), vars_['nombre'])
-        make_entry(scroll, t("apellido_paterno_req"), vars_['paterno'])
-        make_entry(scroll, t("apellido_materno"), vars_['materno'])
-        make_entry(scroll, t("matricula"), vars_['matricula'])
-        make_entry(scroll, t("telefono"), vars_['telefono'])
-        make_entry(scroll, t("fecha_nacimiento"), vars_['fecha_nacimiento'], "fecha_nacimiento")
-        make_entry(scroll, t("tipo_sangre"), vars_['tipo_sangre'], "tipo_sangre")
-
-        # 🔹 ROL (FIX)
-        rol_row = ctk.CTkFrame(scroll, fg_color="transparent")
-        rol_row.pack(fill="x", padx=8, pady=4)
-
-        ctk.CTkLabel(
-            rol_row,
-            text=t("rol"),
-            width=95,
-            anchor="w",
-            font=("Segoe UI", 9),
-            text_color=c['text_gray']
-        ).pack(side="left")
-
-        combo_rol = ttk.Combobox(
-            rol_row,
-            textvariable=vars_['rol'],
-            values=["alumno", "maestro", "personal"],
-            state="readonly",
-            width=10
-        )
-        combo_rol.pack(side="left")
-
-        role_frame = ctk.CTkFrame(scroll, fg_color="transparent")
-        role_frame.pack(fill="x")
-
-        def build_role(*_):
-            for w in role_frame.winfo_children():
-                w.destroy()
-
-            rol = vars_['rol'].get()
-
-            if rol == "alumno":
-                make_entry(role_frame, t("facultad"), vars_['facultad'])
-                make_entry(role_frame, t("carrera"), vars_['carrera'])
-                make_entry(role_frame, t("grado"), vars_['grado'])
-                make_entry(role_frame, t("grupo"), vars_['grupo'])
-
-            elif rol == "maestro":
-                make_entry(role_frame, t("grado_imparte"), vars_['grado'])
-                make_entry(role_frame, t("materia"), vars_['materia'])
-
-            else:
-                make_entry(role_frame, t("puesto"), vars_['puesto'])
-                make_entry(role_frame, t("area"), vars_['area'])
-
-        combo_rol.bind("<<ComboboxSelected>>", build_role)
-        build_role()
-
-        # 🔥 BOTONES MEJORADOS
-        btns = ctk.CTkFrame(win, fg_color="transparent")
-        btns.pack(fill="x", padx=6, pady=4)
-
-        btn_guardar = ctk.CTkButton(
-            btns,
-            text="💾",
-            width=60,
-            height=26,
-            fg_color=c['primary'],
-            font=("Segoe UI", 9, "bold"),
-            state="disabled",
-            command=lambda: self._guardar_edicion(u['id'], vars_, win)
-        )
-        btn_guardar.pack(side="left", padx=2)
-
-        ctk.CTkButton(
-            btns,
-            text="📸",
-            width=60,
-            height=26,
-            fg_color=c['accent'],
-            font=("Segoe UI", 9, "bold"),
-            command=lambda: self._retomar_fotos(u, win)
-        ).pack(side="left", padx=2)
-
-        ctk.CTkButton(
-            btns,
-            text="✖",
-            width=60,
-            height=26,
-            fg_color=c['content_bg'],
-            text_color=c['text_dark'],
-            command=win.destroy
-        ).pack(side="right", padx=2)
-
-        def detectar(*_):
-            changed = any(v.get() != originales[k] for k, v in vars_.items())
-            btn_guardar.configure(state="normal" if changed else "disabled")
-
-        for v in vars_.values():
-            v.trace_add("write", detectar)
-
-    def _guardar_edicion(self, user_id, vars_, ventana):
-        g = lambda k: vars_[k].get().strip()
-
-        nombre    = g('nombre')
-        paterno   = g('paterno')
-        materno   = g('materno')
-        matricula = g('matricula')
-        telefono  = g('telefono')
-        rol       = g('rol')
-
-        if not nombre or not paterno:
-            messagebox.showwarning(t("campos_obligatorios"), t("error_nombre"))
-            return
-
-        try:
-            conn   = get_db()
-            cursor = conn.cursor()
-
-            cursor.execute("""
-                UPDATE usuarios SET
-                    nombreUsuario          = ?,
-                    apellidoPaternoUsuario = ?,
-                    apellidoMaternoUsuario = ?,
-                    matriculaUsuario       = ?,
-                    telefonoUsuario        = ?,
-                    fechaNacimientoUsuario = ?,
-                    tipoSangreUsuario      = ?,
-                    rolUsuario             = ?
-                WHERE idUsuario = ?
-            """, (
-                nombre,
-                paterno,
-                materno,
-                matricula,
-                telefono,
-                g('fecha_nacimiento'),
-                g('tipo_sangre'),
-                rol,
-                user_id,
-            ))
-
-            cursor.execute("DELETE FROM alumnos          WHERE fkIdUsuario = ?", (user_id,))
-            cursor.execute("DELETE FROM maestros         WHERE fkIdUsuario = ?", (user_id,))
-            cursor.execute("DELETE FROM personal_escolar WHERE fkIdUsuario = ?", (user_id,))
-
-            if rol == "alumno":
-                cursor.execute("""
-                    INSERT INTO alumnos
-                        (fkIdUsuario, facultadAlumno, carreraAlumno, gradoAlumno, grupoAlumno)
-                    VALUES (?, ?, ?, ?, ?)
-                """, (user_id, g('facultad'), g('carrera'), g('grado'), g('grupo')))
-
-            elif rol == "maestro":
-                cursor.execute("""
-                    INSERT INTO maestros
-                        (fkIdUsuario, gradoImpartidoMaestro, materiaImpartidaMaestro)
-                    VALUES (?, ?, ?)
-                """, (user_id, g('grado'), g('materia')))
-
-            elif rol == "personal":
-                cursor.execute("""
-                    INSERT INTO personal_escolar
-                        (fkIdUsuario, puestoPersonalEscolar, areaPersonalEscolar)
-                    VALUES (?, ?, ?)
-                """, (user_id, g('puesto'), g('area')))
-
-            conn.commit()
-            conn.close()
-            messagebox.showinfo(t("actualizado"), t("usuario_actualizado"))
-            ventana.destroy()
-            self.cargar_datos()
-
-        except Exception as e:
-            messagebox.showerror(t("error"), t("no_actualizar").format(e))
-
-
-    def _retomar_fotos(self, usuario, ventana_actual):
-        try:
-            from views.nuevo_registro_view import NuevoRegistroView
-            ventana_actual.destroy()
-            for widget in self.parent.winfo_children():
-                widget.destroy()
-
-            nuevo_reg = NuevoRegistroView(self.parent)
-            nuevo_reg.modo_retomar_fotos = True
-            nuevo_reg.user_id_existente  = usuario.get("id")
-            nuevo_reg.rol_actual         = usuario.get('rol', 'alumno')
-            nuevo_reg._mostrar_formulario()
-
-            campo_map = {
-                'nombreUsuario':          'nombre',
-                'apellidoPaternoUsuario': 'paterno',
-                'apellidoMaternoUsuario': 'materno',
-                'matriculaUsuario':       'matricula',
-                'telefonoUsuario':        'telefono',
-                'correoUsuario':          'correo',
-                'gradoAlumno':            'grado',
-                'grupoAlumno':            'grupo',
-                'carreraAlumno':          'carrera',
-            }
-            for entry_key, user_key in campo_map.items():
-                valor = usuario.get(user_key, '')
-                if entry_key in nuevo_reg.entries and valor:
-                    nuevo_reg.entries[entry_key].delete(0, tk.END)
-                    nuevo_reg.entries[entry_key].insert(0, valor)
-
-            nuevo_reg.valores_form = {k: e.get().strip() for k, e in nuevo_reg.entries.items()}
-            nuevo_reg.parent.after(200, nuevo_reg._mostrar_captura)
-
-        except Exception as e:
-            messagebox.showerror(t("error"), t("error_captura").format(e))
-
-    # ── Eliminar ──────────────────────────────────────────────────────────────
-    def eliminar_usuario(self):
-        if not self.usuario_seleccionado:
-            return
-        u = self.usuario_seleccionado
-        if not messagebox.askyesno(
-            t("confirm_deletion"),
-            t("delete_user_msg").format(
-                nombre=u['nombre'],
-                apellido=u.get('apellido_paterno',''),
-                rol=u['rol']
-            )
-        ):
-            return
-        try:
-            conn = get_db()
-            sp_eliminar_usuario(conn, u['id'])
-            conn.commit()
-            conn.close()
-            self.usuario_seleccionado = None
-            self.ocultar_detalles_panel()
-            self.cargar_datos()
-            messagebox.showinfo(t("eliminado"), t("usuario_eliminado").format(u['nombre']))
-        except Exception as e:
-            messagebox.showerror(t("error"), t("error_eliminar").format(e))
-
-    def cargar_inactivos(self):
-        try:
-            conn = get_db()
-            if not conn:
-                return
-
-            resultados = sp_get_usuarios_inactivos(conn)
-            conn.close()
-
-            self.datos = []
-
-            for row in resultados:
-                (
-                    user_id,
-                    nombre,
-                    apellido_paterno,
-                    apellido_materno,
-                    matricula,
-                    rol,
-                    telefono,
-                    correo,
-                    fecha_nacimiento,
-                    tipo_sangre,
-                    direccion,
-                    carrera,
-                    grado,
-                    grupo,
-                    facultad,
-                    materia,
-                    grado_impartido,
-                    puesto,
-                    area,
-                    fotos,
-                    accesos,
-                ) = row
-
-                if rol == 'alumno':
-                    carrera = carrera or '—'
-                    grado = grado or '—'
-                    grupo = grupo or '—'
-                elif rol == 'maestro':
-                    carrera = materia or '—'
-                    grado = grado_impartido or '—'
-                    grupo = '—'
-                else:
-                    carrera = puesto or '—'
-                    grado = '—'
-                    grupo = '—'
-
-                self.datos.append({
-                    'id': user_id,
-                    'nombre': nombre or '',
-                    'apellido_paterno': apellido_paterno or '—',
-                    'apellido_materno': apellido_materno or '—',
-                    'matricula': matricula or '—',
-                    'rol': rol,
-                    'telefono': telefono or '—',
-                    'correo': correo or '—',
-                    'fecha_nacimiento': fecha_nacimiento or '—',
-                    'tipo_sangre': tipo_sangre or '—',
-                    'carrera': carrera,
-                    'grado': grado,
-                    'grupo': grupo,
-                    'materia': materia or '—',
-                    'puesto': puesto or '—',
-                    'area': area or '—',
-                    'facultad': facultad if rol == 'alumno' else '—',
-                    'fotos': fotos or 0,
-                    'accesos': accesos or 0,
-                })
-
-            self.actualizar_tabla()
-
-        except Exception as e:
-            messagebox.showerror(t("error"), t("error_cargar_inactivos").format(e))
-
-    def restaurar_usuario(self):
-        if not self.usuario_seleccionado:
-            return
-
-        u = self.usuario_seleccionado
-
-        if not messagebox.askyesno(
-            t("confirm_restoration"),
-            t("restore_user_msg").format(nombre=u['nombre'])
-        ):
-            return
-
-        try:
-            conn = get_db()
-            sp_restaurar_usuario(conn, u['id'])
-            conn.commit()
-            conn.close()
-
-            messagebox.showinfo(t("restaurado"), t("usuario_restaurado").format(u['nombre']))
-
-            self.usuario_seleccionado = None
-            self.ocultar_detalles_panel()
-
-            # 🔥 Regresar automáticamente a activos
-            self.filtro_estado.set(t("activos"))
-            self.cargar_datos()
-
-        except Exception as e:
-            messagebox.showerror(t("error"), t("error_restaurar").format(e))
