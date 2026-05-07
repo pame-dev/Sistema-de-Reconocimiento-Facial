@@ -51,6 +51,8 @@ class DialogoEdicionMixin:
 
         win = ctk.CTkToplevel(self.parent)
         win.configure(fg_color=c['background'])
+        win.update_idletasks()
+        win.wait_visibility()
         win.grab_set()
         win.overrideredirect(True)
 
