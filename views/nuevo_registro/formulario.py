@@ -246,8 +246,8 @@ class FormularioMixin:
                     f"{t('campo_requerido')}: {label}"
                 )
                 return
-
-            if required and len(valor) < 3:
+            sin_minimo = {"gradoImpartidoMaestro", "gradoAlumno", "grupoAlumno"}
+            if required and key not in sin_minimo and len(valor) < 3:
                 messagebox.showwarning(
                     "Error",
                     t("campo_min_caracteres").format(campo=label, min=3)
@@ -260,36 +260,27 @@ class FormularioMixin:
 
         # Matrícula
         matricula = self.entries.get('matriculaUsuario').get().strip()
-
         if not matricula.isdigit():
-            messagebox.showwarning(
-                "Error",
-                t("matricula_num")
-            )
+            messagebox.showwarning("Error", t("matricula_num"))
             return
-        
-        if len(matricula) < 6:
+        longitud_matricula = 8 if self.rol_actual == "alumno" else 6
+        if len(matricula) != longitud_matricula:
             messagebox.showwarning(
                 "Error",
-                t("matricula_min")
+                t("matricula_longitud").format(n=longitud_matricula)
             )
             return
 
         #  Teléfono
         telefono = self.entries.get('telefonoUsuario').get().strip()
-
         if not telefono.isdigit():
-            messagebox.showwarning(
-                "Error",
-                t("telefono_num")
-            )
+            messagebox.showwarning("Error", t("telefono_num"))
             return
-
         if len(telefono) < 10:
-            messagebox.showwarning(
-                "Error",
-                t("telefono_min")
-            )
+            messagebox.showwarning("Error", t("telefono_min"))
+            return
+        if len(telefono) > 13:
+            messagebox.showwarning("Error", t("telefono_max"))
             return
 
         # Correo
