@@ -749,10 +749,10 @@ class MainView:
         ctk.CTkLabel(inner, text="👤", font=("Segoe UI Emoji", 52),
                      text_color="#cbd5e1").pack(pady=(0, 10))
         ctk.CTkLabel(inner, text=t("esperando"),
-                     font=("Segoe UI", 14, "bold"),
+                     font=("Segoe UI", 21, "bold"),
                      text_color=self.colors['text_gray']).pack()
         ctk.CTkLabel(inner, text=t("colocate"),
-                     font=("Segoe UI", 10),
+                     font=("Segoe UI", 18),
                      text_color=self.colors['text_light']).pack(pady=(6, 0))
 
     # ── Panel usuario reconocido ──────────────────────────────────────────────
