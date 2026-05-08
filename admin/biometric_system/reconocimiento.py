@@ -117,14 +117,14 @@ class ReconocerFacial:
 
         # ── Votación ───────────────────────────────────────────────────────────
         self._votos         = []   
-        self._frames_votar  = 2      # antes 3  ✅ más rápido
-        self._procesar_cada = 2      # antes 4  ✅ más rápido
+        self._frames_votar  = 2      # mantiene algo de estabilidad
+        self._procesar_cada = 1      # procesa cada frame para responder más rápido
         self._frame_counter = 0
         self._ultimo_resultado = []
 
         # ── Cooldown de registros en BD ────────────────────────────────────────
         self._ultimo_registro   = {}
-        self._cooldown_segundos = 12
+        self._cooldown_segundos = 8
 
         # ── Overlay en frame ──────────────────────────────────────────────────
         self._overlay_texto    = ""
@@ -141,13 +141,13 @@ class ReconocerFacial:
         self._ultimo_tipo         = None
         self._desconocido_desde   = None
 
-        self._tolerancia_segundos = 0.6   
+        self._tolerancia_segundos = 0.4   
         self._fast_accept_margin = 8.0 
-        self._desconocido_hold_seg = 0.8  # 
+        self._desconocido_hold_seg = 0.5  # 
 
         self._ultimo_usuario_aceptado = None
         self._ultimo_aceptado_ts      = None
-        self._ventana_recuperacion_seg = 20.0
+        self._ventana_recuperacion_seg = 12.0
         self._margen_recuperacion      = 5.0
 
         # ── Callbacks ─────────────────────────────────────────────────────────
@@ -809,8 +809,8 @@ class ReconocerFacial:
                             self._desconocido_desde = None
                             nombre = self.nombres.get(label_raw, "Desconocido")
                             self.registrar_acceso(label_raw, "aceptado", dist_raw)
-                            # Iniciar cooldown de 15 segundos después de acceso aceptado
-                            self._cooldown_hasta = ahora + timedelta(seconds=15)
+                            # Iniciar cooldown corto después de acceso aceptado
+                            self._cooldown_hasta = ahora + timedelta(seconds=8)
                             self._ultimo_usuario_aceptado = label_raw
                             self._ultimo_detectado_ts = ahora
                             self._ultimo_resultado.append((x, y, w, h, nombre, dist_raw, (30, 200, 60)))
@@ -885,8 +885,8 @@ class ReconocerFacial:
                         self._desconocido_desde = None
                         nombre = self.nombres.get(label, "Desconocido")
                         self.registrar_acceso(label, "aceptado", distancia)
-                        # Iniciar cooldown de 15 segundos después de acceso aceptado
-                        self._cooldown_hasta = ahora + timedelta(seconds=15)
+                        # Iniciar cooldown corto después de acceso aceptado
+                        self._cooldown_hasta = ahora + timedelta(seconds=8)
                         self._ultimo_usuario_aceptado = label
                         self._ultimo_detectado_ts = ahora
                         self._ultimo_resultado.append(
