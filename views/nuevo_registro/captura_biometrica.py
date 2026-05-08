@@ -39,12 +39,13 @@ class CapturaBiometricaMixin:
     También espera que la clase base inicialice los detectores Haar.
     """
 
-    _CAPTURA_SMALL_BREAKPOINT = 900
-    # Perfil balanceado en pantalla pequeña: más espacio para la guía.
-    _CAPTURA_SMALL_CAM_RATIO = 0.22
-    _CAPTURA_SMALL_CAM_MIN_H = 140
-    _CAPTURA_SMALL_CAM_MAX_H = 180
-    _CAPTURA_SMALL_GUIA_MIN_H = 220
+    # Forzamos layout vertical para dar más protagonismo a la cámara.
+    # La guía de posturas y los botones quedan debajo para aprovechar el alto.
+    _CAPTURA_SMALL_BREAKPOINT = 9999
+    _CAPTURA_SMALL_CAM_RATIO = 0.40
+    _CAPTURA_SMALL_CAM_MIN_H = 230
+    _CAPTURA_SMALL_CAM_MAX_H = 300
+    _CAPTURA_SMALL_GUIA_MIN_H = 190
 
     # ── Pantalla principal de captura ─────────────────────────────────────────
     def _mostrar_captura(self):
@@ -57,21 +58,21 @@ class CapturaBiometricaMixin:
         c     = self.colors
 
         header = ctk.CTkFrame(self.container, fg_color="transparent")
-        header.pack(fill="x", pady=(0, 8))
+        header.pack(fill="x", pady=(0, 4))
         ctk.CTkButton(header, text="← " + t("volver_formulario"),
                       fg_color='#16A34A', hover_color="#15803D",
                       text_color="#ffffff",
-                      font=("Segoe UI", 8, "bold"),
-                      corner_radius=8, height=32,
+                  font=("Segoe UI", 7, "bold"),
+                  corner_radius=8, height=28,
                       command=self._volver_formulario).pack(side="left")
         ctk.CTkLabel(header,text=t("paso_captura"),
-                     font=("Segoe UI", 8),
+                 font=("Segoe UI", 7),
                      text_color=c['text_gray']).pack(side="left", padx=15)
 
-        ttk.Separator(self.container, orient="horizontal").pack(fill="x", pady=(0, 8))
+        ttk.Separator(self.container, orient="horizontal").pack(fill="x", pady=(0, 4))
 
         prog_frame = ctk.CTkFrame(self.container, fg_color="transparent")
-        prog_frame.pack(fill="x", padx=4, pady=(0, 6))
+        prog_frame.pack(fill="x", padx=4, pady=(0, 2))
         self.bar_total_ctk = ctk.CTkProgressBar(prog_frame, height=12,
                                                   corner_radius=6,
                                                   progress_color=color,
@@ -214,11 +215,11 @@ class CapturaBiometricaMixin:
                 cam_panel.configure(height=cam_h)
                 cam_panel.pack_propagate(False)
             if cam_column:
-                cam_column.pack(side="top", fill="x", expand=False, pady=(0, 8))
+                cam_column.pack(side="top", fill="x", expand=False, pady=(0, 4))
 
-            panel_guia.configure(width=0)
+            panel_guia.configure(width=0, height=self._CAPTURA_SMALL_GUIA_MIN_H)
             panel_guia.pack(side="top", fill="x", expand=False, padx=(0, 0), pady=(0, 0))
-            panel_guia.pack_propagate(True)
+            panel_guia.pack_propagate(False)
         else:
             panel_guia.configure(width=260)
             panel_guia.pack(side="left", fill="y", padx=(0, 10), pady=(0, 0))

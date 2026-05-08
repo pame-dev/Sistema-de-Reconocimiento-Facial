@@ -54,13 +54,13 @@ class SeleccionRolMixin:
 
         info = ctk.CTkFrame(card, fg_color="transparent")
         info.grid(row=0, column=1, sticky="ew", padx=8, pady=0)
-        ctk.CTkLabel(info, text=t(cfg["titulo"]), font=("Segoe UI", 12, "bold"),
+        ctk.CTkLabel(info, text=t(cfg["titulo"]), font=("Segoe UI", 18, "bold"),
              text_color=color, justify="left", anchor="w").pack(fill="x")
 
         ctk.CTkButton(card, text=t("seleccionar"),
                       fg_color=color, hover_color=darken(color),
                       text_color=self.colors['white'],
-                      font=("Segoe UI", 10, "bold"),
+                      font=("Segoe UI", 13, "bold"),
                       corner_radius=10, height=32, width=50,
                       command=lambda r=rol_key: self._seleccionar_rol(r),
                       ).grid(row=0, column=2, padx=(8, 16), pady=10)
