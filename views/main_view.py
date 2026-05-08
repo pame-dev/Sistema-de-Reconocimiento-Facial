@@ -390,7 +390,7 @@ class MainView:
         self.lbl_titulo = ctk.CTkLabel(
             title_frame,
             text=t("titulo"),
-            font=("Segoe UI", 10, "bold"),
+            font=("Segoe UI", 21, "bold"),
             text_color=c['white']
         )
         self.lbl_titulo.pack(side="left")
@@ -578,12 +578,12 @@ class MainView:
             ctk.CTkLabel(inner, text="🔐", font=FontScale.fb(48)).pack(pady=(0, 12))
 
         ctk.CTkLabel(inner, text=t("bienvenida"),
-                     font=FontScale.fb(16), text_color=c['text_dark']).pack()
+                     font=FontScale.fb(22), text_color=c['text_dark']).pack()
         ctk.CTkLabel(inner, text=t("seleccion"),
-                     font=FontScale.f(10), text_color=c['text_gray']).pack(pady=(6, 22))
+                     font=FontScale.f(18), text_color=c['text_gray']).pack(pady=(6, 22))
         ctk.CTkButton(inner, text=t("agregar"),
                       fg_color=c['primary'], hover_color=COLORS['primary_dark'],
-                      text_color="#ffffff", font=FontScale.fb(13),
+                      text_color="#ffffff", font=FontScale.fb(16),
                       corner_radius=10, height=42, width=260,
                       command=self.show_nuevo_registro).pack()
 
@@ -596,9 +596,9 @@ class MainView:
         inner.pack(padx=8, pady=8, fill="x")
         top = ctk.CTkFrame(inner, fg_color="transparent")
         top.pack(fill="x")
-        ctk.CTkLabel(top, text=titulo, font=FontScale.fb(9),
+        ctk.CTkLabel(top, text=titulo, font=FontScale.fb(21),
                      text_color=color, anchor="w").pack(side="left")
-        ctk.CTkLabel(top, text=icono, font=FontScale.f(18)).pack(side="right")
+        ctk.CTkLabel(top, text=icono, font=FontScale.f(20)).pack(side="right")
         lbl = ctk.CTkLabel(inner, text=valor, font=FontScale.fb(24),
                            text_color=c['text_dark'], anchor="w")
         lbl.pack(anchor="w", pady=(4, 0))

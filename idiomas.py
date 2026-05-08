@@ -313,7 +313,7 @@ TEXTOS = {
         "acceso_denegado": "ACCESO DENEGADO",
         "tolerancia": "Tolerancia",
         "ajustar": "ajustar",
-        "salir": "salir",
+        "salir": "Salir",
         "modelo_listo": "Modelo listo",
         "sin_datos": "Sin datos — registra usuarios primero",
         "desconocido": "Desconocido",
