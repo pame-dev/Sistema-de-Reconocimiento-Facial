@@ -62,8 +62,9 @@ class MainView:
         self.main_frame = ctk.CTkFrame(parent, fg_color=self.colors['background'])
         self.main_frame.pack(fill="both", expand=True)
 
-        # Base design dimensions used for responsive scaling. Use app's
-        # desired size if available so scaling matches the initial window.
+        # Base design dimensions used for responsive scaling.
+        # They are adjusted to the real window size after first layout pass
+        # so language/theme refreshes do not unexpectedly shrink fonts.
         self._base_w = getattr(self.app, 'desired_width', 900)
         self._base_h = getattr(self.app, 'desired_height', 600)
 
@@ -75,6 +76,7 @@ class MainView:
         self.create_sidebar()
         self.create_content_area()
         self.show_home()
+        self._capturar_base_real_ventana()
         self._bind_zoom_keys()
         # Bind to parent window resize to keep UI responsive
         try:
@@ -86,6 +88,19 @@ class MainView:
     # ══════════════════════════════════════════════════════════════════════════
     # ZOOM
     # ══════════════════════════════════════════════════════════════════════════
+    def _capturar_base_real_ventana(self):
+        """Guarda el tamaño real inicial de la ventana como base de escalado."""
+        try:
+            root = self.parent.winfo_toplevel()
+            root.update_idletasks()
+            w = root.winfo_width()
+            h = root.winfo_height()
+            if w > 200 and h > 150:
+                self._base_w = w
+                self._base_h = h
+        except Exception:
+            pass
+
     def _bind_zoom_keys(self):
         root = self.parent.winfo_toplevel()
 
@@ -175,8 +190,9 @@ class MainView:
             scale_h = h / base_h
             scale = min(max(scale_w, 0.7), max(scale_h, 0.7))
 
-            # Limit scale range to reasonable bounds
-            scale = max(0.75, min(1.5, scale))
+            # Keep readability stable: automatic scaling should not go below 100%.
+            # Users can still reduce manually from the zoom control when needed.
+            scale = max(1.0, min(1.5, scale))
 
             # Evita bucle de repintado continuo por eventos Configure.
             if self._last_scale is not None and abs(scale - self._last_scale) < 0.01:
