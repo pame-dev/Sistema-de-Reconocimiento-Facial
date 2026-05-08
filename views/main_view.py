@@ -396,7 +396,7 @@ class MainView:
         self.lbl_titulo.pack(side="left")
 
         self.btn_salir = ctk.CTkButton(
-            header, text=t("salir"), font=("Segoe UI", 8, "bold"),
+            header, text=t("salir"), font=("Segoe UI", 14, "bold"),
             fg_color=c['danger'], hover_color=COLORS['danger_dark'],
             text_color=c['white'], width=20, height=34, corner_radius=8,
             command=self.logout)
@@ -405,7 +405,7 @@ class MainView:
         self.lbl_reloj = ctk.CTkLabel(
             header,
             text="",
-            font=("Segoe UI", 8),
+            font=("Segoe UI", 14),
             text_color=c['white'],
             justify="center",
         )
@@ -414,18 +414,18 @@ class MainView:
 
         self._btn_zoom = ctk.CTkButton(header,
             text=f"🔍 {round(FontScale.get()*100)}%",
-            font=("Segoe UI", 8), fg_color="#1d4ed8", hover_color="#1e40af",
+            font=("Segoe UI", 14), fg_color="#1d4ed8", hover_color="#1e40af",
             text_color="white", width=25, height=28, corner_radius=8,
             command=self._toggle_zoom_popover)
         self._btn_zoom.pack(side="right", padx=(2, 2))
 
-        self._btn_traducir = ctk.CTkButton(header, text="🌐", font=("Segoe UI Emoji", 13),
+        self._btn_traducir = ctk.CTkButton(header, text="🌐", font=("Segoe UI Emoji", 15),
                       fg_color="transparent", hover_color=COLORS['header_hover'],
                   text_color=c['white'], width=36, height=38, corner_radius=8,
                       command=self.traducir_app)
         self._btn_traducir.pack(side="right", padx=(0, 0))
 
-        self._btn_modo_oscuro = ctk.CTkButton(header, text="🌙", font=("Segoe UI Emoji", 13),
+        self._btn_modo_oscuro = ctk.CTkButton(header, text="🌙", font=("Segoe UI Emoji", 15),
                       fg_color="transparent", hover_color=COLORS['header_hover'],
                   text_color=c['white'], width=36, height=38, corner_radius=8,
                       command=self.modo_oscuro)
