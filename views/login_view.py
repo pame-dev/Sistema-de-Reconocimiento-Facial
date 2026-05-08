@@ -178,11 +178,11 @@ class LoginView:
                 border_width=1,
                 border_color="#1E3D6A",
             )
-            chip.pack(fill="x", pady=3, ipady=6)
+            chip.pack(fill="x", pady=5, ipady=8)
 
             ctk.CTkLabel(
                 chip, text=sym,
-                font=("Courier New", 16, "bold"),
+                font=("Courier New", 18, "bold"),
                 text_color=_BLUE,
                 width=6,
             ).pack(side="left", padx=(12, 6))
