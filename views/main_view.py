@@ -596,7 +596,7 @@ class MainView:
         inner.pack(padx=8, pady=8, fill="x")
         top = ctk.CTkFrame(inner, fg_color="transparent")
         top.pack(fill="x")
-        ctk.CTkLabel(top, text=titulo, font=FontScale.fb(21),
+        ctk.CTkLabel(top, text=titulo, font=FontScale.fb(19),
                      text_color=color, anchor="w").pack(side="left")
         ctk.CTkLabel(top, text=icono, font=FontScale.f(20)).pack(side="right")
         lbl = ctk.CTkLabel(inner, text=valor, font=FontScale.fb(24),

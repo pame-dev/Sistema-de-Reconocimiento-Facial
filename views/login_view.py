@@ -136,7 +136,7 @@ class LoginView:
         # Nombre del sistema
         ctk.CTkLabel(
             self._left_inner, text="UnimoraAccess",
-            font=("Georgia", 15, "bold"),
+            font=("Georgia", 18, "bold"),
             text_color="#E6F1FB"
         ).pack()
 
@@ -158,7 +158,7 @@ class LoginView:
         ctk.CTkLabel(
             self._left_inner,
             text="Control de acceso biométrico\npara instituciones educativas",
-            font=("Segoe UI", 8),
+            font=("Segoe UI", 12),
             text_color=_BLUE_GLOW,
             justify="center"
         ).pack(pady=(0, 22))
@@ -189,7 +189,7 @@ class LoginView:
 
             ctk.CTkLabel(
                 chip, text=txt,
-                font=("Segoe UI", 10),
+                font=("Segoe UI", 12),
                 text_color=_BLUE_GLOW,
                 anchor="w"
             ).pack(side="left", padx=(0, 12))
@@ -227,14 +227,14 @@ class LoginView:
 
         ctk.CTkLabel(
             center, text="Acceso directo",
-            font=("Georgia", 16, "bold"),
+            font=("Georgia", 18, "bold"),
             text_color=_TEXT_DARK
         ).pack()
 
         ctk.CTkLabel(
             center,
-            text="Sistema de control de acceso institucional",
-            font=("Segoe UI", 8),
+            text="Sistema de control\n de acceso institucional",
+            font=("Segoe UI", 12),
             text_color=_GRAY_TEXT
         ).pack(pady=(4, 24))
 
@@ -278,12 +278,12 @@ class LoginView:
         info.pack(side="left")
         ctk.CTkLabel(
             info, text="Administrador",
-            font=("Segoe UI", 10, "bold"),
+            font=("Segoe UI", 15, "bold"),
             text_color=_TEXT_SEMI
         ).pack(anchor="w")
         ctk.CTkLabel(
             info, text="Acceso total al sistema",
-            font=("Segoe UI", 8),
+            font=("Segoe UI", 10),
             text_color=_GRAY_TEXT
         ).pack(anchor="w")
 
@@ -291,7 +291,7 @@ class LoginView:
         ctk.CTkLabel(
             session_card,
             text="Sesión iniciada automáticamente",
-            font=("Segoe UI", 8),
+            font=("Segoe UI", 10),
             text_color=_GRAY_MID
         ).pack(pady=(0, 12))
 
@@ -304,7 +304,7 @@ class LoginView:
             fg_color=_NAVY,
             hover_color=_NAVY_LIGHT,
             text_color="#E6F1FB",
-            font=FontScale.fb(10),
+            font=FontScale.fb(16),
             command=self.login,
         ).pack(fill="x", pady=(0, 20))
 
@@ -316,8 +316,8 @@ class LoginView:
             relx=0.0, rely=0.5, relwidth=0.34, anchor="w"
         )
         ctk.CTkLabel(
-            sep, text="UNIMORA ACCES",
-            font=("Courier New", 9),
+            sep, text="UNIMORA ACCESS",
+            font=("Courier New", 12),
             text_color=_GRAY_MID
         ).place(relx=0.5, rely=0.5, anchor="center")
         ctk.CTkFrame(sep, fg_color=_GRAY_BORDER, height=1, corner_radius=0).place(
