@@ -400,7 +400,7 @@ class MainView:
             fg_color=c['danger'], hover_color=COLORS['danger_dark'],
             text_color=c['white'], width=20, height=34, corner_radius=8,
             command=self.logout)
-        self.btn_salir.pack(side="right", padx=(4, 4))
+        self.btn_salir.pack(side="right", padx=(8, 4))
 
         self.lbl_reloj = ctk.CTkLabel(
             header,
@@ -409,15 +409,8 @@ class MainView:
             text_color=c['white'],
             justify="center",
         )
-        self.lbl_reloj.pack(side="right", padx=(0, 2))
+        self.lbl_reloj.pack(side="right", padx=(4, 4))
         self._actualizar_reloj()
-
-        self._btn_zoom = ctk.CTkButton(header,
-            text=f"🔍 {round(FontScale.get()*100)}%",
-            font=("Segoe UI", 14), fg_color="#1d4ed8", hover_color="#1e40af",
-            text_color="white", width=25, height=28, corner_radius=8,
-            command=self._toggle_zoom_popover)
-        self._btn_zoom.pack(side="right", padx=(2, 2))
 
         self._btn_traducir = ctk.CTkButton(header, text="🌐", font=("Segoe UI Emoji", 15),
                       fg_color="transparent", hover_color=COLORS['header_hover'],
