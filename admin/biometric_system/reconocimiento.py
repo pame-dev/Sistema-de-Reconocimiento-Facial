@@ -80,7 +80,7 @@ class ReconocerFacial:
         self.model_path = os.path.join(self.artifacts_dir, 'lbph_model.yml')
         self.data_path  = os.path.join(self.artifacts_dir, 'lbph_data.pkl')
         self.ids_hash_path  = os.path.join(self.artifacts_dir, 'ids_hash.pkl')
-        self._modelo_version = 9  # sube versión por cambios de lógica
+        self._modelo_version = 10  # sube versión por cambios de lógica
 
         # ── Detectores Haar ────────────────────────────────────────────────────
         self._haar_frontal = cv2.CascadeClassifier(
@@ -110,10 +110,10 @@ class ReconocerFacial:
 
         # ── Parámetros de reconocimiento ───────────────────────────────────────
         # En LBPH "conf" es una distancia/error: más bajo = mejor match.
-        self.tolerancia           = 95.0   # distancia máxima para considerar match
-        self._TOLERANCIA_MIN      = 90.0
-        self._TOLERANCIA_MAX      = 130.0
-        self._MARGEN_RECONOCIMIENTO_SUAVE = 15.0
+        self.tolerancia           = 82.0   # distancia máxima para considerar match
+        self._TOLERANCIA_MIN      = 74.0
+        self._TOLERANCIA_MAX      = 100.0
+        self._MARGEN_RECONOCIMIENTO_SUAVE = 6.0
 
         # ── Votación ───────────────────────────────────────────────────────────
         self._votos         = []   
@@ -142,13 +142,13 @@ class ReconocerFacial:
         self._desconocido_desde   = None
 
         self._tolerancia_segundos = 0.6   
-        self._fast_accept_margin = 6.0 
+        self._fast_accept_margin = 8.0 
         self._desconocido_hold_seg = 0.8  # 
 
         self._ultimo_usuario_aceptado = None
         self._ultimo_aceptado_ts      = None
         self._ventana_recuperacion_seg = 20.0
-        self._margen_recuperacion      = 10.0
+        self._margen_recuperacion      = 5.0
 
         # ── Callbacks ─────────────────────────────────────────────────────────
         self.on_resultado = None
@@ -579,13 +579,12 @@ class ReconocerFacial:
         if not distancias:
             return
 
-        umbral = float(np.percentile(distancias, 95)) + 10.0
+        umbral = float(np.percentile(distancias, 90)) + 4.0
 
-        # Antes había un cap de 92 cuando había pocos usuarios, eso suele
-        # causar demasiados "Desconocido" en condiciones reales.
-        # Con pocos usuarios, mejor permitir un poco más y luego calibrar.
+        # Con esta versión conviene ser más estricto para evitar falsos positivos
+        # entre personas parecidas, sin depender tanto del margen suave.
         if len(self.nombres) <= 2:
-            umbral = min(umbral, 105.0)
+            umbral = min(umbral, 92.0)
 
         self.tolerancia = min(self._TOLERANCIA_MAX,
                               max(self._TOLERANCIA_MIN, umbral))
