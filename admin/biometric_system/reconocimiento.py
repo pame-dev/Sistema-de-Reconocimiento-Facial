@@ -3,6 +3,7 @@ import numpy as np
 import sqlite3
 import os
 import sys
+import platform
 import threading
 from datetime import datetime, timedelta
 import pickle
@@ -168,6 +169,18 @@ class ReconocerFacial:
         self._cooldown_hasta = None
         self._ultimo_detectado_ts = None
 
+        # ── Perfil automático por dispositivo ────────────────────────────────
+        self._is_raspberry = self._detectar_raspberry_pi()
+        if self._is_raspberry:
+            # La cámara de Raspberry suele tener más ruido/variación de luz;
+            # relajamos umbrales para recuperar mejor al usuario registrado.
+            self.tolerancia = max(self.tolerancia, 88.0)
+            self._MARGEN_RECONOCIMIENTO_SUAVE = max(self._MARGEN_RECONOCIMIENTO_SUAVE, 10.0)
+            self._margen_recuperacion = max(self._margen_recuperacion, 10.0)
+            self._fast_accept_margin = min(self._fast_accept_margin, 6.0)
+            self._frames_votar = 1
+            self._desconocido_hold_seg = max(self._desconocido_hold_seg, 0.7)
+
     @staticmethod
     def _crear_lbph_recognizer():
         """Crea el reconocedor LBPH con compatibilidad entre variantes de OpenCV."""
@@ -190,6 +203,30 @@ class ReconocerFacial:
         raise RuntimeError(
             "Tu OpenCV no trae LBPH. Reinstala con: pip uninstall -y opencv opencv-python opencv-contrib-python && pip install opencv-contrib-python==4.10.0.84"
         )
+
+    @staticmethod
+    def _detectar_raspberry_pi() -> bool:
+        """Detecta si se está ejecutando en Raspberry Pi (Linux ARM)."""
+        try:
+            machine = platform.machine().lower()
+            if "arm" not in machine and "aarch" not in machine:
+                return False
+
+            model_paths = [
+                "/proc/device-tree/model",
+                "/sys/firmware/devicetree/base/model",
+            ]
+            for p in model_paths:
+                if os.path.exists(p):
+                    with open(p, "r", encoding="utf-8", errors="ignore") as f:
+                        txt = f.read().lower()
+                    if "raspberry" in txt:
+                        return True
+
+            # Fallback para ARM Linux cuando no se puede leer model.
+            return platform.system().lower() == "linux"
+        except Exception:
+            return False
 
     # ─────────────────────────────────────────────────────────────────────────
     # Base de datos
