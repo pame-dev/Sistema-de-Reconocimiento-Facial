@@ -31,7 +31,7 @@ class FormularioMixin:
             fg_color="transparent",
             hover_color=COLORS['content_bg'],
             text_color=color,
-            font=("Segoe UI", 10),
+            font=("Segoe UI", 14),
             width=65,
             height=26,
             corner_radius=6,
@@ -44,14 +44,14 @@ class FormularioMixin:
         ctk.CTkLabel(
             badge,
             text=f"{cfg['icono']} {t(cfg['titulo'])}",  # 🔥 traducido
-            font=("Segoe UI", 11, "bold"),
+            font=("Segoe UI", 14, "bold"),
             text_color=self.colors['white']
         ).pack(padx=4, pady=2)
 
         ctk.CTkLabel(
             header,
             text=t("paso_datos"),
-            font=("Segoe UI", 12),
+            font=("Segoe UI", 14),
             text_color=self.colors['text_gray']
         ).pack(side="left", padx=(6, 0))
 
@@ -171,9 +171,15 @@ class FormularioMixin:
                 frame,
                 date_pattern='dd-mm-yyyy',
                 maxdate=fecha_maxima,
-                font=("Segoe UI", 11)
+                font=("Segoe UI", 11),
+                state="readonly"
             )
             entry.pack(fill="x", expand=True)
+            entry.bind("<Key>", lambda e: "break")
+            entry.bind("<Control-v>", lambda e: "break")
+            entry.bind("<Control-V>", lambda e: "break")
+            entry.bind("<Button-1>", self._bloquear_click_fecha, add="+")
+            entry.bind("<Double-Button-1>", self._bloquear_click_fecha, add="+")
 
         elif key == "tipoSangreUsuario":
             entry = ttk.Combobox(
@@ -196,6 +202,17 @@ class FormularioMixin:
 
         self.entries[key] = entry
         self.entries[key].label = label_text  
+
+    def _bloquear_click_fecha(self, event):
+        try:
+            widget = event.widget
+            ancho = widget.winfo_width() or 0
+            # Solo permitimos clic en el tramo derecho donde está la flecha.
+            if ancho and event.x < max(0, ancho - 30):
+                return "break"
+        except Exception:
+            return "break"
+        return None
 
     # ────────────────────────────────────────────────
     def _validar_y_continuar(self):
