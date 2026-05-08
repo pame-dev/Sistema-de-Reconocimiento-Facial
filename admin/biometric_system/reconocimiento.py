@@ -745,7 +745,7 @@ class ReconocerFacial:
 
         def _run():
             try:
-                ejecutar_test_cerradura(8)
+                ejecutar_test_cerradura(1)
             except Exception as e:
                 print(f"⚠️  Error en cerradura: {e}")
             finally:
