@@ -144,7 +144,7 @@ class HistorialAccesosView:
 
         ctk.CTkLabel(
             left,
-            text=t("registro_intentos"),
+            text="📝 " + t("registro_intentos"),
             font=("Segoe UI", 8),
             text_color=c['text_gray']
         ).pack(anchor="w", pady=(2, 0))
@@ -226,7 +226,7 @@ class HistorialAccesosView:
 
         ctk.CTkLabel(
             filtros,
-            text=t("estado"),
+            text="📊 " + t("estado"),
             text_color=c['text_dark'],
             font=("Segoe UI", 10, "bold")
         ).pack(side="left", padx=(0, 6), pady=10)
@@ -259,7 +259,7 @@ class HistorialAccesosView:
 
         ctk.CTkLabel(
             tabla_header,
-            text=t("registros"),
+            text="📋 " + t("registros"),
             font=FontScale.fb(13),
             text_color=c['text_dark']
         ).pack(side="left")
@@ -292,11 +292,11 @@ class HistorialAccesosView:
         scroll_x.configure(command=self.tree.xview)
 
         columnas = [
-            ("usuario", t("usuario"), 220, "w"),
-            ("fecha", t("fecha_hora"), 165, "center"),
-            ("estado", t("estado"), 120, "center"),
-            ("confianza", t("confianza"), 110, "center"),
-            ("umbral", t("umbral"), 90, "center"),
+            ("usuario", "👤 " + t("usuario"), 220, "w"),
+            ("fecha", "🕐 " + t("fecha_hora"), 165, "center"),
+            ("estado", "📊 " + t("estado"), 120, "center"),
+            ("confianza", "📈 " + t("confianza"), 110, "center"),
+            ("umbral", "🎯 " + t("umbral"), 90, "center"),
         ]
 
         for col, label, w, anchor in columnas:

@@ -50,7 +50,7 @@ class FormularioMixin:
 
         ctk.CTkLabel(
             header,
-            text=t("paso_datos"),
+            text="📋 " + t("paso_datos"),
             font=("Segoe UI", 14),
             text_color=self.colors['text_gray']
         ).pack(side="left", padx=(6, 0))
@@ -98,7 +98,7 @@ class FormularioMixin:
         # ── Botón continuar ───────────────────────────
         ctk.CTkButton(
             content,
-            text=t("continuar_fotos"),
+            text="📸 " + t("continuar_fotos"),
             fg_color=color,
             hover_color=darken(color),
             text_color=self.colors['white'],
@@ -120,12 +120,23 @@ class FormularioMixin:
 
     # ────────────────────────────────────────────────
     def _section_label(self, parent, text, color):
+        # Mapa de iconos para secciones
+        icon_map = {
+            t("datos_personales"): "👤",
+            t("info_academica"): "🎓",
+            t("info_docente"): "📚",
+            t("info_laboral"): "💼",
+        }
+        
         frame = ctk.CTkFrame(parent, fg_color="transparent")
         frame.pack(fill="x", pady=(14, 6), padx=12)
 
+        icon = icon_map.get(text, "📋")
+        display_text = f"{icon} {text}"
+        
         ctk.CTkLabel(
             frame,
-            text=text,
+            text=display_text,
             text_color=color,
             font=("Segoe UI", 12, "bold")
         ).pack(anchor="w")
@@ -147,15 +158,37 @@ class FormularioMixin:
 
     # ────────────────────────────────────────────────
     def _add_entry(self, parent, label_text, key, required, row, col):
+        # Mapa de iconos para campos
+        icon_map = {
+            'nombre': '👤',
+            'apellido_paterno': '👨',
+            'apellido_materno': '👩',
+            'matricula': '🎓',
+            'telefono': '☎️',
+            'correo': '📧',
+            'fecha_nacimiento': '📅',
+            'tipo_sangre': '🩸',
+            'facultad': '🏫',
+            'carrera': '📚',
+            'grado': '📊',
+            'grupo': '👥',
+            'materia': '📖',
+            'puesto': '💼',
+            'area': '🗺️',
+            'grado_imparte': '📊',
+        }
+        
         frame = ctk.CTkFrame(parent, fg_color="transparent")
         frame.grid(row=row, column=col, sticky="ew", padx=8, pady=6)
 
         # TRADUCCIÓN AQUÍ
         texto_label = t(label_text)
+        icon = icon_map.get(label_text, '')
+        icon_text = (icon + " ") if icon else ""
 
         ctk.CTkLabel(
             frame,
-            text=texto_label + (" *" if required else ""),
+            text=icon_text + texto_label + (" *" if required else ""),
             text_color=self.colors['text_dark'],
             font=("Segoe UI", 11),
             anchor="w"
