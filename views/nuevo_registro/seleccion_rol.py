@@ -21,10 +21,10 @@ class SeleccionRolMixin:
         outer = ctk.CTkFrame(self.container, fg_color="transparent")
         outer.pack(fill="both", expand=True)
 
-        ctk.CTkLabel(outer, text=t("nuevo_registro_titulo"),
+        ctk.CTkLabel(outer, text="📝 " + t("nuevo_registro_titulo"),
                      font=("Segoe UI", 23, "bold"),
                      text_color=self.colors['text_dark']).pack(pady=(20, 4))
-        ctk.CTkLabel(outer, text=t("selecciona_tipo_usuario"),
+        ctk.CTkLabel(outer, text="👤 " + t("selecciona_tipo_usuario"),
                      font=("Segoe UI", 16),
                      text_color=self.colors['text_gray']).pack(pady=(0, 16))
 

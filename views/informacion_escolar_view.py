@@ -128,7 +128,7 @@ class InformacionEscolarView(
         ctk.CTkLabel(self.header_left, text="📚  " + t("info_escolar"),
                      font=("Segoe UI", 24, "bold"),
                      text_color=c['text_dark']).pack(anchor="w")
-        ctk.CTkLabel(self.header_left, text=t("gestion_usuarios"),
+        ctk.CTkLabel(self.header_left, text="👥 " + t("gestion_usuarios"),
                      font=("Segoe UI", 11),
                      text_color=c['text_gray']).pack(anchor="w", pady=(2, 0))
 
@@ -163,7 +163,7 @@ class InformacionEscolarView(
         self.entrada_busqueda.bind("<FocusOut>",   self.restaurar_placeholder)
         self.entrada_busqueda.bind("<KeyRelease>", lambda e: self.filtrar_tabla())
 
-        ctk.CTkLabel(self.filtros_bottom, text=t("rol"),
+        ctk.CTkLabel(self.filtros_bottom, text="👥 " + t("rol"),
                      text_color=c['text_dark'],
                      font=("Segoe UI", 10, "bold")).pack(side="left", padx=(3, 3), pady=10)
 
@@ -177,7 +177,7 @@ class InformacionEscolarView(
         self.filtro_rol.pack(side="left", pady=10)
         self.filtro_rol.bind('<<ComboboxSelected>>', lambda e: self.filtrar_tabla())
 
-        ctk.CTkLabel(self.filtros_bottom, text=t("estado"),
+        ctk.CTkLabel(self.filtros_bottom, text="📊 " + t("estado"),
                      text_color=c['text_dark'],
                      font=("Segoe UI", 10, "bold")).pack(side="left", padx=(3, 3), pady=10)
 
@@ -232,7 +232,7 @@ class InformacionEscolarView(
 
         th = ctk.CTkFrame(self.tabla_frame, fg_color="transparent")
         th.pack(fill="x", padx=16, pady=(10, 4))
-        ctk.CTkLabel(th, text=t("usuarios_registrados"),
+        ctk.CTkLabel(th, text="📋 " + t("usuarios_registrados"),
                      font=FontScale.fb(13),
                      text_color=c['text_dark']).pack(side="left")
 
@@ -256,12 +256,12 @@ class InformacionEscolarView(
         scroll_x.configure(command=self.tabla.xview)
 
         for col, label, w, anchor in [
-            ("nombre",           t("nombre_completo"),  260, "w"),
-            ("matricula",        t("matricula"),         130, "center"),
-            ("fecha_nacimiento", t("fecha_nacimiento"),  115, "center"),
-            ("tipo_sangre",      t("tipo_sangre"),        95, "center"),
-            ("rol",              t("rol"),               110, "center"),
-            ("fotos",            f"📸 {t('fotos')}",     80, "center"),
+            ("nombre",           "👤 " + t("nombre_completo"),  260, "w"),
+            ("matricula",        "🎓 " + t("matricula"),         130, "center"),
+            ("fecha_nacimiento", "📅 " + t("fecha_nacimiento"),  115, "center"),
+            ("tipo_sangre",      "🩸 " + t("tipo_sangre"),        95, "center"),
+            ("rol",              "👥 " + t("rol"),               110, "center"),
+            ("fotos",            "📸 " + t("fotos"),             80, "center"),
         ]:
             self.tabla.heading(col, text=label)
             self.tabla.column(col, width=w, anchor=anchor)

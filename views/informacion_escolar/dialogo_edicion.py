@@ -77,10 +77,19 @@ class DialogoEdicionMixin:
         scroll = ctk.CTkFrame(win, fg_color="transparent")
         scroll.pack(fill="both", expand=True)
 
+        icon_map = {
+            'nombre': '👤', 'paterno': '👨', 'materno': '👩',
+            'matricula': '🎓', 'telefono': '☎️', 'fecha_nacimiento': '📅',
+            'tipo_sangre': '🩸', 'rol': '👥', 'facultad': '🏫',
+            'carrera': '📚', 'grado': '📊', 'grupo': '👥',
+            'materia': '📖', 'puesto': '💼', 'area': '🗺️'
+        }
+
         def make_entry(parent, label, var, key=None):
             row = ctk.CTkFrame(parent, fg_color="transparent")
             row.pack(fill="x", padx=8, pady=1)
-            ctk.CTkLabel(row, text=label, width=95, anchor="w",
+            icon_text = (icon_map.get(key, '') + " ") if key in icon_map else ""
+            ctk.CTkLabel(row, text=icon_text + label, width=95, anchor="w",
                          font=("Segoe UI", 9),
                          text_color=c['text_gray']).pack(side="left")
             if key == "fecha_nacimiento":
@@ -94,18 +103,18 @@ class DialogoEdicionMixin:
             e.pack(side="left", fill="x", expand=True)
 
         # Campos comunes
-        make_entry(scroll, t("nombre_req"),          vars_['nombre'])
-        make_entry(scroll, t("apellido_paterno_req"), vars_['paterno'])
-        make_entry(scroll, t("apellido_materno"),     vars_['materno'])
-        make_entry(scroll, t("matricula"),            vars_['matricula'])
-        make_entry(scroll, t("telefono"),             vars_['telefono'])
+        make_entry(scroll, t("nombre"),          vars_['nombre'], 'nombre')
+        make_entry(scroll, t("apellido_paterno"), vars_['paterno'], 'paterno')
+        make_entry(scroll, t("apellido_materno"),     vars_['materno'], 'materno')
+        make_entry(scroll, t("matricula"),            vars_['matricula'], 'matricula')
+        make_entry(scroll, t("telefono"),             vars_['telefono'], 'telefono')
         make_entry(scroll, t("fecha_nacimiento"),     vars_['fecha_nacimiento'], "fecha_nacimiento")
         make_entry(scroll, t("tipo_sangre"),          vars_['tipo_sangre'],      "tipo_sangre")
 
         # Selector de rol
         rol_row = ctk.CTkFrame(scroll, fg_color="transparent")
         rol_row.pack(fill="x", padx=8, pady=4)
-        ctk.CTkLabel(rol_row, text=t("rol"), width=95, anchor="w",
+        ctk.CTkLabel(rol_row, text="👥 " + t("rol"), width=95, anchor="w",
                      font=("Segoe UI", 9),
                      text_color=c['text_gray']).pack(side="left")
         combo_rol = ttk.Combobox(rol_row, textvariable=vars_['rol'],
@@ -121,16 +130,16 @@ class DialogoEdicionMixin:
                 w.destroy()
             rol = vars_['rol'].get()
             if rol == "alumno":
-                make_entry(role_frame, t("facultad"),    vars_['facultad'])
-                make_entry(role_frame, t("carrera"),     vars_['carrera'])
-                make_entry(role_frame, t("grado"),       vars_['grado'])
-                make_entry(role_frame, t("grupo"),       vars_['grupo'])
+                make_entry(role_frame, t("facultad"),    vars_['facultad'], 'facultad')
+                make_entry(role_frame, t("carrera"),     vars_['carrera'], 'carrera')
+                make_entry(role_frame, t("grado"),       vars_['grado'], 'grado')
+                make_entry(role_frame, t("grupo"),       vars_['grupo'], 'grupo')
             elif rol == "maestro":
-                make_entry(role_frame, t("grado_imparte"), vars_['grado'])
-                make_entry(role_frame, t("materia"),       vars_['materia'])
+                make_entry(role_frame, t("grado_imparte"), vars_['grado'], 'grado')
+                make_entry(role_frame, t("materia"),       vars_['materia'], 'materia')
             else:
-                make_entry(role_frame, t("puesto"), vars_['puesto'])
-                make_entry(role_frame, t("area"),   vars_['area'])
+                make_entry(role_frame, t("puesto"), vars_['puesto'], 'puesto')
+                make_entry(role_frame, t("area"),   vars_['area'], 'area')
 
         combo_rol.bind("<<ComboboxSelected>>", build_role)
         build_role()
