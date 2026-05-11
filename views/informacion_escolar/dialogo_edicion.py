@@ -102,6 +102,7 @@ class DialogoEdicionMixin:
                 e = ctk.CTkEntry(row, textvariable=var, height=24, font=("Segoe UI", 9))
             e.pack(side="left", fill="x", expand=True)
 
+
         # Campos comunes
         make_entry(scroll, t("nombre"),          vars_['nombre'], 'nombre')
         make_entry(scroll, t("apellido_paterno"), vars_['paterno'], 'paterno')
@@ -111,7 +112,7 @@ class DialogoEdicionMixin:
         make_entry(scroll, t("fecha_nacimiento"),     vars_['fecha_nacimiento'], "fecha_nacimiento")
         make_entry(scroll, t("tipo_sangre"),          vars_['tipo_sangre'],      "tipo_sangre")
 
-        # Selector de rol
+        # Selector de rol principal
         rol_row = ctk.CTkFrame(scroll, fg_color="transparent")
         rol_row.pack(fill="x", padx=8, pady=4)
         ctk.CTkLabel(rol_row, text="👥 " + t("rol"), width=95, anchor="w",
@@ -122,27 +123,90 @@ class DialogoEdicionMixin:
                                  state="readonly", width=10)
         combo_rol.pack(side="left")
 
+        # Selector de roles extra
+        available_roles = ["alumno", "maestro", "personal"]
+        roles_extras_vars = {
+            role: tk.BooleanVar(value=False)
+            for role in available_roles
+        }
+
+        # Cargar roles extra ya guardados (excluyendo el principal)
+        roles_usuario = u.get('rol', '').split(",") if u.get('rol') else []       
+        rol_principal = roles_usuario[0] if roles_usuario else "alumno"
+        vars_['rol'].set(rol_principal)
+        for r in roles_usuario[1:]:
+            if r in roles_extras_vars:
+                roles_extras_vars[r].set(True)
+
+        extras_frame = ctk.CTkFrame(scroll, fg_color="transparent")
+        extras_frame.pack(fill="x", padx=8, pady=0)
+        ctk.CTkLabel(extras_frame, text="Roles extra", width=95, anchor="w",
+                    font=("Segoe UI", 9), text_color=c['text_gray']).pack(side="left")
+
+        extras_cbs = {}
+        for role in available_roles:
+            cb = ttk.Checkbutton(extras_frame, text=role.capitalize(), variable=roles_extras_vars[role])
+            cb.pack(side="left", padx=2)
+            extras_cbs[role] = cb
+
         role_frame = ctk.CTkFrame(scroll, fg_color="transparent")
         role_frame.pack(fill="x")
+        extra_roles_frame = ctk.CTkFrame(scroll, fg_color="transparent")
+        extra_roles_frame.pack(fill="x")
+
+        # Evita seleccionar el mismo en principal y extra
+        def update_extras_disabled(*_):
+            principal = vars_['rol'].get()
+            for role, cb in extras_cbs.items():
+                if role == principal:
+                    cb.config(state="disabled")
+                    if roles_extras_vars[role].get():
+                        roles_extras_vars[role].set(False)
+                else:
+                    cb.config(state="normal")
+
+        combo_rol.bind("<<ComboboxSelected>>", lambda *_: (update_extras_disabled(), build_role()))
+        for var in roles_extras_vars.values():
+            var.trace_add("write", lambda *_: build_role())
+        update_extras_disabled()
+        build_role()
 
         def build_role(*_):
             for w in role_frame.winfo_children():
                 w.destroy()
-            rol = vars_['rol'].get()
-            if rol == "alumno":
+            for w in extra_roles_frame.winfo_children():
+                w.destroy()
+            principal = vars_['rol'].get()
+            if principal == "alumno":
                 make_entry(role_frame, t("facultad"),    vars_['facultad'], 'facultad')
                 make_entry(role_frame, t("carrera"),     vars_['carrera'], 'carrera')
                 make_entry(role_frame, t("grado"),       vars_['grado'], 'grado')
                 make_entry(role_frame, t("grupo"),       vars_['grupo'], 'grupo')
-            elif rol == "maestro":
+            elif principal == "maestro":
                 make_entry(role_frame, t("grado_imparte"), vars_['grado'], 'grado')
                 make_entry(role_frame, t("materia"),       vars_['materia'], 'materia')
-            else:
+            elif principal == "personal":
                 make_entry(role_frame, t("puesto"), vars_['puesto'], 'puesto')
                 make_entry(role_frame, t("area"),   vars_['area'], 'area')
+            # ...(campos roles extra igual, como tienes)...
+            for role in available_roles:
+                if roles_extras_vars[role].get():
+                    subframe = ctk.CTkFrame(extra_roles_frame, fg_color="transparent")
+                    subframe.pack(fill="x", pady=2)
+                    ctk.CTkLabel(subframe, text=f"Datos para el rol extra: {role}", width=140, anchor="w",
+                                font=("Segoe UI", 9, "bold"), text_color=c['text_gray']).pack(side="top")
 
-        combo_rol.bind("<<ComboboxSelected>>", build_role)
-        build_role()
+                    if role == "alumno":
+                        make_entry(subframe, t("facultad") + " ✱",    vars_['facultad'], 'facultad')
+                        make_entry(subframe, t("carrera") + " ✱",     vars_['carrera'], 'carrera')
+                        make_entry(subframe, t("grado") + " ✱",       vars_['grado'], 'grado')
+                        make_entry(subframe, t("grupo") + " ✱",       vars_['grupo'], 'grupo')
+                    elif role == "maestro":
+                        make_entry(subframe, t("grado_imparte") + " ✱", vars_['grado'], 'grado')
+                        make_entry(subframe, t("materia") + " ✱",       vars_['materia'], 'materia')
+                    elif role == "personal":
+                        make_entry(subframe, t("puesto") + " ✱", vars_['puesto'], 'puesto')
+                        make_entry(subframe, t("area") + " ✱",   vars_['area'], 'area')
 
         # Botones
         btns = ctk.CTkFrame(win, fg_color="transparent")
@@ -170,6 +234,9 @@ class DialogoEdicionMixin:
 
         for v in vars_.values():
             v.trace_add("write", detectar)
+        
+        for var in roles_extras_vars.values():
+            var.trace_add("write", detectar)
 
     def _guardar_edicion(self, user_id, vars_, ventana):
         import re
@@ -180,7 +247,9 @@ class DialogoEdicionMixin:
         matricula = g('matricula')
         telefono  = g('telefono')
         correo    = g('correo') if 'correo' in vars_ else ''
-        rol       = g('rol')
+        rol_principal = g('rol')
+        roles_extra = [role for role, var in roles_extras_vars.items() if var.get() and role != rol_principal]
+        rol_full = ",".join([rol_principal] + roles_extra)
 
         # ── 1. Campos obligatorios ────────────────────────────────────────────
         if not nombre or not paterno:
@@ -216,7 +285,7 @@ class DialogoEdicionMixin:
             return
 
         # ── 3. Matrícula: solo dígitos, longitud exacta según rol ──────────────
-        longitud_matricula = 8 if rol == "alumno" else 6
+        longitud_matricula = 8 if rol_principal == "alumno" else 6
         if not matricula.isdigit():
             messagebox.showwarning("Error", t("matricula_num"))
             return
@@ -250,13 +319,17 @@ class DialogoEdicionMixin:
             "maestro":  [("grado_imparte", g('grado')), ("materia", g('materia'))],
             "personal": [("puesto", g('puesto')), ("area", g('area'))],
         }
-        for clave, valor in campos_rol_check.get(rol, []):
-            if not valor:
-                messagebox.showwarning(
-                    t("campo_requerido"),
-                    f"{t('campo_requerido')}: {t(clave)}"
-                )
-                return
+        
+        # Valida campos de todos los roles seleccionados
+        selected_roles = [rol_principal] + roles_extra
+        for rol in selected_roles:
+            for clave, valor in campos_rol_check.get(rol, []):
+                if not valor:
+                    messagebox.showwarning(
+                        t("campo_requerido"),
+                        f"{t('campo_requerido')}: {t(clave)}"
+                    )
+                    return
             if len(valor) < 3:
                 messagebox.showwarning(
                     "Error",
@@ -321,30 +394,64 @@ class DialogoEdicionMixin:
                     rolUsuario             = ?
                 WHERE idUsuario = ?
             """, (nombre, paterno, g('materno'), matricula, telefono,
-                  g('fecha_nacimiento'), g('tipo_sangre'), rol, user_id))
+                  g('fecha_nacimiento'), g('tipo_sangre'), rol_full, user_id))
 
             cursor.execute("DELETE FROM alumnos          WHERE fkIdUsuario = ?", (user_id,))
             cursor.execute("DELETE FROM maestros         WHERE fkIdUsuario = ?", (user_id,))
             cursor.execute("DELETE FROM personal_escolar WHERE fkIdUsuario = ?", (user_id,))
 
-            if rol == "alumno":
-                cursor.execute("""
-                    INSERT INTO alumnos
+            roles_antes = set(self.usuario_seleccionado.get('rol', '').split(',')) if self.usuario_seleccionado.get('rol') else set()
+            roles_despues = set(selected_roles)
+
+            # ELIMINA registros de roles que ya NO tiene
+            for rol in roles_antes - roles_despues:
+                if rol == "alumno":
+                    cursor.execute("DELETE FROM alumnos WHERE fkIdUsuario = ?", (user_id,))
+                elif rol == "maestro":
+                    cursor.execute("DELETE FROM maestros WHERE fkIdUsuario = ?", (user_id,))
+                elif rol == "personal":
+                    cursor.execute("DELETE FROM personal_escolar WHERE fkIdUsuario = ?", (user_id,))
+
+            # AGREGA registros nuevos de roles que antes no había
+            for rol in roles_despues - roles_antes:
+                if rol == "alumno":
+                    cursor.execute("""
+                        INSERT INTO alumnos
                         (fkIdUsuario, facultadAlumno, carreraAlumno, gradoAlumno, grupoAlumno)
-                    VALUES (?, ?, ?, ?, ?)
-                """, (user_id, g('facultad'), g('carrera'), g('grado'), g('grupo')))
-            elif rol == "maestro":
-                cursor.execute("""
-                    INSERT INTO maestros
+                        VALUES (?, ?, ?, ?, ?)
+                    """, (user_id, g('facultad'), g('carrera'), g('grado'), g('grupo')))
+                elif rol == "maestro":
+                    cursor.execute("""
+                        INSERT INTO maestros
                         (fkIdUsuario, gradoImpartidoMaestro, materiaImpartidaMaestro)
-                    VALUES (?, ?, ?)
-                """, (user_id, g('grado'), g('materia')))
-            elif rol == "personal":
-                cursor.execute("""
-                    INSERT INTO personal_escolar
+                        VALUES (?, ?, ?)
+                    """, (user_id, g('grado'), g('materia')))
+                elif rol == "personal":
+                    cursor.execute("""
+                        INSERT INTO personal_escolar
                         (fkIdUsuario, puestoPersonalEscolar, areaPersonalEscolar)
-                    VALUES (?, ?, ?)
-                """, (user_id, g('puesto'), g('area')))
+                        VALUES (?, ?, ?)
+                    """, (user_id, g('puesto'), g('area')))
+            # Si sigue teniendo el rol, ACTUALIZA datos según nuevos inputs (¡opcional pero deseable!)
+            for rol in roles_despues & roles_antes:
+                if rol == "alumno":
+                    cursor.execute("""
+                        UPDATE alumnos
+                        SET facultadAlumno=?, carreraAlumno=?, gradoAlumno=?, grupoAlumno=?
+                        WHERE fkIdUsuario=?
+                    """, (g('facultad'), g('carrera'), g('grado'), g('grupo'), user_id))
+                elif rol == "maestro":
+                    cursor.execute("""
+                        UPDATE maestros
+                        SET gradoImpartidoMaestro=?, materiaImpartidaMaestro=?
+                        WHERE fkIdUsuario=?
+                    """, (g('grado'), g('materia'), user_id))
+                elif rol == "personal":
+                    cursor.execute("""
+                        UPDATE personal_escolar
+                        SET puestoPersonalEscolar=?, areaPersonalEscolar=?
+                        WHERE fkIdUsuario=?
+                    """, (g('puesto'), g('area'), user_id))
 
             conn.commit()
             conn.close()
