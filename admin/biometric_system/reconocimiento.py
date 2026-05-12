@@ -860,121 +860,91 @@ class ReconocerFacial:
             self._ultimo_resultado = []
 
             if faces_det:
+                # Sólo procesar la cara más cercana (mayor área)
                 self._frames_sin_cara   = 0
                 self._cara_presente     = True
 
-                for (x, y, w, h) in faces_det:
-                    fh, fw = frame.shape[:2]
-                    pad    = int(min(w, h) * 0.08)
-                    x1 = max(0, x - pad)
-                    y1 = max(0, y - pad)
-                    x2 = min(fw, x + w + pad)
-                    y2 = min(fh, y + h + pad)
+                x, y, w, h = max(faces_det, key=lambda r: r[2] * r[3])
+                fh, fw = frame.shape[:2]
+                pad    = int(min(w, h) * 0.08)
+                x1 = max(0, x - pad)
+                y1 = max(0, y - pad)
+                x2 = min(fw, x + w + pad)
+                y2 = min(fh, y + h + pad)
 
-                    rostro_bgr = frame[y1:y2, x1:x2]
-                    if rostro_bgr.size == 0:
-                        continue
-
+                rostro_bgr = frame[y1:y2, x1:x2]
+                if rostro_bgr.size != 0:
                     label_anterior = self._votos[-1][0] if self._votos else None
 
                     label_raw, dist_raw = self._reconocer_rostro(rostro_bgr)
                     if label_raw != "Desconocido":
                         print("DEBUG match", label_raw, "conf", dist_raw, "tol", self.tolerancia)
-                    
+
                     # ✅ Fast-path: si el match es muy bueno, aceptar sin esperar votación
                     if (label_raw != "Desconocido"
                             and dist_raw is not None
                             and dist_raw <= (self.tolerancia - self._fast_accept_margin)):
 
-                        # validar activo antes de permitir acceso
                         if self._usuario_activo(label_raw):
-                            self._votos = []  # limpiar para que no “ensucie” el siguiente ciclo
+                            self._votos = []
                             self._desconocido_desde = None
                             nombre = self.nombres.get(label_raw, "Desconocido")
                             self.registrar_acceso(label_raw, "aceptado", dist_raw)
-                            # Iniciar cooldown corto después de acceso aceptado
                             self._cooldown_hasta = ahora + timedelta(seconds=self._cooldown_post_aceptado_seg)
                             self._ultimo_usuario_aceptado = label_raw
                             self._ultimo_detectado_ts = ahora
-                            self._ultimo_resultado.append((x, y, w, h, nombre, dist_raw, (30, 200, 60)))
-                            continue
-
-                    # Actualizar timestamp si se detecta la persona aceptada
-                    if label_raw == self._ultimo_usuario_aceptado:
-                        self._ultimo_detectado_ts = ahora
-
-                    # Reset de votos solo entre identidades conocidas
-                    if (label_anterior is not None and label_raw != label_anterior
-                            and label_anterior != "Desconocido"
-                            and label_raw != "Desconocido"):
-                        self._votos = []
-
-                    label, distancia = self._votar(label_raw, dist_raw)
-
-                    if label is None:
-                        self._ultimo_resultado.append((x, y, w, h, None, 0, (0, 165, 255)))
-                        continue
-
-                    if label == "Desconocido":
-                        ahora = datetime.now()
-
-                        # Iniciar/continuar temporizador de desconocido
-                        if self._desconocido_desde is None:
-                            self._desconocido_desde = ahora
-                        transcurrido = (ahora - self._desconocido_desde).total_seconds()
-
-                        if self._ultimo_tipo == "aceptado":
-                            # Antes: esperabas 5s; ahora se controla con self._tolerancia_segundos (ej 1.2s)
-                            if transcurrido >= self._tolerancia_segundos:
-                                self._desconocido_desde = None
-                                self._ultimo_tipo = None
-                                self._votos = []
-                                self.registrar_acceso(None, "denegado", dist_raw)
-                                self._ultimo_resultado.append(
-                                    (x, y, w, h, "Desconocido", dist_raw, (40, 40, 220))
-                                )
-                            else:
-                                # Mostrar “pendiente” mientras todavía no vence el hold
-                                self._ultimo_resultado.append((x, y, w, h, None, 0, (0, 200, 255)))
-
-                        else:
-                            # ✅ Cambio CLAVE:
-                            # No registrar denegado inmediatamente. Esperar un poco para evitar
-                            # el efecto "DENEGADO → (después) ACEPTADO" cuando todavía se está estabilizando.
-                            if transcurrido >= self._desconocido_hold_seg:
-                                self._desconocido_desde = None
-                                self._votos = []
-                                self.registrar_acceso(None, "denegado", dist_raw)
-                                self._ultimo_resultado.append(
-                                    (x, y, w, h, "Desconocido", dist_raw, (40, 40, 220))
-                                )
-                            else:
-                                # Aún no denegamos, solo indicamos que está “evaluando”
-                                self._ultimo_resultado.append((x, y, w, h, None, 0, (0, 200, 255)))
-
+                            self._ultimo_resultado = [(x, y, w, h, nombre, dist_raw, (30, 200, 60))]
                     else:
-                        # Si reconoció un ID, validar estado ACTIVO antes de permitir acceso
-                        if label == self._ultimo_usuario_aceptado:
+                        if label_raw == self._ultimo_usuario_aceptado:
                             self._ultimo_detectado_ts = ahora
-                        if not self._usuario_activo(label):
-                            # Tratamos como desconocido/denegado (y mostramos como desconocido)
-                            self._desconocido_desde = None
-                            self.registrar_acceso(None, "denegado", dist_raw)
-                            self._ultimo_resultado.append(
-                                (x, y, w, h, "Desconocido", dist_raw, (40, 40, 220))
-                            )
-                            continue
 
-                        self._desconocido_desde = None
-                        nombre = self.nombres.get(label, "Desconocido")
-                        self.registrar_acceso(label, "aceptado", distancia)
-                        # Iniciar cooldown corto después de acceso aceptado
-                        self._cooldown_hasta = ahora + timedelta(seconds=self._cooldown_post_aceptado_seg)
-                        self._ultimo_usuario_aceptado = label
-                        self._ultimo_detectado_ts = ahora
-                        self._ultimo_resultado.append(
-                            (x, y, w, h, nombre, distancia or 0, (30, 200, 60))
-                        )
+                        if (label_anterior is not None and label_raw != label_anterior
+                                and label_anterior != "Desconocido"
+                                and label_raw != "Desconocido"):
+                            self._votos = []
+
+                        label, distancia = self._votar(label_raw, dist_raw)
+
+                        if label is None:
+                            self._ultimo_resultado = [(x, y, w, h, None, 0, (0, 165, 255))]
+                        elif label == "Desconocido":
+                            ahora = datetime.now()
+                            if self._desconocido_desde is None:
+                                self._desconocido_desde = ahora
+                            transcurrido = (ahora - self._desconocido_desde).total_seconds()
+
+                            if self._ultimo_tipo == "aceptado":
+                                if transcurrido >= self._tolerancia_segundos:
+                                    self._desconocido_desde = None
+                                    self._ultimo_tipo = None
+                                    self._votos = []
+                                    self.registrar_acceso(None, "denegado", dist_raw)
+                                    self._ultimo_resultado = [(x, y, w, h, "Desconocido", dist_raw, (40, 40, 220))]
+                                else:
+                                    self._ultimo_resultado = [(x, y, w, h, None, 0, (0, 200, 255))]
+                            else:
+                                if transcurrido >= self._desconocido_hold_seg:
+                                    self._desconocido_desde = None
+                                    self._votos = []
+                                    self.registrar_acceso(None, "denegado", dist_raw)
+                                    self._ultimo_resultado = [(x, y, w, h, "Desconocido", dist_raw, (40, 40, 220))]
+                                else:
+                                    self._ultimo_resultado = [(x, y, w, h, None, 0, (0, 200, 255))]
+                        else:
+                            if label == self._ultimo_usuario_aceptado:
+                                self._ultimo_detectado_ts = ahora
+                            if not self._usuario_activo(label):
+                                self._desconocido_desde = None
+                                self.registrar_acceso(None, "denegado", dist_raw)
+                                self._ultimo_resultado = [(x, y, w, h, "Desconocido", dist_raw, (40, 40, 220))]
+                            else:
+                                self._desconocido_desde = None
+                                nombre = self.nombres.get(label, "Desconocido")
+                                self.registrar_acceso(label, "aceptado", distancia)
+                                self._cooldown_hasta = ahora + timedelta(seconds=self._cooldown_post_aceptado_seg)
+                                self._ultimo_usuario_aceptado = label
+                                self._ultimo_detectado_ts = ahora
+                                self._ultimo_resultado = [(x, y, w, h, nombre, distancia or 0, (30, 200, 60))]
 
             else:
                 self._cara_presente     = False
