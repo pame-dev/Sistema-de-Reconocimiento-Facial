@@ -36,11 +36,7 @@ class CameraMainMixin:
                 text="⬤  Error: No se pudo abrir cámara",
                 text_color=self.colors['danger'])
             self._anim_running = False
-            self._btn_iniciar.configure(
-    text=f"▶  {t('iniciar')}",
-    fg_color="#16a34a",
-    state="normal"
-)
+            self._btn_iniciar.configure(text=t("iniciar"), fg_color="#16a34a", state="normal")
             return
 
         self._cam_running = True
@@ -48,8 +44,7 @@ class CameraMainMixin:
         self._cam_thread.start()
 
         self._anim_running = False
-        self._btn_iniciar.configure(
-            text=t("detener"), fg_color="#dc2626", hover_color="#b91c1c", state="normal")
+        self._btn_iniciar.configure(text=t("detener"), fg_color="#dc2626", hover_color="#b91c1c", state="normal")
         self._lbl_cam.configure(text=t("camara_on"), text_color=self.colors['primary'])
 
     def _stop_camera(self):
@@ -63,12 +58,7 @@ class CameraMainMixin:
                 pass
             self._cap = None
         try:
-            self._btn_iniciar.configure(
-    text=f"▶  {t('iniciar')}",
-    fg_color="#16a34a",
-    hover_color="#15803d",
-    state="normal"
-)
+            self._btn_iniciar.configure(text=t("iniciar"), fg_color="#16a34a", hover_color="#15803d", state="normal")
             self._lbl_cam.configure(text=t("camara_off"), text_color=self.colors['danger'])
         except Exception:
             pass
