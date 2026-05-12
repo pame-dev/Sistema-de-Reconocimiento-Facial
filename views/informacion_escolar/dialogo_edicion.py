@@ -208,6 +208,10 @@ class DialogoEdicionMixin:
                 else:
                     cb.config(state="normal")
 
+        # Asegurar que los checkboxes extra reflejen el rol principal seleccionado
+        vars_['rol'].trace_add("write", lambda *_: update_extras_disabled())
+        update_extras_disabled()
+
         # Botones
         btns = ctk.CTkFrame(main_frame, fg_color="transparent")
         btns.pack(fill="x", padx=3, pady=(0, 8))
@@ -268,7 +272,8 @@ class DialogoEdicionMixin:
                     f"{t('campo_requerido')}: {t(clave)}"
                 )
                 return
-            if clave not in ("matricula", "telefono") and len(campo) < 3:
+            sin_minimo = ("matricula", "telefono", "grado_imparte", "grado", "grupo")   
+            if clave not in sin_minimo and len(campo) < 3:
                 messagebox.showwarning(
                     "Error",
                     f"{t(clave)} debe tener mínimo 3 caracteres"
