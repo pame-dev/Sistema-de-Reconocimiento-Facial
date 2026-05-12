@@ -126,10 +126,10 @@ class InformacionEscolarView(
         self.header_left.pack(side="left", fill="x", expand=True)
 
         ctk.CTkLabel(self.header_left, text="📚  " + t("info_escolar"),
-                     font=("Segoe UI", 24, "bold"),
+                     font=("Segoe UI", 22, "bold"),
                      text_color=c['text_dark']).pack(anchor="w")
         ctk.CTkLabel(self.header_left, text="👥 " + t("gestion_usuarios"),
-                     font=("Segoe UI", 11),
+                     font=("Segoe UI", 14),
                      text_color=c['text_gray']).pack(anchor="w", pady=(2, 0))
 
         # Filtros
