@@ -59,10 +59,9 @@ class DialogoEdicionMixin:
         root = self.parent.winfo_toplevel()
         root.update_idletasks()
 
-        width, height = 390, 320
+        width, height = 390, 440
         win.geometry(f"{width}x{height}+{root.winfo_rootx()}+{root.winfo_rooty()}")
-        win.minsize(width, 400)
-        win.maxsize(width, 800)
+        win.minsize(width, height)
 
         # Header
         header = ctk.CTkFrame(win, fg_color=color, height=42)
@@ -75,11 +74,11 @@ class DialogoEdicionMixin:
                       fg_color="transparent", text_color="white",
                       command=win.destroy).pack(side="right", padx=6)
 
-        main_frame = ctk.CTkFrame(win, fg_color="transparent")
-        main_frame.pack(fill="both", expand=True, padx=12, pady=(10, 2))
+        content_frame = ctk.CTkFrame(win, fg_color="transparent")
+        content_frame.pack(fill="both", expand=True, padx=12, pady=(4, 0))
 
-        btns = ctk.CTkFrame(win, fg_color="transparent")
-        btns.pack(fill="x", padx=6, pady=4, side="bottom")
+        main_frame = ctk.CTkScrollableFrame(content_frame, fg_color="transparent")
+        main_frame.pack(fill="both", expand=True)
 
         icon_map = {
             'nombre': '👤', 'paterno': '👨', 'materno': '👩',
@@ -91,7 +90,7 @@ class DialogoEdicionMixin:
 
         def make_entry(parent, label, var, key=None):
             row = ctk.CTkFrame(parent, fg_color="transparent")
-            row.pack(fill="x", padx=8, pady=1)
+            row.pack(fill="x", padx=8, pady=0)
             icon_text = (icon_map.get(key, '') + " ") if key in icon_map else ""
             ctk.CTkLabel(row, text=icon_text + label, width=95, anchor="w",
                          font=("Segoe UI", 9),
@@ -131,7 +130,7 @@ class DialogoEdicionMixin:
 
         # Selector de rol principal
         rol_row = ctk.CTkFrame(main_frame, fg_color="transparent")
-        rol_row.pack(fill="x", padx=8, pady=4)
+        rol_row.pack(fill="x", padx=8, pady=2)
         ctk.CTkLabel(rol_row, text="👥 " + t("rol"), width=95, anchor="w",
                      font=("Segoe UI", 9),
                      text_color=c['text_gray']).pack(side="left")
@@ -198,25 +197,6 @@ class DialogoEdicionMixin:
             # Asegurarse que la ventana esté encima
             top.focus_force()
 
-        btns = ctk.CTkFrame(win, fg_color="transparent")
-        btns.pack(fill="x", padx=6, pady=4, side="bottom")
-
-        btn_guardar = ctk.CTkButton(btns, text="💾", width=60, height=26,
-                                    fg_color=c['primary'],
-                                    font=("Segoe UI", 9, "bold"),
-                                    state="normal",
-                                    command=lambda: self._guardar_edicion(u['id'], vars_, win))
-        btn_guardar.pack(side="left", padx=2)
-
-        ctk.CTkButton(btns, text="📸", width=60, height=26,
-                    fg_color=c['accent'],
-                    font=("Segoe UI", 9, "bold"),
-                    command=lambda: self._retomar_fotos(u, win)).pack(side="left", padx=2)
-
-        ctk.CTkButton(btns, text="✖", width=60, height=26,
-                    fg_color=c['content_bg'], text_color=c['text_dark'],
-                    command=win.destroy).pack(side="right", padx=2)
-
         # Evita seleccionar el mismo en principal y extra
         def update_extras_disabled(*_):
             principal = vars_['rol'].get()
@@ -229,14 +209,14 @@ class DialogoEdicionMixin:
                     cb.config(state="normal")
 
         # Botones
-        btns = ctk.CTkFrame(win, fg_color="transparent")
-        btns.pack(fill="x", padx=6, pady=4)
+        btns = ctk.CTkFrame(main_frame, fg_color="transparent")
+        btns.pack(fill="x", padx=3, pady=(0, 8))
 
         btn_guardar = ctk.CTkButton(btns, text="💾", width=60, height=26,
                                     fg_color=c['primary'],
                                     font=("Segoe UI", 9, "bold"),
                                     state="disabled",
-                                    command=lambda: self._guardar_edicion(u['id'], vars_, win))
+                                    command=lambda: self._guardar_edicion(u['id'], vars_, roles_extras_vars, win))
         btn_guardar.pack(side="left", padx=2)
 
         ctk.CTkButton(btns, text="📸", width=60, height=26,
@@ -258,7 +238,7 @@ class DialogoEdicionMixin:
         for var in roles_extras_vars.values():
             var.trace_add("write", detectar)
 
-    def _guardar_edicion(self, user_id, vars_, ventana):
+    def _guardar_edicion(self, user_id, vars_, roles_extras_vars, ventana):
         import re
         g = lambda k: vars_[k].get().strip()
 
