@@ -32,7 +32,7 @@ class SettingsMixin:
 
         self._actualizar_sidebar_idioma()
         try:
-            self.btn_salir.configure(text=t("salir"))
+            self.btn_salir.configure(text=f"↩ {t('salir')}")
         except Exception:
             pass
         self._recargar_vista()

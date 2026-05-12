@@ -49,7 +49,7 @@ class HeaderMixin:
         self.lbl_titulo.pack(side="left")
 
         self.btn_salir = ctk.CTkButton(
-            header, text=t("salir"), font=("Segoe UI", 14, "bold"),
+            header, text=f"↩ {t('salir')}", font=("Segoe UI", 14, "bold"),
             fg_color=c['danger'], hover_color=COLORS['danger_dark'],
             text_color=c['white'], width=20, height=34, corner_radius=8,
             command=self.logout)

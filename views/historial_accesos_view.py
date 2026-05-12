@@ -138,14 +138,14 @@ class HistorialAccesosView:
         ctk.CTkLabel(
             left,
             text="📊 " + t("historial"),
-            font=("Segoe UI", 16, "bold"),
+            font=("Segoe UI", 20, "bold"),
             text_color=c['text_dark']
         ).pack(anchor="w")
 
         ctk.CTkLabel(
             left,
             text="📝 " + t("registro_intentos"),
-            font=("Segoe UI", 8),
+            font=("Segoe UI", 12),
             text_color=c['text_gray']
         ).pack(anchor="w", pady=(2, 0))
 
