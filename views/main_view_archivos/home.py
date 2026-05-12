@@ -16,6 +16,7 @@ from tkinter import messagebox
 from idiomas import t, cambiar_idioma
 
 from views.font_scale import FontScale
+from tools.access_counter import AccessCounter
 
 class HomeMixin:
     def show_home(self):
@@ -30,7 +31,7 @@ class HomeMixin:
         stats_row.pack(fill="x", pady=(0, 18))
         stats_row.grid_columnconfigure((0, 1, 2), weight=1, uniform="stat")
 
-        self._stat_total     = self._stat_card(stats_row, t("total"),     "0", COLORS['primary'], "🔢", 0)
+        self._stat_total     = self._stat_card(stats_row, t("presentes"), "0", COLORS['primary'], "🔢", 0)
         self._stat_aceptados = self._stat_card(stats_row, t("aceptados"), "0", "#27AE60",         "✅", 1)
         self._stat_denegados = self._stat_card(stats_row, t("denegados"), "0", COLORS['danger'],  "❌", 2)
         self._cargar_stats()
@@ -80,12 +81,12 @@ class HomeMixin:
 
     def _cargar_stats(self):
         try:
+            total = AccessCounter.get()
             conn = get_db()
             if not conn:
+                self._stat_total.configure(text=str(total))
                 return
             cur = conn.cursor()
-            cur.execute("SELECT COUNT(*) FROM accesos")
-            total = cur.fetchone()[0]
             cur.execute("SELECT COUNT(*) FROM accesos WHERE estado_acceso='aceptado'")
             aceptados = cur.fetchone()[0]
             cur.execute("SELECT COUNT(*) FROM accesos WHERE estado_acceso='denegado'")

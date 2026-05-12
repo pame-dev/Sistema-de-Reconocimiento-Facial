@@ -20,7 +20,7 @@ if _PROJECT_ROOT not in sys.path:
 from camera import Camera
 
 try:
-    from contro_cerradura import ejecutar_cerradura as ejecutar_test_cerradura
+    from admin.biometric_system.contro_cerradura import ejecutar_cerradura as ejecutar_test_cerradura
 except Exception:
     ejecutar_test_cerradura = None
 try:
@@ -34,6 +34,11 @@ try:
 except Exception as e:
     print(f"⚠️ Buzzer denegado no disponible: {e}")
     ejecutar_buzzer_denegado = None
+
+try:
+    from tools.access_counter import AccessCounter
+except Exception:
+    AccessCounter = None
 
 
 # ── Haar cascades (multiplataforma: Windows + Debian/Raspberry) ──────────────
@@ -81,7 +86,7 @@ class ReconocerFacial:
         self.model_path = os.path.join(self.artifacts_dir, 'lbph_model.yml')
         self.data_path  = os.path.join(self.artifacts_dir, 'lbph_data.pkl')
         self.ids_hash_path  = os.path.join(self.artifacts_dir, 'ids_hash.pkl')
-        self._modelo_version = 10  # sube versión por cambios de lógica
+        self._modelo_version = 11  # sube versión por cambios de lógica
 
         # ── Detectores Haar ────────────────────────────────────────────────────
         self._haar_frontal = cv2.CascadeClassifier(
@@ -322,12 +327,40 @@ class ReconocerFacial:
             except Exception:
                 pass
 
-        # Si la imagen sigue muy oscura, aumentar ligeramente brillo/contraste
+        # Normalizar exposición: corregir tanto oscuro como sobreexpuesto.
         med = float(np.median(gray))
         if med < 70.0:
             gray = cv2.convertScaleAbs(gray, alpha=1.3, beta=15)
+        elif med > 185.0:
+            gray = cv2.convertScaleAbs(gray, alpha=0.82, beta=-12)
 
         return gray
+
+    def _normalizar_rostro_gray(self, gray):
+        """Normaliza un recorte de rostro para reducir sensibilidad a cambios de luz."""
+        if gray is None or gray.size == 0:
+            return gray
+
+        out = gray
+        try:
+            clahe = cv2.createCLAHE(clipLimit=2.2, tileGridSize=(8, 8))
+            out = clahe.apply(out)
+        except Exception:
+            pass
+
+        med = float(np.median(out))
+        if med < 65.0:
+            out = cv2.convertScaleAbs(out, alpha=1.25, beta=18)
+        elif med > 190.0:
+            out = cv2.convertScaleAbs(out, alpha=0.85, beta=-14)
+
+        try:
+            eq = cv2.equalizeHist(out)
+            out = cv2.addWeighted(out, 0.65, eq, 0.35, 0)
+        except Exception:
+            pass
+
+        return out
 
     # ─────────────────────────────────────────────────────────────────────────
     # Gestión de IDs y persistencia (ENTRENA CON TODOS, INCLUSO INACTIVOS)
@@ -492,6 +525,7 @@ class ReconocerFacial:
                     rostro_gray = gray
 
                 rostro_gray = cv2.resize(rostro_gray, (100, 100))
+                rostro_gray = self._normalizar_rostro_gray(rostro_gray)
 
                 faces_tmp.append(rostro_gray)
                 labels_tmp.append(user_id)
@@ -641,11 +675,14 @@ class ReconocerFacial:
         try:
             gray_base = cv2.cvtColor(rostro_bgr, cv2.COLOR_BGR2GRAY)
             gray_base = cv2.resize(gray_base, (100, 100))
+            gray_base = self._normalizar_rostro_gray(gray_base)
 
             variantes = [
                 gray_base,
                 cv2.equalizeHist(gray_base),
-                cv2.GaussianBlur(cv2.equalizeHist(gray_base), (3, 3), 0),
+                cv2.GaussianBlur(gray_base, (3, 3), 0),
+                cv2.convertScaleAbs(gray_base, alpha=1.10, beta=8),
+                cv2.convertScaleAbs(gray_base, alpha=0.90, beta=-8),
             ]
 
             predicciones = []
@@ -749,6 +786,11 @@ class ReconocerFacial:
 
             if estado == "aceptado":
                 self.total_aceptados  += 1
+                if AccessCounter is not None:
+                    try:
+                        AccessCounter.increment(1)
+                    except Exception:
+                        pass
                 self._overlay_texto = t("acceso_permitido")
                 self._overlay_color    = (30, 200, 60)
                 self._overlay_frames   = self._overlay_duracion

@@ -17,14 +17,7 @@ from idiomas import t, cambiar_idioma
 
 from views.font_scale import FontScale
 
-import os
-import sys
-
-sys.path.insert(0, os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "admin", "biometric_system")
-))
-
-from reconocimiento import ReconocerFacial
+from admin.biometric_system.reconocimiento import ReconocerFacial
 
 
 
@@ -303,6 +296,8 @@ class AccesosMixin:
             self._cam_card.configure(border_color=self.colors['cam_border'])
         except Exception:
             pass
+
+
 
     def _sincronizar_layout_pantalla_accesos(self):
         vertical = self._debe_usar_layout_vertical_accesos()

@@ -11,6 +11,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config import COLORS, get_colors, toggle_theme, get_db
 from idiomas import t
+from tools.access_counter import AccessCounter
 
 
 class HistorialAccesosView:
@@ -489,6 +490,9 @@ class HistorialAccesosView:
             conn.cursor().execute("DELETE FROM accesos")
             conn.commit()
             conn.close()
+
+            # Al limpiar historial, reiniciar también el contador de ocupación.
+            AccessCounter.set(0)
 
             messagebox.showinfo(t("confirmar"), t("historial_eliminado"))
             self.cargar_datos()
