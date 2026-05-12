@@ -56,12 +56,13 @@ class DialogoEdicionMixin:
         win.grab_set()
         win.overrideredirect(True)
 
-        width, height = 340, 460
         root = self.parent.winfo_toplevel()
         root.update_idletasks()
+
+        width, height = 390, 320
         win.geometry(f"{width}x{height}+{root.winfo_rootx()}+{root.winfo_rooty()}")
-        win.minsize(width, height)
-        win.maxsize(width, height)
+        win.minsize(width, 400)
+        win.maxsize(width, 800)
 
         # Header
         header = ctk.CTkFrame(win, fg_color=color, height=42)
@@ -74,8 +75,11 @@ class DialogoEdicionMixin:
                       fg_color="transparent", text_color="white",
                       command=win.destroy).pack(side="right", padx=6)
 
-        scroll = ctk.CTkFrame(win, fg_color="transparent")
-        scroll.pack(fill="both", expand=True)
+        main_frame = ctk.CTkFrame(win, fg_color="transparent")
+        main_frame.pack(fill="both", expand=True, padx=12, pady=(10, 2))
+
+        btns = ctk.CTkFrame(win, fg_color="transparent")
+        btns.pack(fill="x", padx=6, pady=4, side="bottom")
 
         icon_map = {
             'nombre': '👤', 'paterno': '👨', 'materno': '👩',
@@ -104,16 +108,29 @@ class DialogoEdicionMixin:
 
 
         # Campos comunes
-        make_entry(scroll, t("nombre"),          vars_['nombre'], 'nombre')
-        make_entry(scroll, t("apellido_paterno"), vars_['paterno'], 'paterno')
-        make_entry(scroll, t("apellido_materno"),     vars_['materno'], 'materno')
-        make_entry(scroll, t("matricula"),            vars_['matricula'], 'matricula')
-        make_entry(scroll, t("telefono"),             vars_['telefono'], 'telefono')
-        make_entry(scroll, t("fecha_nacimiento"),     vars_['fecha_nacimiento'], "fecha_nacimiento")
-        make_entry(scroll, t("tipo_sangre"),          vars_['tipo_sangre'],      "tipo_sangre")
+        make_entry(main_frame, t("nombre"),          vars_['nombre'], 'nombre')
+        make_entry(main_frame, t("apellido_paterno"), vars_['paterno'], 'paterno')
+        make_entry(main_frame, t("apellido_materno"),     vars_['materno'], 'materno')
+        make_entry(main_frame, t("matricula"),            vars_['matricula'], 'matricula')
+        make_entry(main_frame, t("telefono"),             vars_['telefono'], 'telefono')
+        make_entry(main_frame, t("fecha_nacimiento"),     vars_['fecha_nacimiento'], "fecha_nacimiento")
+        make_entry(main_frame, t("tipo_sangre"),          vars_['tipo_sangre'],      "tipo_sangre")
+
+        roles_usuario = u.get('rol', '').split(",") if u.get('rol') else []       
+        rol_principal = roles_usuario[0] if roles_usuario else "alumno"
+        vars_['rol'].set(rol_principal)
+        available_roles = ["alumno", "maestro", "personal"]
+        roles_extras_vars = {
+            role: tk.BooleanVar(value=False)
+            for role in available_roles
+        }
+        for r in roles_usuario[1:]:
+            if r in roles_extras_vars:
+                roles_extras_vars[r].set(True)
+
 
         # Selector de rol principal
-        rol_row = ctk.CTkFrame(scroll, fg_color="transparent")
+        rol_row = ctk.CTkFrame(main_frame, fg_color="transparent")
         rol_row.pack(fill="x", padx=8, pady=4)
         ctk.CTkLabel(rol_row, text="👥 " + t("rol"), width=95, anchor="w",
                      font=("Segoe UI", 9),
@@ -123,36 +140,82 @@ class DialogoEdicionMixin:
                                  state="readonly", width=10)
         combo_rol.pack(side="left")
 
-        # Selector de roles extra
-        available_roles = ["alumno", "maestro", "personal"]
-        roles_extras_vars = {
-            role: tk.BooleanVar(value=False)
-            for role in available_roles
-        }
+        def on_principal_selected(event):
+            selected = vars_['rol'].get()
+            abrir_modal_campos_rol(selected)
+        combo_rol.bind("<<ComboboxSelected>>", on_principal_selected)
 
-        # Cargar roles extra ya guardados (excluyendo el principal)
-        roles_usuario = u.get('rol', '').split(",") if u.get('rol') else []       
-        rol_principal = roles_usuario[0] if roles_usuario else "alumno"
-        vars_['rol'].set(rol_principal)
-        for r in roles_usuario[1:]:
-            if r in roles_extras_vars:
-                roles_extras_vars[r].set(True)
-
-        extras_frame = ctk.CTkFrame(scroll, fg_color="transparent")
+        extras_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
         extras_frame.pack(fill="x", padx=8, pady=0)
         ctk.CTkLabel(extras_frame, text="Roles extra", width=95, anchor="w",
                     font=("Segoe UI", 9), text_color=c['text_gray']).pack(side="left")
 
         extras_cbs = {}
+        def on_check_extra(*_):
+            for role, var in roles_extras_vars.items():
+                # Solo abrir si acaban de marcarlo (valor True y antes era False)
+                if var.get() and (not hasattr(var, "_opened") or not var._opened):
+                    var._opened = True  # marca que ya mostró la ventana
+                    abrir_modal_campos_rol(role)
+                elif not var.get():
+                    var._opened = False  # si desmarcan, deja que pueda volver a abrir
+
         for role in available_roles:
             cb = ttk.Checkbutton(extras_frame, text=role.capitalize(), variable=roles_extras_vars[role])
             cb.pack(side="left", padx=2)
             extras_cbs[role] = cb
+            roles_extras_vars[role].trace_add("write", on_check_extra)
+        
 
-        role_frame = ctk.CTkFrame(scroll, fg_color="transparent")
-        role_frame.pack(fill="x")
-        extra_roles_frame = ctk.CTkFrame(scroll, fg_color="transparent")
-        extra_roles_frame.pack(fill="x")
+        def abrir_modal_campos_rol(rol):
+            # Crea el toplevel
+            top = tk.Toplevel(win)
+            top.title(f"Completa los datos para el rol: {rol}")
+            top.transient(win)
+            top.grab_set()
+            top.resizable(False, False)
+            top.geometry("300x230+{}+{}".format(win.winfo_rootx()+60, win.winfo_rooty()+80))
+
+            campos = []
+            if rol == "alumno":
+                campos = [("Facultad", vars_['facultad']), ("Carrera", vars_['carrera']),
+                        ("Grado", vars_['grado']), ("Grupo", vars_['grupo'])]
+            elif rol == "maestro":
+                campos = [("Grado que imparte", vars_['grado']), ("Materia", vars_['materia'])]
+            elif rol == "personal":
+                campos = [("Puesto", vars_['puesto']), ("Área", vars_['area'])]
+
+            for i, (label, var) in enumerate(campos):
+                ttk.Label(top, text=label, anchor="w").grid(row=i, column=0, sticky="w", padx=8, pady=4)
+                ttk.Entry(top, textvariable=var, width=22).grid(row=i, column=1, padx=8, pady=4)
+
+            def guardar_y_cerrar():
+                # Puedes validar aquí si quieres
+                top.destroy()
+
+            ttk.Button(top, text="Guardar", command=guardar_y_cerrar).grid(row=len(campos), column=0, columnspan=2, pady=12)
+
+            # Asegurarse que la ventana esté encima
+            top.focus_force()
+
+        btns = ctk.CTkFrame(win, fg_color="transparent")
+        btns.pack(fill="x", padx=6, pady=4, side="bottom")
+
+        btn_guardar = ctk.CTkButton(btns, text="💾", width=60, height=26,
+                                    fg_color=c['primary'],
+                                    font=("Segoe UI", 9, "bold"),
+                                    state="normal",
+                                    command=lambda: self._guardar_edicion(u['id'], vars_, win))
+        btn_guardar.pack(side="left", padx=2)
+
+        ctk.CTkButton(btns, text="📸", width=60, height=26,
+                    fg_color=c['accent'],
+                    font=("Segoe UI", 9, "bold"),
+                    command=lambda: self._retomar_fotos(u, win)).pack(side="left", padx=2)
+
+        ctk.CTkButton(btns, text="✖", width=60, height=26,
+                    fg_color=c['content_bg'], text_color=c['text_dark'],
+                    command=win.destroy).pack(side="right", padx=2)
 
         # Evita seleccionar el mismo en principal y extra
         def update_extras_disabled(*_):
@@ -164,49 +227,6 @@ class DialogoEdicionMixin:
                         roles_extras_vars[role].set(False)
                 else:
                     cb.config(state="normal")
-
-        combo_rol.bind("<<ComboboxSelected>>", lambda *_: (update_extras_disabled(), build_role()))
-        for var in roles_extras_vars.values():
-            var.trace_add("write", lambda *_: build_role())
-        update_extras_disabled()
-        build_role()
-
-        def build_role(*_):
-            for w in role_frame.winfo_children():
-                w.destroy()
-            for w in extra_roles_frame.winfo_children():
-                w.destroy()
-            principal = vars_['rol'].get()
-            if principal == "alumno":
-                make_entry(role_frame, t("facultad"),    vars_['facultad'], 'facultad')
-                make_entry(role_frame, t("carrera"),     vars_['carrera'], 'carrera')
-                make_entry(role_frame, t("grado"),       vars_['grado'], 'grado')
-                make_entry(role_frame, t("grupo"),       vars_['grupo'], 'grupo')
-            elif principal == "maestro":
-                make_entry(role_frame, t("grado_imparte"), vars_['grado'], 'grado')
-                make_entry(role_frame, t("materia"),       vars_['materia'], 'materia')
-            elif principal == "personal":
-                make_entry(role_frame, t("puesto"), vars_['puesto'], 'puesto')
-                make_entry(role_frame, t("area"),   vars_['area'], 'area')
-            # ...(campos roles extra igual, como tienes)...
-            for role in available_roles:
-                if roles_extras_vars[role].get():
-                    subframe = ctk.CTkFrame(extra_roles_frame, fg_color="transparent")
-                    subframe.pack(fill="x", pady=2)
-                    ctk.CTkLabel(subframe, text=f"Datos para el rol extra: {role}", width=140, anchor="w",
-                                font=("Segoe UI", 9, "bold"), text_color=c['text_gray']).pack(side="top")
-
-                    if role == "alumno":
-                        make_entry(subframe, t("facultad") + " ✱",    vars_['facultad'], 'facultad')
-                        make_entry(subframe, t("carrera") + " ✱",     vars_['carrera'], 'carrera')
-                        make_entry(subframe, t("grado") + " ✱",       vars_['grado'], 'grado')
-                        make_entry(subframe, t("grupo") + " ✱",       vars_['grupo'], 'grupo')
-                    elif role == "maestro":
-                        make_entry(subframe, t("grado_imparte") + " ✱", vars_['grado'], 'grado')
-                        make_entry(subframe, t("materia") + " ✱",       vars_['materia'], 'materia')
-                    elif role == "personal":
-                        make_entry(subframe, t("puesto") + " ✱", vars_['puesto'], 'puesto')
-                        make_entry(subframe, t("area") + " ✱",   vars_['area'], 'area')
 
         # Botones
         btns = ctk.CTkFrame(win, fg_color="transparent")
