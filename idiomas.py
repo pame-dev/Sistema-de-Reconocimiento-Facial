@@ -360,6 +360,21 @@ TEXTOS = {
         "maestro": "Maestro",
         "personal": "Personal",
         "usuario": "Usuario",
+        "titulo_sistema": "UnimoraAccess",
+        "descripcion_login": "Control de acceso biométrico\npara instituciones educativas",
+        "reconocimiento_facial": "Reconocimiento facial",
+        "acceso_seguro": "Acceso seguro",
+        "historial_entradas": "Historial de entradas",
+        "gestion_usuarios": "Gestión de usuarios",
+        "acceso_directo": "Acceso directo",
+        "subtitulo_login": "Sistema de control\n de acceso institucional",
+        "administrador": "Administrador",
+        "acceso_total": "Acceso total al sistema",
+        "sesion_automatica": "Sesión iniciada automáticamente",
+        "entrar_sistema": "Entrar al sistema",
+        "usuarios": "Usuarios",
+        "precision": "Precisión",
+        "activo": "Activo",
                 },
     "en": {
         "titulo": "Main Panel",
@@ -718,12 +733,48 @@ TEXTOS = {
         "maestro": "Teacher",
         "personal": "Staff",
         "usuario": "User",
+        "titulo_sistema": "UnimoraAccess",
+        "descripcion_login": "Biometric access control\nfor educational institutions",
+        "reconocimiento_facial": "Facial recognition",
+        "acceso_seguro": "Secure access",
+        "historial_entradas": "Entry history",
+        "gestion_usuarios": "User management",
+        "acceso_directo": "Quick access",
+        "subtitulo_login": "Institutional access\ncontrol system",
+        "administrador": "Administrator",
+        "acceso_total": "Full system access",
+        "sesion_automatica": "Session started automatically",
+        "entrar_sistema": "Enter system",
+        "usuarios": "Users",
+        "precision": "Accuracy",
+        "activo": "Active",
             }
     }
 
 def t(clave):
     return TEXTOS[IDIOMA_ACTUAL].get(clave, clave)
 
-def cambiar_idioma():
+# ─────────────────────────────────────────────────────────────────────────────
+# OBTENER IDIOMA ACTUAL
+# ─────────────────────────────────────────────────────────────────────────────
+
+def idioma_actual():
+    return IDIOMA_ACTUAL
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CAMBIAR IDIOMA
+# ─────────────────────────────────────────────────────────────────────────────
+
+def cambiar_idioma(nuevo_idioma=None):
+
     global IDIOMA_ACTUAL
-    IDIOMA_ACTUAL = "en" if IDIOMA_ACTUAL == "es" else "es"
+
+    # Si no se manda idioma, alterna automáticamente
+    if nuevo_idioma is None:
+        IDIOMA_ACTUAL = "en" if IDIOMA_ACTUAL == "es" else "es"
+        return
+
+    # Si sí se manda idioma específico
+    if nuevo_idioma in TEXTOS:
+        IDIOMA_ACTUAL = nuevo_idioma
