@@ -281,7 +281,7 @@ class HistorialAccesosView:
 
         self.tree = ttk.Treeview(
             tabla_card,
-            columns=("usuario", "fecha", "estado", "confianza", "umbral"),
+            columns=("usuario", "fecha", "estado", "confianza"),
             show="headings",
             yscrollcommand=scroll_y.set,
             xscrollcommand=scroll_x.set,
@@ -297,7 +297,6 @@ class HistorialAccesosView:
             ("fecha", "🕐 " + t("fecha_hora"), 165, "center"),
             ("estado", "📊 " + t("estado"), 120, "center"),
             ("confianza", "📈 " + t("confianza"), 110, "center"),
-            ("umbral", "🎯 " + t("umbral"), 90, "center"),
         ]
 
         for col, label, w, anchor in columnas:
@@ -396,8 +395,7 @@ class HistorialAccesosView:
                 COALESCE(u.nombreUsuario || ' ' || u.apellidoPaternoUsuario, ?),
                 a.fechaHoraIntentoAcceso,
                 a.estado_acceso,
-                a.confianzaAcceso,
-                a.umbralConfianzaUsado
+                a.confianzaAcceso
             FROM accesos a
             LEFT JOIN usuarios u ON a.fkIdUsuario = u.idUsuario
             ORDER BY a.fechaHoraIntentoAcceso DESC
@@ -431,7 +429,7 @@ class HistorialAccesosView:
         conteo = 0
 
         for dato in self.datos:
-            id_acceso, nombre, fecha, estado, confianza, umbral = dato
+            id_acceso, nombre, fecha, estado, confianza = dato
 
             if estado_filtro != t("todos") and estado != estado_filtro.lower():
                 continue
@@ -457,8 +455,7 @@ class HistorialAccesosView:
                     nombre,
                     fecha_fmt,
                     estado_fmt,
-                    f"{confianza:.2f}" if confianza else "—",
-                    f"{umbral:.0f}" if umbral else "N/A"
+                    f"{confianza:.2f}" if confianza else "—"
                 ),
                 tags=(estado,)
             )

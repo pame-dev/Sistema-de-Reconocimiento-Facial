@@ -130,7 +130,7 @@ class ReconocerFacial:
 
         # ── Cooldown de registros en BD ────────────────────────────────────────
         self._ultimo_registro   = {}
-        self._cooldown_segundos = 8
+        self._cooldown_segundos = 4
 
         # ── Overlay en frame ──────────────────────────────────────────────────
         self._overlay_texto    = ""
@@ -158,7 +158,7 @@ class ReconocerFacial:
 
         # Cooldown corto tras acceso aceptado para evitar duplicados sin bloquear
         # demasiado tiempo el reconocimiento de una nueva persona.
-        self._cooldown_post_aceptado_seg = 2.5
+        self._cooldown_post_aceptado_seg = 6
 
         # ── Callbacks ─────────────────────────────────────────────────────────
         self.on_resultado = None
