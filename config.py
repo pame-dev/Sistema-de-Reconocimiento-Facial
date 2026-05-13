@@ -77,18 +77,42 @@ CURRENT_THEME = "light"
 
 COLORS: dict = dict(LIGHT_COLORS)
 
+COLORS["mode"] = CURRENT_THEME
+
 
 def get_colors() -> dict:
     return COLORS
 
 
 def toggle_theme():
+
     global CURRENT_THEME
-    CURRENT_THEME = "dark" if CURRENT_THEME == "light" else "light"
-    nueva = DARK_COLORS if CURRENT_THEME == "dark" else LIGHT_COLORS
+
+    CURRENT_THEME = (
+        "dark"
+        if CURRENT_THEME == "light"
+        else "light"
+    )
+
+    nueva = (
+        DARK_COLORS
+        if CURRENT_THEME == "dark"
+        else LIGHT_COLORS
+    )
+
+    COLORS.clear()
     COLORS.update(nueva)
+
+    # IMPORTANTE
+    COLORS["mode"] = CURRENT_THEME
+
     import customtkinter as ctk
-    ctk.set_appearance_mode("dark" if CURRENT_THEME == "dark" else "light")
+
+    ctk.set_appearance_mode(
+        "dark"
+        if CURRENT_THEME == "dark"
+        else "light"
+    )
 
 
 WINDOW_WIDTH  = 900
