@@ -96,7 +96,11 @@ class DialogoEdicionMixin:
                          font=("Segoe UI", 9),
                          text_color=c['text_gray']).pack(side="left")
             if key == "fecha_nacimiento":
-                e = DateEntry(row, date_pattern='dd-mm-yyyy', textvariable=var, width=9)
+
+                hoy = datetime.now()
+                fecha_maxima = hoy.replace(year=hoy.year - 17)
+
+                e = DateEntry(row, date_pattern='dd-mm-yyyy', maxdate=fecha_maxima, textvariable=var, width=9)
             elif key == "tipo_sangre":
                 e = ttk.Combobox(row,
                                  values=["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"],
