@@ -159,6 +159,7 @@ class ReconocerFacial:
         # Cooldown corto tras acceso aceptado para evitar duplicados sin bloquear
         # demasiado tiempo el reconocimiento de una nueva persona.
         self._cooldown_post_aceptado_seg = 6
+        self._frame_limpio = None
 
         # ── Callbacks ─────────────────────────────────────────────────────────
         self.on_resultado = None
@@ -267,6 +268,28 @@ class ReconocerFacial:
             return False
         finally:
             conn.close()
+
+    def _frame_a_bytes(self, frame):
+        """
+        Convierte un frame BGR de OpenCV a bytes JPEG comprimidos.
+        """
+        if frame is None:
+            return None
+
+        try:
+            ok, buf = cv2.imencode(
+                '.jpg',
+                frame,
+                [cv2.IMWRITE_JPEG_QUALITY, 75]
+            )
+
+            if ok:
+                return buf.tobytes()
+
+        except Exception as e:
+            print(f"⚠️ Error al codificar foto de acceso: {e}")
+
+        return None
 
     # ─────────────────────────────────────────────────────────────────────────
     # Detección de caras — Haar Cascade
@@ -747,7 +770,7 @@ class ReconocerFacial:
             return True
         return (ahora - ultimo).total_seconds() >= self._cooldown_segundos
 
-    def registrar_acceso(self, user_id, estado, distancia):
+    def registrar_acceso(self, user_id, estado, distancia, frame_limpio=None):
         # Convertir distancia LBPH a un "porcentaje" simple para UI.
         confianza = round(max(0.0, 100 - float(distancia)), 2)
         hubo_cambio_estado = (self._ultimo_tipo != estado)
@@ -765,19 +788,25 @@ class ReconocerFacial:
             return
 
         cur = conn.cursor()
+
         try:
+            foto_bytes = None
+
+            if estado == "denegado" and frame_limpio is not None:
+                foto_bytes = self._frame_a_bytes(frame_limpio)
             cur.execute("""
                 INSERT INTO accesos
                     (fkIdUsuario, estado_acceso, confianzaAcceso,
-                     umbralConfianzaUsado, fechaHoraIntentoAcceso)
-                VALUES (?, ?, ?, ?, ?)
+                    umbralConfianzaUsado, fechaHoraIntentoAcceso, fotoAcceso)
+                VALUES (?, ?, ?, ?, ?, ?)
             """, (
-                user_id, estado, confianza,
-                # Nota: esto no es "umbral de confianza" real; se conserva por compatibilidad.
-                # Si quieres, lo cambiamos a guardar "tolerancia" LBPH directamente.
-                round((1.0 - self.tolerancia) * 100, 2),
-                datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            ))
+                    user_id,
+                    estado,
+                    confianza,
+                    round(self.tolerancia, 2),
+                    datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    foto_bytes
+                ))
             conn.commit()
 
             key = user_id if user_id is not None else "desconocido"
@@ -840,6 +869,7 @@ class ReconocerFacial:
     # ─────────────────────────────────────────────────────────────────────────
     def procesar_frame(self, frame):
         self._frame_counter += 1
+        self._frame_limpio = frame.copy()
 
         # Verificar si estamos en cooldown después de un acceso aceptado
         ahora = datetime.now()
@@ -918,7 +948,12 @@ class ReconocerFacial:
                                     self._desconocido_desde = None
                                     self._ultimo_tipo = None
                                     self._votos = []
-                                    self.registrar_acceso(None, "denegado", dist_raw)
+                                    self.registrar_acceso(
+                                        None,
+                                        "denegado",
+                                        dist_raw,
+                                        frame_limpio=self._frame_limpio
+                                    )
                                     self._ultimo_resultado = [(x, y, w, h, "Desconocido", dist_raw, (40, 40, 220))]
                                 else:
                                     self._ultimo_resultado = [(x, y, w, h, None, 0, (0, 200, 255))]
@@ -926,7 +961,12 @@ class ReconocerFacial:
                                 if transcurrido >= self._desconocido_hold_seg:
                                     self._desconocido_desde = None
                                     self._votos = []
-                                    self.registrar_acceso(None, "denegado", dist_raw)
+                                    self.registrar_acceso(
+                                        None,
+                                        "denegado",
+                                        dist_raw,
+                                        frame_limpio=self._frame_limpio
+                                    )
                                     self._ultimo_resultado = [(x, y, w, h, "Desconocido", dist_raw, (40, 40, 220))]
                                 else:
                                     self._ultimo_resultado = [(x, y, w, h, None, 0, (0, 200, 255))]
@@ -935,7 +975,12 @@ class ReconocerFacial:
                                 self._ultimo_detectado_ts = ahora
                             if not self._usuario_activo(label):
                                 self._desconocido_desde = None
-                                self.registrar_acceso(None, "denegado", dist_raw)
+                                self.registrar_acceso(
+                                    None,
+                                    "denegado",
+                                    dist_raw,
+                                    frame_limpio=self._frame_limpio
+                                )
                                 self._ultimo_resultado = [(x, y, w, h, "Desconocido", dist_raw, (40, 40, 220))]
                             else:
                                 self._desconocido_desde = None
