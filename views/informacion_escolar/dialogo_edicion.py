@@ -100,7 +100,7 @@ class DialogoEdicionMixin:
                 hoy = datetime.now()
                 fecha_maxima = hoy.replace(year=hoy.year - 17)
 
-                e = DateEntry(row, date_pattern='dd-mm-yyyy', maxdate=fecha_maxima, textvariable=var, width=9)
+                e = DateEntry(row, date_pattern='dd-mm-yyyy', maxdate=fecha_maxima, textvariable=var, width=9, state="readonly")
             elif key == "tipo_sangre":
                 e = ttk.Combobox(row,
                                  values=["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"],
