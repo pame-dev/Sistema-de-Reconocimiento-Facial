@@ -3,6 +3,7 @@ from tkinter import messagebox
 from config import get_db
 from idiomas import t
 from database.queries import sp_get_usuarios, sp_get_usuarios_inactivos
+from views.informacion_escolar.estilos import principal_rol
 
 
 class DatosUsuariosMixin:
@@ -22,11 +23,13 @@ class DatosUsuariosMixin:
             materia, grado_impartido, puesto, area, fotos, accesos,
         ) = row
 
-        if rol == 'alumno':
+        rol_base = principal_rol(rol)
+
+        if rol_base == 'alumno':
             carrera = carrera or '—'
             grado   = grado   or '—'
             grupo   = grupo   or '—'
-        elif rol == 'maestro':
+        elif rol_base == 'maestro':
             carrera = materia         or '—'
             grado   = grado_impartido or '—'
             grupo   = '—'
@@ -52,7 +55,7 @@ class DatosUsuariosMixin:
             'materia':          materia          or '—',
             'puesto':           puesto           or '—',
             'area':             area             or '—',
-            'facultad':         facultad if rol == 'alumno' else '—',
+            'facultad':         facultad if rol_base == 'alumno' else '—',
             'fotos':            fotos            or 0,
             'accesos':          accesos          or 0,
         }
@@ -95,6 +98,7 @@ class DatosUsuariosMixin:
 
         lista = datos_filtrados if datos_filtrados is not None else self.datos
         for u in lista:
+            rol_base = principal_rol(u.get('rol', ''))
             nombre_completo = (
                 f"{u.get('nombre','')} "
                 f"{u.get('apellido_paterno','')} "
@@ -105,9 +109,9 @@ class DatosUsuariosMixin:
                 u['matricula'],
                 u.get('fecha_nacimiento', '—'),
                 u.get('tipo_sangre', '—'),
-                u['rol'],
+                rol_base or u['rol'],
                 u['fotos'],
-            ), tags=(u.get('rol', ''),))
+            ), tags=(rol_base or u.get('rol', ''),))
 
         total = len(lista)
         self.lbl_conteo.configure(
@@ -134,7 +138,7 @@ class DatosUsuariosMixin:
 
         resultado = [
             u for u in self.datos
-            if (rol_bd is None or u.get('rol', '') == rol_bd)
+            if (rol_bd is None or principal_rol(u.get('rol', '')) == rol_bd)
             and (not texto
                 or texto in str(u.get('nombre', '')).lower()
                 or texto in str(u.get('matricula', '')).lower()

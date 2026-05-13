@@ -2,7 +2,16 @@
 import customtkinter as ctk
 from config import COLORS
 from idiomas import t
-from views.informacion_escolar.estilos import ROL_COLOR, ROL_ICONO
+from views.informacion_escolar.estilos import ROL_COLOR, ROL_ICONO, principal_rol
+
+
+def roles_mostrados(rol):
+    if not rol:
+        return '—'
+    roles = [r.strip() for r in str(rol).split(',') if r.strip()]
+    if not roles:
+        return '—'
+    return ', '.join(r.capitalize() for r in roles)
 
 
 class PanelDetallesMixin:
@@ -24,7 +33,7 @@ class PanelDetallesMixin:
 
         c     = self.colors
         u     = self.usuario_seleccionado
-        rol   = u.get('rol', '')
+        rol   = principal_rol(u.get('rol', ''))
         color = ROL_COLOR.get(rol, COLORS['primary'])
         icono = ROL_ICONO.get(rol, '👤')
 
@@ -76,7 +85,7 @@ class PanelDetallesMixin:
             (t("telefono"),         u.get('telefono', '—')),
             (t("fecha_nacimiento"), u.get('fecha_nacimiento', '—')),
             (t("tipo_sangre"),      u.get('tipo_sangre', '—')),
-            (t("rol"),              rol.capitalize()),
+            (t("rol"),              roles_mostrados(u.get('rol', rol))),
         ]
         col3 = []
         if rol == 'alumno':

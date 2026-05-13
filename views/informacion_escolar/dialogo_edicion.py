@@ -7,7 +7,7 @@ from tkcalendar import DateEntry
 
 from config import COLORS, get_db
 from idiomas import t
-from views.informacion_escolar.estilos import ROL_COLOR, ROL_ICONO
+from views.informacion_escolar.estilos import ROL_COLOR, ROL_ICONO, principal_rol
 
 
 class DialogoEdicionMixin:
@@ -24,7 +24,7 @@ class DialogoEdicionMixin:
 
         c = self.colors
         u = self.usuario_seleccionado
-        color = ROL_COLOR.get(u.get('rol', ''), COLORS['primary'])
+        color = ROL_COLOR.get(principal_rol(u.get('rol', '')), COLORS['primary'])
 
         def _val(key):
             v = u.get(key, '')
@@ -67,7 +67,7 @@ class DialogoEdicionMixin:
         header = ctk.CTkFrame(win, fg_color=color, height=42)
         header.pack(fill="x")
         ctk.CTkLabel(header,
-                     text=f"{ROL_ICONO.get(u['rol'], '👤')} Editar",
+                     text=f"{ROL_ICONO.get(principal_rol(u.get('rol', '')), '👤')} Editar",
                      text_color="white",
                      font=("Segoe UI", 11, "bold")).pack(side="left", padx=10)
         ctk.CTkButton(header, text="✕", width=26, height=24,
@@ -115,7 +115,7 @@ class DialogoEdicionMixin:
         make_entry(main_frame, t("fecha_nacimiento"),     vars_['fecha_nacimiento'], "fecha_nacimiento")
         make_entry(main_frame, t("tipo_sangre"),          vars_['tipo_sangre'],      "tipo_sangre")
 
-        roles_usuario = u.get('rol', '').split(",") if u.get('rol') else []       
+        roles_usuario = [r.strip() for r in u.get('rol', '').split(",") if r.strip()]
         rol_principal = roles_usuario[0] if roles_usuario else "alumno"
         vars_['rol'].set(rol_principal)
         available_roles = ["alumno", "maestro", "personal"]
@@ -401,11 +401,7 @@ class DialogoEdicionMixin:
             """, (nombre, paterno, g('materno'), matricula, telefono,
                   g('fecha_nacimiento'), g('tipo_sangre'), rol_full, user_id))
 
-            cursor.execute("DELETE FROM alumnos          WHERE fkIdUsuario = ?", (user_id,))
-            cursor.execute("DELETE FROM maestros         WHERE fkIdUsuario = ?", (user_id,))
-            cursor.execute("DELETE FROM personal_escolar WHERE fkIdUsuario = ?", (user_id,))
-
-            roles_antes = set(self.usuario_seleccionado.get('rol', '').split(',')) if self.usuario_seleccionado.get('rol') else set()
+            roles_antes = {r.strip() for r in self.usuario_seleccionado.get('rol', '').split(',') if r.strip()}
             roles_despues = set(selected_roles)
 
             # ELIMINA registros de roles que ya NO tiene
@@ -478,7 +474,7 @@ class DialogoEdicionMixin:
             nuevo_reg = NuevoRegistroView(self.parent)
             nuevo_reg.modo_retomar_fotos = True
             nuevo_reg.user_id_existente  = usuario.get("id")
-            nuevo_reg.rol_actual         = usuario.get('rol', 'alumno')
+            nuevo_reg.rol_actual         = principal_rol(usuario.get('rol', 'alumno')) or 'alumno'
             nuevo_reg._mostrar_formulario()
 
             campo_map = {
