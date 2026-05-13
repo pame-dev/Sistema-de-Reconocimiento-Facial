@@ -6,6 +6,15 @@ from database.queries import sp_get_usuarios, sp_get_usuarios_inactivos
 from views.informacion_escolar.estilos import principal_rol
 
 
+def roles_mostrados(rol):
+    if not rol:
+        return '—'
+    roles = [r.strip() for r in str(rol).split(',') if r.strip()]
+    if not roles:
+        return '—'
+    return ', '.join(r.capitalize() for r in roles)
+
+
 class DatosUsuariosMixin:
     """
     Carga, filtrado y actualización del Treeview de usuarios.
@@ -109,7 +118,7 @@ class DatosUsuariosMixin:
                 u['matricula'],
                 u.get('fecha_nacimiento', '—'),
                 u.get('tipo_sangre', '—'),
-                rol_base or u['rol'],
+                roles_mostrados(u.get('rol', '')),
                 u['fotos'],
             ), tags=(rol_base or u.get('rol', ''),))
 
