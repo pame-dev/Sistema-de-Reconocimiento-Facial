@@ -6,6 +6,12 @@ ROL_COLOR = {"alumno": "#4A90D9", "maestro": "#27AE60", "personal": "#E67E22"}
 ROL_ICONO = {"alumno": "🎓",      "maestro": "📚",      "personal": "🏢"}
 
 
+def principal_rol(rol):
+    if not rol:
+        return ""
+    return rol.split(",")[0].strip()
+
+
 class EstilosMixin:
     """
     Aplica estilos ttk (Treeview, Scrollbar, Combobox) con los colores del tema.
