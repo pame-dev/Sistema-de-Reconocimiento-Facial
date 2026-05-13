@@ -826,39 +826,76 @@ class CapturaBiometricaMixin:
                     and listo
                     and (ahora - self._ultima_captura) >= CAPTURE_DELAY):
 
-                rostro_bgr = frame[y:y+h, x:x+w]
-                rostro_bgr = cv2.resize(rostro_bgr, (200, 200))
-                apto, msg = self._rostro_apto_para_guardar(rostro_bgr)
-                if not apto:
-                    self._set_sub(msg)
-                    self.video_label.after(15, self._actualizar_video)
-                    return
+                # Captura en ráfaga rápida: intentamos tomar hasta 3 fotos seguidas
+                burst_target = 3
+                total_fotos = POSTURAS[self.postura_idx]["fotos"]
+                burst_taken = 0
 
-                duplicado = self._detectar_usuario_duplicado(rostro_bgr)
-                if duplicado:
-                    self._abrir_alerta_duplicado(duplicado)
-                    return
+                for i in range(burst_target):
+                    # Obtener frame rápido: si el backend expone grab/retrieve (OpenCV), úsalos.
+                    try:
+                        if getattr(self.camara, 'backend', None) == 'picamera2':
+                            frame2 = self.camara.read()
+                        else:
+                            # OpenCV VideoCapture: grab + retrieve es más rápido que read
+                            try:
+                                self.camara.cap.grab()
+                                ok, frame2 = self.camara.cap.retrieve()
+                                if not ok:
+                                    frame2 = None
+                            except Exception:
+                                frame2 = self.camara.read()
+                    except Exception:
+                        frame2 = None
 
-                _, buf = cv2.imencode('.jpg', rostro_bgr,
-                                      [cv2.IMWRITE_JPEG_QUALITY, 92])
-                self.fotos_temp.append(buf.tobytes())
-                self.fotos_postura  += 1
-                self._ultima_captura = ahora
+                    if frame2 is None:
+                        break
 
-                total_fotos    = POSTURAS[self.postura_idx]["fotos"]
-                progreso_pos   = self.fotos_postura / total_fotos
-                progreso_total = len(self.fotos_temp) / TOTAL_FOTOS
+                    # Recortar usando el ROI detectado originalmente
+                    try:
+                        rostro_bgr = frame2[y:y+h, x:x+w]
+                        rostro_bgr = cv2.resize(rostro_bgr, (200, 200))
+                    except Exception:
+                        continue
 
-                try:
-                    self.bar_postura_ctk.set(progreso_pos)
-                    self.bar_total_ctk.set(progreso_total)
-                except Exception:
-                    pass
+                    apto, msg = self._rostro_apto_para_guardar(rostro_bgr)
+                    if not apto:
+                        self._set_sub(msg)
+                        continue
+
+                    duplicado = self._detectar_usuario_duplicado(rostro_bgr)
+                    if duplicado:
+                        self._abrir_alerta_duplicado(duplicado)
+                        return
+
+                    try:
+                        _, buf = cv2.imencode('.jpg', rostro_bgr,
+                                              [cv2.IMWRITE_JPEG_QUALITY, 92])
+                        self.fotos_temp.append(buf.tobytes())
+                        self.fotos_postura += 1
+                        burst_taken += 1
+                    except Exception:
+                        continue
+
+                    # Si llegamos al total requerido por la postura, salimos
+                    if self.fotos_postura >= total_fotos:
+                        break
+
+                # Actualizar timestamps y barras al final del burst
+                if burst_taken > 0:
+                    self._ultima_captura = ahora
+                    progreso_pos = self.fotos_postura / total_fotos
+                    progreso_total = len(self.fotos_temp) / TOTAL_FOTOS
+                    try:
+                        self.bar_postura_ctk.set(progreso_pos)
+                        self.bar_total_ctk.set(progreso_total)
+                    except Exception:
+                        pass
 
                 if self.fotos_postura < total_fotos:
                     self._set_estado(
                         f"✅ {t('capturando')} {POSTURAS[self.postura_idx]['titulo']}",
-                        f"{t('manten_posicion')} {int(progreso_pos * 100)}%", "ok")
+                        f"{t('manten_posicion')} {int((self.fotos_postura/total_fotos) * 100)}%", "ok")
                 else:
                     self._postura_completada()
                     return

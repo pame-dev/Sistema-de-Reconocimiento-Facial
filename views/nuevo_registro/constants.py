@@ -87,7 +87,7 @@ POSTURAS = [
         "instruccion": "inst_frontal",
         "imagen": "../assets/posturas/postura_frontal.png",
         "icono": "😐",
-        "fotos": 60
+        "fotos": 40
     },
     {
         "id": "izquierda",
@@ -95,7 +95,7 @@ POSTURAS = [
         "instruccion": "inst_izquierda",
         "imagen": "../assets/posturas/postura_izquierda.png",
         "icono": "😶",
-        "fotos": 60
+        "fotos": 40
     },
     {
         "id": "derecha",
@@ -103,7 +103,7 @@ POSTURAS = [
         "instruccion": "inst_derecha",
         "imagen": "../assets/posturas/postura_derecha.png",
         "icono": "😶",
-        "fotos": 60
+        "fotos": 40
     },
     {
         "id": "perfil_izq",
@@ -111,7 +111,7 @@ POSTURAS = [
         "instruccion": "inst_perfil_izq",
         "imagen": "../assets/posturas/postura_perfil_izq.png",
         "icono": "🙂",
-        "fotos": 60
+        "fotos": 40
     },
     {
         "id": "perfil_der",
@@ -119,7 +119,7 @@ POSTURAS = [
         "instruccion": "inst_perfil_der",
         "imagen": "../assets/posturas/postura_perfil_der.png",
         "icono": "🙂",
-        "fotos": 60
+        "fotos": 40
     },
 ]
 
@@ -133,5 +133,5 @@ TOTAL_FOTOS = sum(p["fotos"] for p in POSTURAS)
 # 🔹 CONSTANTES
 # ─────────────────────────────────────────────
 
-FRAMES_ESTABLE = 5
-CAPTURE_DELAY = 0.18
+FRAMES_ESTABLE = 3
+CAPTURE_DELAY = 0.12
