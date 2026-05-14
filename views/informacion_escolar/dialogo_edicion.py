@@ -150,8 +150,14 @@ class DialogoEdicionMixin:
 
         extras_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
         extras_frame.pack(fill="x", padx=8, pady=0)
-        ctk.CTkLabel(extras_frame, text="Roles extra", width=95, anchor="w",
-                    font=("Segoe UI", 9), text_color=c['text_gray']).pack(side="left")
+        ctk.CTkLabel(
+            extras_frame,
+            text=t("roles_extra"),
+            width=95,
+            anchor="w",
+            font=("Segoe UI", 9),
+            text_color=c['text_gray']
+        ).pack(side="left")
 
         extras_cbs = {}
         def on_check_extra(*_):
@@ -164,7 +170,11 @@ class DialogoEdicionMixin:
                     var._opened = False  # si desmarcan, deja que pueda volver a abrir
 
         for role in available_roles:
-            cb = ttk.Checkbutton(extras_frame, text=role.capitalize(), variable=roles_extras_vars[role])
+            cb = ttk.Checkbutton(
+                extras_frame,
+                text=t(role),
+                variable=roles_extras_vars[role]
+            )
             cb.pack(side="left", padx=2)
             extras_cbs[role] = cb
             roles_extras_vars[role].trace_add("write", on_check_extra)
@@ -173,7 +183,7 @@ class DialogoEdicionMixin:
         def abrir_modal_campos_rol(rol):
             # Crea el toplevel
             top = tk.Toplevel(win)
-            top.title(f"Completa los datos para el rol: {rol}")
+            top.title(f"{t('completa_datos_rol')}: {t(rol)}")
             top.transient(win)
             top.grab_set()
             top.resizable(False, False)
@@ -181,12 +191,22 @@ class DialogoEdicionMixin:
 
             campos = []
             if rol == "alumno":
-                campos = [("Facultad", vars_['facultad']), ("Carrera", vars_['carrera']),
-                        ("Grado", vars_['grado']), ("Grupo", vars_['grupo'])]
+                campos = [
+                    (t("facultad"), vars_['facultad']),
+                    (t("carrera"), vars_['carrera']),
+                    (t("grado"), vars_['grado']),
+                    (t("grupo"), vars_['grupo'])
+                ]
             elif rol == "maestro":
-                campos = [("Grado que imparte", vars_['grado']), ("Materia", vars_['materia'])]
+                campos = [
+                    (t("grado_imparte"), vars_['grado']),
+                    (t("materia"), vars_['materia'])
+                ]
             elif rol == "personal":
-                campos = [("Puesto", vars_['puesto']), ("Área", vars_['area'])]
+                campos = [
+                    (t("puesto"), vars_['puesto']),
+                    (t("area"), vars_['area'])
+                ]
 
             for i, (label, var) in enumerate(campos):
                 ttk.Label(top, text=label, anchor="w").grid(row=i, column=0, sticky="w", padx=8, pady=4)
@@ -196,7 +216,7 @@ class DialogoEdicionMixin:
                 # Puedes validar aquí si quieres
                 top.destroy()
 
-            ttk.Button(top, text="Guardar", command=guardar_y_cerrar).grid(row=len(campos), column=0, columnspan=2, pady=12)
+            ttk.Button(top, text=t("guardar"), command=guardar_y_cerrar).grid(row=len(campos), column=0, columnspan=2, pady=12)
 
             # Asegurarse que la ventana esté encima
             top.focus_force()
