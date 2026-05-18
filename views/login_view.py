@@ -198,107 +198,46 @@ class LoginView:
     # RESPONSIVE BOTONES SUPERIORES
     # ─────────────────────────────────────────────
 
-    def responsive_top_buttons(self):
+    def responsive_top_buttons(self, event=None):
+        """Ajusta el tamaño de los botones según el ancho de la ventana."""
+        # Validar que los widgets aún existen antes de configurarlos
+        if not hasattr(self, 'btn_tema') or self.btn_tema is None:
+            return
+        
+        try:
+            if not self.btn_tema.winfo_exists():
+                return
+        except (tk.TclError, AttributeError):
+            return
 
-        width = self.parent.winfo_width()
-
-        # ─────────────────────────────────
-        # PANTALLAS PEQUEÑAS / RASPBERRY PI
-        # ─────────────────────────────────
-
-        if width <= 900:
-
+        try:
             self.btn_tema.configure(
                 width=32,
                 height=32,
-                corner_radius=14,
                 font=("Segoe UI Emoji", 11)
             )
+        except tk.TclError:
+            return
+        except Exception:
+            return
 
-            self.btn_idioma.configure(
-                width=78,
-                height=32,
-                corner_radius=14,
-                font=("Segoe UI", 10, "bold")
-            )
-
-            # MÁS SEPARACIÓN ENTRE BOTONES
-
-            self.btn_tema.place(
-                relx=0.80,
-                rely=0.018,
-                anchor="ne"
-            )
-
-            self.btn_idioma.place(
-                relx=0.97,
-                rely=0.018,
-                anchor="ne"
-            )
-
-        # ─────────────────────────────────
-        # TABLET / LAPTOP
-        # ─────────────────────────────────
-
-        elif width <= 1300:
-
-            self.btn_tema.configure(
-                width=38,
-                height=38,
-                corner_radius=16,
-                font=("Segoe UI Emoji", 14)
-            )
-
-            self.btn_idioma.configure(
-                width=96,
-                height=38,
-                corner_radius=16,
-                font=("Segoe UI", 11, "bold")
-            )
-
-            self.btn_tema.place(
-                relx=0.86,
-                rely=0.022,
-                anchor="ne"
-            )
-
-            self.btn_idioma.place(
-                relx=0.975,
-                rely=0.022,
-                anchor="ne"
-            )
-
-        # ─────────────────────────────────
-        # PANTALLAS GRANDES
-        # ─────────────────────────────────
-
-        else:
-
-            self.btn_tema.configure(
-                width=42,
-                height=40,
-                corner_radius=18,
-                font=("Segoe UI Emoji", 16)
-            )
-
-            self.btn_idioma.configure(
-                width=110,
-                height=40,
-                corner_radius=18,
-                font=("Segoe UI", 13, "bold")
-            )
-
-            self.btn_tema.place(
-                relx=0.89,
-                rely=0.03,
-                anchor="ne"
-            )
-
-            self.btn_idioma.place(
-                relx=0.97,
-                rely=0.03,
-                anchor="ne"
-            )
+        # Repetir patrón para otros botones si los hay
+        for btn_name in ['btn_idioma', 'btn_info', 'btn_salir']:
+            if not hasattr(self, btn_name):
+                continue
+            
+            btn = getattr(self, btn_name, None)
+            if btn is None:
+                continue
+            
+            try:
+                if not btn.winfo_exists():
+                    continue
+                btn.configure(width=32, height=32, font=("Segoe UI Emoji", 11))
+            except (tk.TclError, AttributeError):
+                continue
+            except Exception:
+                continue
 
     # ─────────────────────────────────────────────────────────
     # DECORACIÓN

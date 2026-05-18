@@ -772,21 +772,50 @@ class ReconocerFacial:
     # ─────────────────────────────────────────────────────────────────────────
     # Votación por mayoría
     # ─────────────────────────────────────────────────────────────────────────
-    def _votar(self, label, distancia):
-        self._votos.append((label, distancia))
-        if len(self._votos) > self._frames_votar:
-            self._votos = self._votos[-self._frames_votar:]
-        if len(self._votos) < self._frames_votar:
-            return None, None
+    def _votar(self, labels, distancias):
+        """
+        Votación por mayoría para determinar identidad.
+        
+        Args:
+            labels: lista de IDs o str con nombres
+            distancias: lista de distancias/confianzas
+        
+        Returns:
+            (label_ganador, distancia_minima) o ("Desconocido", inf) si no hay válidos
+        """
+        # Validar que sean iterables
+        if not isinstance(labels, (list, tuple)):
+            return "Desconocido", float("inf")
+        
+        if not isinstance(distancias, (list, tuple)):
+            return "Desconocido", float("inf")
+        
+        if not labels or not distancias:
+            return "Desconocido", float("inf")
+        
+        if len(labels) != len(distancias):
+            return "Desconocido", float("inf")
 
-        labels_validos = [l for l, d in self._votos if l != "Desconocido"]
-        if len(labels_validos) < int(self._frames_votar * 0.50):
-            return "Desconocido", None
+        # Filtrar válidos
+        pares_validos = [
+            (label, dist) for label, dist in zip(labels, distancias)
+            if label not in (None, "", "unknown", "desconocido", -1)
+            and isinstance(dist, (int, float))
+        ]
 
+        if not pares_validos:
+            return "Desconocido", float("inf")
+
+        # Votación
+        labels_validos = [label for label, _ in pares_validos]
         label_ganador = Counter(labels_validos).most_common(1)[0][0]
-        dist_media    = float(np.mean([d for l, d in self._votos if l == label_ganador]))
-        return label_ganador, dist_media
+        
+        # Distancia mínima del ganador
+        distancias_ganadoras = [dist for label, dist in pares_validos if label == label_ganador]
+        distancia = min(distancias_ganadoras) if distancias_ganadoras else float("inf")
 
+        return label_ganador, distancia
+    
     # ─────────────────────────────────────────────────────────────────────────
     # Registro de acceso en BD (con cooldown real)
     # ─────────────────────────────────────────────────────────────────────────
