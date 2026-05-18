@@ -132,7 +132,7 @@ class LoginView:
 
         cambiar_idioma(nuevo)
 
-        self.frame.destroy()
+        self.frame.pack_forget()
 
         nueva_vista = LoginView(self.parent, self.app)
 
@@ -181,7 +181,7 @@ class LoginView:
 
         toggle_theme()
 
-        self.frame.destroy()
+        self.frame.pack_forget()
 
         nueva_vista = LoginView(
             self.parent,
