@@ -9,11 +9,6 @@ from PIL import Image, ImageTk
 from config import WINDOW_WIDTH, WINDOW_HEIGHT, ASSETS_PATH, ICON_FILE # importamos configuraciones generales del sistema
 from views.login_view import LoginView 
 from views.main_view import MainView 
-
-try:
-    from admin.biometric_system.contro_cerradura import iniciar_monitor_egreso_boton
-except Exception:
-    iniciar_monitor_egreso_boton = None
 class SentinelApp:
     """Clase principal que maneja la aplicación y navegación entre vistas"""
     
@@ -132,14 +127,6 @@ def main():
             pass
 
     root = ctk.CTk()
-
-    # Si hay botón físico de egreso conectado a una línea GPIO configurada
-    # en EGRESO_BUTTON_LINE, inicia monitor para decrementar ocupación.
-    try:
-        if iniciar_monitor_egreso_boton:
-            iniciar_monitor_egreso_boton()
-    except Exception:
-        pass
     
     # Configurar icono de la aplicación para ventana y barra de tareas
     try:
