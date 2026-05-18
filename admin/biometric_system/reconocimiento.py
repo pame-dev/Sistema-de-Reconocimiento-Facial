@@ -68,14 +68,7 @@ def haar_path(filename: str) -> str:
     )
 
 class ReconocerFacial:
-    """
-    Motor de reconocimiento facial.
-
-    Detección:       Haar Cascade (rápido, sin dependencias extra)
-    Reconocimiento:  LBPH (OpenCV)
-    Persistencia:    modelo entrenado en .yml, datos en .pkl
-    """
-
+    
     def __init__(self, db_path='database/sistema_biometrico.db'):
         self.db_path       = db_path
         self.project_root  = os.path.dirname(
@@ -88,7 +81,7 @@ class ReconocerFacial:
         self.ids_hash_path  = os.path.join(self.artifacts_dir, 'ids_hash.pkl')
         self._modelo_version = 11  # sube versión por cambios de lógica
 
-        # ── CORRECCIÓN 1: flag que indica si el modelo está listo para predecir ──
+        # flag que indica si el modelo está listo para predecir ──
         self._modelo_listo = False
 
         # ── Detectores Haar ────────────────────────────────────────────────────
@@ -118,7 +111,6 @@ class ReconocerFacial:
             print("⚠️ No se pudo cargar haarcascade_eye.xml — validación de ojos desactivada")
 
         # ── Reconocedor LBPH ───────────────────────────────────────────────────
-        # Nota: requiere OpenCV contrib (cv2.face).
         self.recognizer = self._crear_lbph_recognizer()
 
         # ── Datos de reconocimiento ────────────────────────────────────────────
@@ -126,14 +118,14 @@ class ReconocerFacial:
 
         # ── Parámetros de reconocimiento ───────────────────────────────────────
         # En LBPH "conf" es una distancia/error: más bajo = mejor match.
-        self.tolerancia                   = 85.0
-        self._TOLERANCIA_MIN              = 74.0
-        self._TOLERANCIA_MAX              = 100.0
-        self._MARGEN_RECONOCIMIENTO_SUAVE = 8.0
+        self.tolerancia                   = 60.0
+        self._TOLERANCIA_MIN              = 40.0
+        self._TOLERANCIA_MAX              = 80.0
+        self._MARGEN_RECONOCIMIENTO_SUAVE = 20.0
 
         # ── Votación ───────────────────────────────────────────────────────────
         self._votos         = []
-        self._frames_votar  = 2      # mantiene algo de estabilidad
+        self._frames_votar  = 1      # mantiene algo de estabilidad
         self._procesar_cada = 1      # procesa cada frame para responder más rápido
         self._frame_counter = 0
         self._ultimo_resultado = []
@@ -158,13 +150,13 @@ class ReconocerFacial:
         self._desconocido_desde = None
 
         self._tolerancia_segundos  = 0.4
-        self._fast_accept_margin   = 8.0
+        self._fast_accept_margin   = 5.0
         self._desconocido_hold_seg = 0.5
 
         self._ultimo_usuario_aceptado  = None
         self._ultimo_aceptado_ts       = None
         self._ventana_recuperacion_seg = 15.0
-        self._margen_recuperacion      = 8.0
+        self._margen_recuperacion      = 15.0
 
         # Cooldown corto tras acceso aceptado para evitar duplicados sin bloquear
         # demasiado tiempo el reconocimiento de una nueva persona.
@@ -190,10 +182,10 @@ class ReconocerFacial:
         if self._is_raspberry:
             # La cámara de Raspberry suele tener más ruido/variación de luz;
             # relajamos umbrales para recuperar mejor al usuario registrado.
-            self.tolerancia = max(self.tolerancia, 88.0)
-            self._MARGEN_RECONOCIMIENTO_SUAVE = max(self._MARGEN_RECONOCIMIENTO_SUAVE, 10.0)
-            self._margen_recuperacion         = max(self._margen_recuperacion, 10.0)
-            self._fast_accept_margin          = min(self._fast_accept_margin, 6.0)
+            self.tolerancia = max(self.tolerancia, 70.0)
+            self._MARGEN_RECONOCIMIENTO_SUAVE = max(self._MARGEN_RECONOCIMIENTO_SUAVE, 22.0)
+            self._margen_recuperacion         = max(self._margen_recuperacion, 15.0)
+            self._fast_accept_margin          = min(self._fast_accept_margin, 4.0)
             self._frames_votar                = 1
             self._desconocido_hold_seg        = max(self._desconocido_hold_seg, 0.7)
 
@@ -308,10 +300,10 @@ class ReconocerFacial:
         candidatos = []
 
         for detector, params, flipped in [
-            (self._haar_frontal, dict(scaleFactor=1.1, minNeighbors=6, minSize=(80, 80)), False),
-            (self._haar_alt,     dict(scaleFactor=1.1, minNeighbors=5, minSize=(70, 70)), False),
-            (self._haar_perfil,  dict(scaleFactor=1.1, minNeighbors=5, minSize=(70, 70)), False),
-            (self._haar_perfil,  dict(scaleFactor=1.1, minNeighbors=5, minSize=(70, 70)), True),
+            (self._haar_frontal, dict(scaleFactor=1.1, minNeighbors=4, minSize=(80, 80)), False),
+            (self._haar_alt,     dict(scaleFactor=1.1, minNeighbors=4, minSize=(70, 70)), False),
+            (self._haar_perfil,  dict(scaleFactor=1.1, minNeighbors=4, minSize=(70, 70)), False),
+            (self._haar_perfil,  dict(scaleFactor=1.1, minNeighbors=4, minSize=(70, 70)), True),
         ]:
             gray_search = cv2.flip(frame_gray, 1) if flipped else frame_gray
             caras = detector.detectMultiScale(gray_search, **params)
