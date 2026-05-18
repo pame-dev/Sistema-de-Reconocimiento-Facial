@@ -99,6 +99,11 @@ class ReconocerFacial:
             haar_path('haarcascade_profileface.xml')
         )
 
+        # Detector de ojos (no crítico; si no carga, soltamos solo una advertencia)
+        self._haar_eyes = cv2.CascadeClassifier(
+            haar_path('haarcascade_eye.xml')
+        )
+
         # Validación (si no cargan, fallará la detección y “parece que no detecta nada”)
         if self._haar_frontal.empty():
             raise RuntimeError("No se pudo cargar haarcascade_frontalface_default.xml")
@@ -106,6 +111,8 @@ class ReconocerFacial:
             raise RuntimeError("No se pudo cargar haarcascade_frontalface_alt2.xml")
         if self._haar_perfil.empty():
             raise RuntimeError("No se pudo cargar haarcascade_profileface.xml")
+        if self._haar_eyes.empty():
+            print("⚠️ No se pudo cargar haarcascade_eye.xml — validación de ojos desactivada")
 
         # ── Reconocedor LBPH ───────────────────────────────────────────────────
         # Nota: requiere OpenCV contrib (cv2.face).
@@ -303,7 +310,7 @@ class ReconocerFacial:
         margen_x = int(w_f * 0.10)
         margen_y = int(h_f * 0.08)
 
-        resultado = []
+        candidatos = []
 
         for detector, params, flipped in [
             (self._haar_frontal, dict(scaleFactor=1.1, minNeighbors=6, minSize=(80, 80)), False),
@@ -326,12 +333,33 @@ class ReconocerFacial:
                 ratio = w / h
                 if not (0.5 < ratio < 1.8):
                     continue
-                resultado.append((x, y, w, h))
 
-            if resultado:
+                # Validación de ojos dentro del ROI para reducir falsas detecciones de espaldas/perfil
+                roi_gray = frame_gray[y:y+h, x:x+w]
+                ojos_en_roi = []
+                try:
+                    if not self._haar_eyes.empty():
+                        ojos_en_roi = self._haar_eyes.detectMultiScale(roi_gray, scaleFactor=1.1, minNeighbors=5, minSize=(20, 20))
+                except Exception:
+                    ojos_en_roi = []
+
+                area = w * h
+                dist_centro = abs(cx - (w_f / 2.0)) + abs(cy - (h_f / 2.0)) * 0.5
+                score = area - (dist_centro * 2.5)
+                has_eyes = 1 if len(ojos_en_roi) >= 1 else 0
+                candidatos.append((has_eyes, score, x, y, w, h))
+
+            if candidatos:
+                # si encontramos candidatos con este detector, no continuar con otros
                 break
 
-        return resultado
+        if not candidatos:
+            return []
+
+        # Preferir candidatos con ojos detectados; ordenar por (has_eyes, score)
+        candidatos.sort(key=lambda it: (it[0], it[1]), reverse=True)
+        _, _, x, y, w, h = candidatos[0]
+        return [(x, y, w, h)]
 
     def _preprocess_gray(self, frame_bgr):
         """
