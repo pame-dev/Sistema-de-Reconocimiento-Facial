@@ -1019,10 +1019,27 @@ class CapturaBiometricaMixin:
                     sp_insertar_biometria(conn, user_id, foto_bytes, ahora)
                 conn.commit()
                 conn.close()
-                self.container.after(0, lambda: self._fin_guardado(
-                    t("fotos_actualizadas"),
-                    t("se_actualizaron_fotos").format(len(self.fotos_temp))
-                ))
+                # Lanzar reentrenamiento en background y notificar cuando termine
+                def _retrain_and_finish():
+                    try:
+                        app = getattr(self.parent.winfo_toplevel(), "sentinel_app", None)
+                        engine = None
+                        if app and getattr(app, "main_view", None):
+                            engine = getattr(app.main_view, "_engine", None)
+                        if engine:
+                            engine.cargar_o_reentrenar()
+                    except Exception:
+                        pass
+                    finally:
+                        try:
+                            self.container.after(0, lambda: self._fin_guardado(
+                                t("fotos_actualizadas"),
+                                t("se_actualizaron_fotos").format(len(self.fotos_temp))
+                            ))
+                        except Exception:
+                            pass
+
+                threading.Thread(target=_retrain_and_finish, daemon=True).start()
                 return
 
             user_id = sp_insertar_usuario(conn, {
@@ -1062,14 +1079,32 @@ class CapturaBiometricaMixin:
             conn.commit()
             conn.close()
 
-            # ── Guardar el ID del usuario para posibles reintentosself._user_id_creado = user_id
-            cfg             = ROL_CONFIG[rol]
-            nombre_completo = f"{val('nombreUsuario')} {val('apellidoPaternoUsuario')}"
-            self.container.after(0, lambda: self._fin_guardado(
-                t("registro_exitoso"),
-                f"{cfg['icono']} {nombre_completo} ({cfg['titulo']})\n"
-                f"{t('fotos_registradas')} {len(self.fotos_temp)} {t('fotos')}"
-            ))
+            # ── Trigger retrain on main engine so the new user is immediately recognized
+            def _retrain_new_and_finish():
+                try:
+                    app = getattr(self.parent.winfo_toplevel(), "sentinel_app", None)
+                    engine = None
+                    if app and getattr(app, "main_view", None):
+                        engine = getattr(app.main_view, "_engine", None)
+                    if engine:
+                        engine.cargar_o_reentrenar()
+                except Exception:
+                    pass
+                finally:
+                    try:
+                        cfg             = ROL_CONFIG[rol]
+                        nombre_completo = f"{val('nombreUsuario')} {val('apellidoPaternoUsuario')}"
+                        self.container.after(0, lambda: self._fin_guardado(
+                            t("registro_exitoso"),
+                            f"{cfg['icono']} {nombre_completo} ({cfg['titulo']})\n"
+                            f"{t('fotos_registradas')} {len(self.fotos_temp)} {t('fotos')}"
+                        ))
+                    except Exception:
+                        pass
+
+            threading.Thread(target=_retrain_new_and_finish, daemon=True).start()
+            # Guardar el ID del usuario para posibles reintentos
+            self._user_id_creado = user_id
 
         except Exception as e:
             self.container.after(0, lambda: messagebox.showerror(
