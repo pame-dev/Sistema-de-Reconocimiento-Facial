@@ -488,38 +488,68 @@ class DialogoEdicionMixin:
             messagebox.showerror(t("error"), t("no_actualizar").format(e))
 
     def _retomar_fotos(self, usuario, ventana_actual):
-        import tkinter as tk
         try:
             from views.nuevo_registro_view import NuevoRegistroView
             ventana_actual.destroy()
-            for widget in self.parent.winfo_children():
-                widget.destroy()
-
-            nuevo_reg = NuevoRegistroView(self.parent)
-            nuevo_reg.modo_retomar_fotos = True
-            nuevo_reg.user_id_existente  = usuario.get("id")
-            nuevo_reg.rol_actual         = principal_rol(usuario.get('rol', 'alumno')) or 'alumno'
-            nuevo_reg._mostrar_formulario()
-
-            campo_map = {
-                'nombreUsuario':          'nombre',
-                'apellidoPaternoUsuario': 'paterno',
-                'apellidoMaternoUsuario': 'materno',
-                'matriculaUsuario':       'matricula',
-                'telefonoUsuario':        'telefono',
-                'correoUsuario':          'correo',
-                'gradoAlumno':            'grado',
-                'grupoAlumno':            'grupo',
-                'carreraAlumno':          'carrera',
+            
+            rol = principal_rol(usuario.get('rol', 'alumno')) or 'alumno'
+            user_id = usuario.get('id')
+            parent_frame = self.parent  # Guardar referencia antes de que se destruya
+            
+            # Preparar valores del formulario
+            valores_form = {
+                'nombre':       usuario.get('nombre', ''),
+                'paterno':      usuario.get('apellido_paterno', ''),
+                'materno':      usuario.get('apellido_materno', ''),
+                'matricula':    usuario.get('matricula', ''),
+                'telefono':     usuario.get('telefono', ''),
+                'correo':       usuario.get('correo', ''),
+                'grado':        usuario.get('grado', ''),
+                'grupo':        usuario.get('grupo', ''),
+                'carrera':      usuario.get('carrera', ''),
             }
-            for entry_key, user_key in campo_map.items():
-                valor = usuario.get(user_key, '')
-                if entry_key in nuevo_reg.entries and valor:
-                    nuevo_reg.entries[entry_key].delete(0, tk.END)
-                    nuevo_reg.entries[entry_key].insert(0, valor)
-
-            nuevo_reg.valores_form = {k: e.get().strip() for k, e in nuevo_reg.entries.items()}
-            nuevo_reg.parent.after(200, nuevo_reg._mostrar_captura)
+            
+            # Callback para volver a la información escolar
+            def volver_a_info_escolar():
+                # Limpiar todos los widgets del parent
+                for widget in parent_frame.winfo_children():
+                    try:
+                        widget.destroy()
+                    except Exception:
+                        pass
+                
+                # Recrear la vista de información escolar desde cero
+                from views.informacion_escolar_view import InformacionEscolarView
+                vista = InformacionEscolarView(parent_frame)
+                parent_frame.update_idletasks()
+                
+                # Seleccionar y mostrar detalles del usuario
+                vista.mostrar_edicion_por_id(user_id)
+            
+            # Estado inicial con modo retomar fotos
+            initial_state = {
+                "modo_retomar_fotos": True,
+                "rol_actual": rol,
+                "user_id": user_id,
+                "valores_form": valores_form,
+            }
+            
+            # Limpiar widgets anteriores
+            for widget in parent_frame.winfo_children():
+                try:
+                    widget.destroy()
+                except Exception:
+                    pass
+            
+            # Crear vista sin mostrar nada (se muestra después con _mostrar_captura)
+            nuevo_reg = NuevoRegistroView(
+                parent_frame,
+                initial_state=initial_state,
+                on_back_callback=volver_a_info_escolar
+            )
+            
+            # Mostrar directamente la captura de fotos
+            nuevo_reg._mostrar_captura()
 
         except Exception as e:
             messagebox.showerror(t("error"), t("error_captura").format(e))

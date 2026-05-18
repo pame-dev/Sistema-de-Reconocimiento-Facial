@@ -1167,10 +1167,15 @@ class CapturaBiometricaMixin:
         ).grid(row=0, column=1, padx=4, sticky="ew")
 
     def _accion_aceptar(self):
-        """Usuario acepta el registro, vuelve a selección de rol"""
+        """Usuario acepta el registro, vuelve a selección de rol o al callback"""
         # Limpiar el ID guardado si existe
         self._user_id_creado = None
-        self._mostrar_seleccion_rol()
+        
+        # Si estamos en modo retomar fotos, ejecutar callback
+        if self.modo_retomar_fotos and hasattr(self, '_on_back_callback') and self._on_back_callback:
+            self._on_back_callback()
+        else:
+            self._mostrar_seleccion_rol()
 
     def _accion_repetir(self):
         """Usuario quiere repetir captura, limpia fotos y vuelve a capturar"""
@@ -1204,7 +1209,11 @@ class CapturaBiometricaMixin:
     def _volver_formulario(self):
         self._enable_top_controls()
         self._detener_camara()
-        self._mostrar_formulario()
+        # Si estamos en modo retomar fotos y hay callback, ejecutarlo
+        if self.modo_retomar_fotos and hasattr(self, '_on_back_callback') and self._on_back_callback:
+            self._on_back_callback()
+        else:
+            self._mostrar_formulario()
 
     def _cancelar_captura(self):
         self._enable_top_controls()
