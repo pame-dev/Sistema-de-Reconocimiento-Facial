@@ -716,10 +716,23 @@ class ReconocerFacial:
             gray_base = cv2.resize(gray_base, (100, 100))
             gray_base = self._normalizar_rostro_gray(gray_base)
 
+            # Un recorte central un poco más estricto suele estabilizar
+            # rostros frontales cuando el borde del detector trae mucho fondo.
+            margen = 10
+            centro = gray_base[margen:100 - margen, margen:100 - margen]
+            if centro.size != 0:
+                centro = cv2.resize(centro, (100, 100))
+                centro = self._normalizar_rostro_gray(centro)
+            else:
+                centro = gray_base
+
             variantes = [
                 gray_base,
+                centro,
                 cv2.equalizeHist(gray_base),
+                cv2.equalizeHist(centro),
                 cv2.GaussianBlur(gray_base, (3, 3), 0),
+                cv2.GaussianBlur(centro, (3, 3), 0),
                 cv2.convertScaleAbs(gray_base, alpha=1.10, beta=8),
                 cv2.convertScaleAbs(gray_base, alpha=0.90, beta=-8),
             ]
@@ -729,10 +742,16 @@ class ReconocerFacial:
                 label_i, conf_i = self.recognizer.predict(variante)
                 predicciones.append((int(label_i), float(conf_i)))
 
+            mejor_label, mejor_conf = min(predicciones, key=lambda it: it[1])
+
             labels       = [l for l, _ in predicciones]
             label        = Counter(labels).most_common(1)[0][0]
             dists_label  = [c for l, c in predicciones if l == label]
             conf         = float(np.median(dists_label))
+
+            if label == -1 or label == "Desconocido":
+                if mejor_label not in (-1, "Desconocido") and mejor_conf <= (self.tolerancia + self._MARGEN_RECONOCIMIENTO_SUAVE):
+                    return mejor_label, mejor_conf
 
             if conf <= self.tolerancia:
                 return label, conf
