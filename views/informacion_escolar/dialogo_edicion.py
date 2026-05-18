@@ -25,6 +25,10 @@ class DialogoEdicionMixin:
         c = self.colors
         u = self.usuario_seleccionado
         color = ROL_COLOR.get(principal_rol(u.get('rol', '')), COLORS['primary'])
+        roles_usuario = [r.strip() for r in u.get('rol', '').split(",") if r.strip()]
+
+        def _rol_val(key, rol):
+            return _val(key) if rol in roles_usuario else ''
 
         def _val(key):
             v = u.get(key, '')
@@ -39,13 +43,14 @@ class DialogoEdicionMixin:
             'fecha_nacimiento': tk.StringVar(value=_val('fecha_nacimiento')),
             'tipo_sangre':      tk.StringVar(value=_val('tipo_sangre')),
             'rol':              tk.StringVar(value=u['rol']),
-            'facultad':         tk.StringVar(value=_val('facultad')),
-            'carrera':          tk.StringVar(value=_val('carrera')),
-            'grado':            tk.StringVar(value=_val('grado')),
-            'grupo':            tk.StringVar(value=_val('grupo')),
-            'materia':          tk.StringVar(value=_val('materia')),
-            'puesto':           tk.StringVar(value=_val('puesto')),
-            'area':             tk.StringVar(value=_val('area')),
+            'facultad':         tk.StringVar(value=_rol_val('facultad', 'alumno')),
+            'carrera':          tk.StringVar(value=_rol_val('carrera', 'alumno')),
+            'grado_alumno':     tk.StringVar(value=_rol_val('grado', 'alumno')),
+            'grupo':            tk.StringVar(value=_rol_val('grupo', 'alumno')),
+            'grado_maestro':    tk.StringVar(value=_rol_val('grado', 'maestro')),
+            'materia':          tk.StringVar(value=_rol_val('materia', 'maestro')),
+            'puesto':           tk.StringVar(value=_rol_val('puesto', 'personal')),
+            'area':             tk.StringVar(value=_rol_val('area', 'personal')),
         }
         originales = {k: v.get() for k, v in vars_.items()}
 
@@ -119,7 +124,6 @@ class DialogoEdicionMixin:
         make_entry(main_frame, t("fecha_nacimiento"),     vars_['fecha_nacimiento'], "fecha_nacimiento")
         make_entry(main_frame, t("tipo_sangre"),          vars_['tipo_sangre'],      "tipo_sangre")
 
-        roles_usuario = [r.strip() for r in u.get('rol', '').split(",") if r.strip()]
         rol_principal = roles_usuario[0] if roles_usuario else "alumno"
         vars_['rol'].set(rol_principal)
         available_roles = ["alumno", "maestro", "personal"]
@@ -194,12 +198,12 @@ class DialogoEdicionMixin:
                 campos = [
                     (t("facultad"), vars_['facultad']),
                     (t("carrera"), vars_['carrera']),
-                    (t("grado"), vars_['grado']),
+                    (t("grado"), vars_['grado_alumno']),
                     (t("grupo"), vars_['grupo'])
                 ]
             elif rol == "maestro":
                 campos = [
-                    (t("grado_imparte"), vars_['grado']),
+                    (t("grado_imparte"), vars_['grado_maestro']),
                     (t("materia"), vars_['materia'])
                 ]
             elif rol == "personal":
@@ -270,6 +274,14 @@ class DialogoEdicionMixin:
         import re
         g = lambda k: vars_[k].get().strip()
 
+        def _warn(title, message):
+            messagebox.showwarning(title, message, parent=ventana)
+            ventana.after_idle(lambda: (ventana.lift(), ventana.focus_force()))
+
+        def _error(title, message):
+            messagebox.showerror(title, message, parent=ventana)
+            ventana.after_idle(lambda: (ventana.lift(), ventana.focus_force()))
+
         nombre   = g('nombre')
         paterno  = g('paterno')
         matricula = g('matricula')
@@ -281,7 +293,7 @@ class DialogoEdicionMixin:
 
         # ── 1. Campos obligatorios ────────────────────────────────────────────
         if not nombre or not paterno:
-            messagebox.showwarning(t("campos_obligatorios"), t("error_nombre"))
+            _warn(t("campos_obligatorios"), t("error_nombre"))
             return
 
         for campo, clave in [
@@ -291,14 +303,14 @@ class DialogoEdicionMixin:
             (telefono,  "telefono"),
         ]:
             if not campo:
-                messagebox.showwarning(
+                _warn(
                     t("campo_requerido"),
                     f"{t('campo_requerido')}: {t(clave)}"
                 )
                 return
             sin_minimo = ("matricula", "telefono", "grado_imparte", "grado", "grupo")   
             if clave not in sin_minimo and len(campo) < 3:
-                messagebox.showwarning(
+                _warn(
                     "Error",
                     f"{t(clave)} debe tener mínimo 3 caracteres"
                 )
@@ -307,19 +319,19 @@ class DialogoEdicionMixin:
         # ── 2. Formato nombre y apellido (solo letras) ────────────────────────
         regex_nombre = r"^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$"
         if not re.match(regex_nombre, nombre):
-            messagebox.showwarning("Error", t("nombre_invalido"))
+            _warn("Error", t("nombre_invalido"))
             return
         if not re.match(regex_nombre, paterno):
-            messagebox.showwarning("Error", t("apellido_invalido"))
+            _warn("Error", t("apellido_invalido"))
             return
 
         # ── 3. Matrícula: solo dígitos, longitud exacta según rol ──────────────
         longitud_matricula = 8 if rol_principal == "alumno" else 6
         if not matricula.isdigit():
-            messagebox.showwarning("Error", t("matricula_num"))
+            _warn("Error", t("matricula_num"))
             return
         if len(matricula) != longitud_matricula:
-            messagebox.showwarning(
+            _warn(
                 "Error",
                 t("matricula_longitud").format(n=longitud_matricula)
             )
@@ -327,25 +339,25 @@ class DialogoEdicionMixin:
 
         # ── 4. Teléfono: solo dígitos, entre 10 y 12 ─────────────────────────
         if not telefono.isdigit():
-            messagebox.showwarning("Error", t("telefono_num"))
+            _warn("Error", t("telefono_num"))
             return
         if len(telefono) < 10:
-            messagebox.showwarning("Error", t("telefono_min"))
+            _warn("Error", t("telefono_min"))
             return
         if len(telefono) > 12:
-            messagebox.showwarning("Error", t("telefono_max"))
+            _warn("Error", t("telefono_max"))
             return
 
         # ── 5. Correo (si el campo existe en la ventana) ──────────────────────
-        #if correo and not re.match(r"^[^@]+@[a-zA-Z]{3,}\.[a-zA-Z]{2,}$", correo):
-            messagebox.showwarning("Error", t("correo_invalido"))
+        if correo and not re.match(r"^[^@]+@[a-zA-Z]{3,}\.[a-zA-Z]{2,}$", correo):
+            _warn("Error", t("correo_invalido"))
             return
 
         # ── 6. Campos por rol ─────────────────────────────────────────────────
         campos_rol_check = {
             "alumno":   [("facultad", g('facultad')), ("carrera", g('carrera')),
-                         ("grado",    g('grado')),    ("grupo",   g('grupo'))],
-            "maestro":  [("grado_imparte", g('grado')), ("materia", g('materia'))],
+                         ("grado_alumno", g('grado_alumno')), ("grupo", g('grupo'))],
+            "maestro":  [("grado_imparte", g('grado_maestro')), ("materia", g('materia'))],
             "personal": [("puesto", g('puesto')), ("area", g('area'))],
         }
         
@@ -354,23 +366,29 @@ class DialogoEdicionMixin:
         for rol in selected_roles:
             for clave, valor in campos_rol_check.get(rol, []):
                 if not valor:
-                    messagebox.showwarning(
+                    _warn(
                         t("campo_requerido"),
                         f"{t('campo_requerido')}: {t(clave)}"
                     )
                     return
-            if len(valor) < 3:
-                messagebox.showwarning(
-                    "Error",
-                    t("campo_min_caracteres").format(campo=t(clave), min=3)
-                )
-                return
+
+                sin_minimo_rol = {
+                    "alumno": {"grado_alumno", "grupo"},
+                    "maestro": {"grado_imparte"},
+                    "personal": set(),
+                }
+                if clave not in sin_minimo_rol.get(rol, set()) and len(valor) < 3:
+                    _warn(
+                        "Error",
+                        t("campo_min_caracteres").format(campo=t(clave), min=3)
+                    )
+                    return
 
         # ── 7. Unicidad en BD (excluyendo el propio usuario) ──────────────────
         try:
             conn_check = get_db()
             if not conn_check:
-                messagebox.showerror("Error", "No se pudo conectar a la base de datos")
+                _error("Error", "No se pudo conectar a la base de datos")
                 return
             cur = conn_check.cursor()
 
@@ -379,7 +397,7 @@ class DialogoEdicionMixin:
                 (correo, user_id)
             )
             if correo and cur.fetchone():
-                messagebox.showwarning("Error", t("correo_existe"))
+                _warn("Error", t("correo_existe"))
                 conn_check.close()
                 return
 
@@ -388,7 +406,7 @@ class DialogoEdicionMixin:
                 (telefono, user_id)
             )
             if cur.fetchone():
-                messagebox.showwarning("Error", t("telefono_existe"))
+                _warn("Error", t("telefono_existe"))
                 conn_check.close()
                 return
 
@@ -397,13 +415,13 @@ class DialogoEdicionMixin:
                 (matricula, user_id)
             )
             if cur.fetchone():
-                messagebox.showwarning("Error", t("matricula_existe"))
+                _warn("Error", t("matricula_existe"))
                 conn_check.close()
                 return
 
             conn_check.close()
         except Exception as e:
-            messagebox.showerror(t("error"), f"Error al validar datos: {e}")
+            _error(t("error"), f"Error al validar datos: {e}")
             return
 
         # ── 8. Todo correcto → guardar ────────────────────────────────────────
@@ -444,13 +462,13 @@ class DialogoEdicionMixin:
                         INSERT INTO alumnos
                         (fkIdUsuario, facultadAlumno, carreraAlumno, gradoAlumno, grupoAlumno)
                         VALUES (?, ?, ?, ?, ?)
-                    """, (user_id, g('facultad'), g('carrera'), g('grado'), g('grupo')))
+                    """, (user_id, g('facultad'), g('carrera'), g('grado_alumno'), g('grupo')))
                 elif rol == "maestro":
                     cursor.execute("""
                         INSERT INTO maestros
                         (fkIdUsuario, gradoImpartidoMaestro, materiaImpartidaMaestro)
                         VALUES (?, ?, ?)
-                    """, (user_id, g('grado'), g('materia')))
+                    """, (user_id, g('grado_maestro'), g('materia')))
                 elif rol == "personal":
                     cursor.execute("""
                         INSERT INTO personal_escolar
@@ -464,13 +482,13 @@ class DialogoEdicionMixin:
                         UPDATE alumnos
                         SET facultadAlumno=?, carreraAlumno=?, gradoAlumno=?, grupoAlumno=?
                         WHERE fkIdUsuario=?
-                    """, (g('facultad'), g('carrera'), g('grado'), g('grupo'), user_id))
+                    """, (g('facultad'), g('carrera'), g('grado_alumno'), g('grupo'), user_id))
                 elif rol == "maestro":
                     cursor.execute("""
                         UPDATE maestros
                         SET gradoImpartidoMaestro=?, materiaImpartidaMaestro=?
                         WHERE fkIdUsuario=?
-                    """, (g('grado'), g('materia'), user_id))
+                    """, (g('grado_maestro'), g('materia'), user_id))
                 elif rol == "personal":
                     cursor.execute("""
                         UPDATE personal_escolar
