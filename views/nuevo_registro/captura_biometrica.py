@@ -674,7 +674,6 @@ class CapturaBiometricaMixin:
 
         self._alerta_duplicado_abierta = True
         self._usuario_duplicado_detectado = duplicado.get("user_id")
-        self._detener_camara_silencio()
 
         win = ctk.CTkToplevel(self.parent)
         es_activo = duplicado.get("estado") == "activo"
@@ -867,6 +866,7 @@ class CapturaBiometricaMixin:
                     duplicado = self._detectar_usuario_duplicado(rostro_bgr)
                     if duplicado:
                         self._abrir_alerta_duplicado(duplicado)
+                        self.video_label.after(15, self._actualizar_video)
                         return
 
                     try:
