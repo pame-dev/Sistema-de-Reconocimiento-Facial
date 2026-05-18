@@ -28,7 +28,7 @@ class NuevoRegistroView(
     AnimacionCamaraMixin,
     CapturaBiometricaMixin,
 ):
-    def __init__(self, parent, main_view=None, initial_state=None):
+    def __init__(self, parent, main_view=None, initial_state=None, on_back_callback=None):
         self.colors    = get_colors()
         self.parent    = parent
         self.main_view = main_view or getattr(parent, 'main_view', None)
@@ -81,11 +81,17 @@ class NuevoRegistroView(
         self.modo_retomar_fotos = False
         self.user_id_existente  = None
         self.valores_form       = {}
+        self._on_back_callback  = on_back_callback
 
         # Restaurar estado si viene de un recargo de vista
         estado = initial_state or {}
         self.rol_actual = estado.get("rol_actual")
-        if self.rol_actual in ROL_CONFIG:
+        # Si es modo retomar fotos, no mostrar nada aquí (se hará después)
+        if estado.get("modo_retomar_fotos", False):
+            self.modo_retomar_fotos = True
+            self.user_id_existente = estado.get("user_id")
+            self.valores_form = dict(estado.get("valores_form") or {})
+        elif self.rol_actual in ROL_CONFIG:
             self.valores_form = dict(estado.get("valores_form") or {})
             self._mostrar_formulario()
         else:

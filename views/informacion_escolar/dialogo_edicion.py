@@ -150,8 +150,14 @@ class DialogoEdicionMixin:
 
         extras_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
         extras_frame.pack(fill="x", padx=8, pady=0)
-        ctk.CTkLabel(extras_frame, text="Roles extra", width=95, anchor="w",
-                    font=("Segoe UI", 9), text_color=c['text_gray']).pack(side="left")
+        ctk.CTkLabel(
+            extras_frame,
+            text=t("roles_extra"),
+            width=95,
+            anchor="w",
+            font=("Segoe UI", 9),
+            text_color=c['text_gray']
+        ).pack(side="left")
 
         extras_cbs = {}
         def on_check_extra(*_):
@@ -164,7 +170,11 @@ class DialogoEdicionMixin:
                     var._opened = False  # si desmarcan, deja que pueda volver a abrir
 
         for role in available_roles:
-            cb = ttk.Checkbutton(extras_frame, text=role.capitalize(), variable=roles_extras_vars[role])
+            cb = ttk.Checkbutton(
+                extras_frame,
+                text=t(role),
+                variable=roles_extras_vars[role]
+            )
             cb.pack(side="left", padx=2)
             extras_cbs[role] = cb
             roles_extras_vars[role].trace_add("write", on_check_extra)
@@ -173,7 +183,7 @@ class DialogoEdicionMixin:
         def abrir_modal_campos_rol(rol):
             # Crea el toplevel
             top = tk.Toplevel(win)
-            top.title(f"Completa los datos para el rol: {rol}")
+            top.title(f"{t('completa_datos_rol')}: {t(rol)}")
             top.transient(win)
             top.grab_set()
             top.resizable(False, False)
@@ -181,12 +191,22 @@ class DialogoEdicionMixin:
 
             campos = []
             if rol == "alumno":
-                campos = [("Facultad", vars_['facultad']), ("Carrera", vars_['carrera']),
-                        ("Grado", vars_['grado']), ("Grupo", vars_['grupo'])]
+                campos = [
+                    (t("facultad"), vars_['facultad']),
+                    (t("carrera"), vars_['carrera']),
+                    (t("grado"), vars_['grado']),
+                    (t("grupo"), vars_['grupo'])
+                ]
             elif rol == "maestro":
-                campos = [("Grado que imparte", vars_['grado']), ("Materia", vars_['materia'])]
+                campos = [
+                    (t("grado_imparte"), vars_['grado']),
+                    (t("materia"), vars_['materia'])
+                ]
             elif rol == "personal":
-                campos = [("Puesto", vars_['puesto']), ("Área", vars_['area'])]
+                campos = [
+                    (t("puesto"), vars_['puesto']),
+                    (t("area"), vars_['area'])
+                ]
 
             for i, (label, var) in enumerate(campos):
                 ttk.Label(top, text=label, anchor="w").grid(row=i, column=0, sticky="w", padx=8, pady=4)
@@ -196,7 +216,7 @@ class DialogoEdicionMixin:
                 # Puedes validar aquí si quieres
                 top.destroy()
 
-            ttk.Button(top, text="Guardar", command=guardar_y_cerrar).grid(row=len(campos), column=0, columnspan=2, pady=12)
+            ttk.Button(top, text=t("guardar"), command=guardar_y_cerrar).grid(row=len(campos), column=0, columnspan=2, pady=12)
 
             # Asegurarse que la ventana esté encima
             top.focus_force()
@@ -468,38 +488,68 @@ class DialogoEdicionMixin:
             messagebox.showerror(t("error"), t("no_actualizar").format(e))
 
     def _retomar_fotos(self, usuario, ventana_actual):
-        import tkinter as tk
         try:
             from views.nuevo_registro_view import NuevoRegistroView
             ventana_actual.destroy()
-            for widget in self.parent.winfo_children():
-                widget.destroy()
-
-            nuevo_reg = NuevoRegistroView(self.parent)
-            nuevo_reg.modo_retomar_fotos = True
-            nuevo_reg.user_id_existente  = usuario.get("id")
-            nuevo_reg.rol_actual         = principal_rol(usuario.get('rol', 'alumno')) or 'alumno'
-            nuevo_reg._mostrar_formulario()
-
-            campo_map = {
-                'nombreUsuario':          'nombre',
-                'apellidoPaternoUsuario': 'paterno',
-                'apellidoMaternoUsuario': 'materno',
-                'matriculaUsuario':       'matricula',
-                'telefonoUsuario':        'telefono',
-                'correoUsuario':          'correo',
-                'gradoAlumno':            'grado',
-                'grupoAlumno':            'grupo',
-                'carreraAlumno':          'carrera',
+            
+            rol = principal_rol(usuario.get('rol', 'alumno')) or 'alumno'
+            user_id = usuario.get('id')
+            parent_frame = self.parent  # Guardar referencia antes de que se destruya
+            
+            # Preparar valores del formulario
+            valores_form = {
+                'nombre':       usuario.get('nombre', ''),
+                'paterno':      usuario.get('apellido_paterno', ''),
+                'materno':      usuario.get('apellido_materno', ''),
+                'matricula':    usuario.get('matricula', ''),
+                'telefono':     usuario.get('telefono', ''),
+                'correo':       usuario.get('correo', ''),
+                'grado':        usuario.get('grado', ''),
+                'grupo':        usuario.get('grupo', ''),
+                'carrera':      usuario.get('carrera', ''),
             }
-            for entry_key, user_key in campo_map.items():
-                valor = usuario.get(user_key, '')
-                if entry_key in nuevo_reg.entries and valor:
-                    nuevo_reg.entries[entry_key].delete(0, tk.END)
-                    nuevo_reg.entries[entry_key].insert(0, valor)
-
-            nuevo_reg.valores_form = {k: e.get().strip() for k, e in nuevo_reg.entries.items()}
-            nuevo_reg.parent.after(200, nuevo_reg._mostrar_captura)
+            
+            # Callback para volver a la información escolar
+            def volver_a_info_escolar():
+                # Limpiar todos los widgets del parent
+                for widget in parent_frame.winfo_children():
+                    try:
+                        widget.destroy()
+                    except Exception:
+                        pass
+                
+                # Recrear la vista de información escolar desde cero
+                from views.informacion_escolar_view import InformacionEscolarView
+                vista = InformacionEscolarView(parent_frame)
+                parent_frame.update_idletasks()
+                
+                # Seleccionar y mostrar detalles del usuario
+                vista.mostrar_edicion_por_id(user_id)
+            
+            # Estado inicial con modo retomar fotos
+            initial_state = {
+                "modo_retomar_fotos": True,
+                "rol_actual": rol,
+                "user_id": user_id,
+                "valores_form": valores_form,
+            }
+            
+            # Limpiar widgets anteriores
+            for widget in parent_frame.winfo_children():
+                try:
+                    widget.destroy()
+                except Exception:
+                    pass
+            
+            # Crear vista sin mostrar nada (se muestra después con _mostrar_captura)
+            nuevo_reg = NuevoRegistroView(
+                parent_frame,
+                initial_state=initial_state,
+                on_back_callback=volver_a_info_escolar
+            )
+            
+            # Mostrar directamente la captura de fotos
+            nuevo_reg._mostrar_captura()
 
         except Exception as e:
             messagebox.showerror(t("error"), t("error_captura").format(e))
