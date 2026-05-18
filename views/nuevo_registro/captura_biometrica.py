@@ -796,6 +796,7 @@ class CapturaBiometricaMixin:
         if not self.capturando or self.camara is None:
             return
         if self._guardando:
+            self.video_label.after(30, self._actualizar_video)
             return
 
         try:
