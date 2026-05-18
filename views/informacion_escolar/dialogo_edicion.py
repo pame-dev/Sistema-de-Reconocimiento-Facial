@@ -490,11 +490,19 @@ class DialogoEdicionMixin:
     def _retomar_fotos(self, usuario, ventana_actual):
         try:
             from views.nuevo_registro_view import NuevoRegistroView
-            ventana_actual.destroy()
             
             rol = principal_rol(usuario.get('rol', 'alumno')) or 'alumno'
             user_id = usuario.get('id')
             parent_frame = self.parent  # Guardar referencia antes de que se destruya
+
+            try:
+                ventana_actual.grab_release()
+            except Exception:
+                pass
+            try:
+                ventana_actual.withdraw()
+            except Exception:
+                pass
             
             # Preparar valores del formulario
             valores_form = {
@@ -509,22 +517,27 @@ class DialogoEdicionMixin:
                 'carrera':      usuario.get('carrera', ''),
             }
             
-            # Callback para volver a la información escolar
-            def volver_a_info_escolar():
+            # Callback para volver a información escolar con la vista reconstruida
+            def volver_a_edicion():
                 # Limpiar todos los widgets del parent
                 for widget in parent_frame.winfo_children():
                     try:
                         widget.destroy()
                     except Exception:
                         pass
-                
-                # Recrear la vista de información escolar desde cero
-                from views.informacion_escolar_view import InformacionEscolarView
-                vista = InformacionEscolarView(parent_frame)
-                parent_frame.update_idletasks()
-                
-                # Seleccionar y mostrar detalles del usuario
-                vista.mostrar_edicion_por_id(user_id)
+
+                try:
+                    from views.informacion_escolar_view import InformacionEscolarView
+                    vista = InformacionEscolarView(parent_frame)
+                    parent_frame.update_idletasks()
+                    vista.mostrar_edicion_por_id(user_id)
+                except Exception:
+                    pass
+
+                messagebox.showinfo(
+                    t("actualizado"),
+                    "Las fotos se actualizaron correctamente. Ya puedes guardar el usuario."
+                )
             
             # Estado inicial con modo retomar fotos
             initial_state = {
@@ -545,7 +558,7 @@ class DialogoEdicionMixin:
             nuevo_reg = NuevoRegistroView(
                 parent_frame,
                 initial_state=initial_state,
-                on_back_callback=volver_a_info_escolar
+                on_back_callback=volver_a_edicion
             )
             
             # Mostrar directamente la captura de fotos

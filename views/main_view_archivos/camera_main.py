@@ -68,6 +68,21 @@ class CameraMainMixin:
         except Exception:
             pass
 
+        # Asegurar que el canvas queda limpio inmediatamente
+        try:
+            if hasattr(self, '_cam_canvas') and self._cam_canvas is not None:
+                try:
+                    self._cam_canvas.delete("all")
+                except Exception:
+                    pass
+                # liberar referencia a la imagen para que Tk no la mantenga
+                try:
+                    self._cam_photo = None
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
     def _cam_loop(self):
         sin_frame_count = 0
         while self._cam_running:
@@ -97,6 +112,10 @@ class CameraMainMixin:
 
     def _show_frame(self, frame_bgr):
         try:
+            # Evitar pintar si la cámara fue detenida mientras el frame estaba en cola
+            if not getattr(self, '_cam_running', False):
+                self._frame_pending = False
+                return
             rgb   = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
             img   = Image.fromarray(rgb)
             cw    = self._cam_canvas.winfo_width()  or 640

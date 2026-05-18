@@ -220,7 +220,7 @@ class HistorialAccesosView:
 
         self.tree = ttk.Treeview(
             tabla_card,
-            columns=("usuario", "fecha", "estado", "confianza", "umbral"),
+            columns=("usuario", "fecha", "estado"),
             show="headings",
             yscrollcommand=scroll_y.set,
             xscrollcommand=scroll_x.set,
@@ -230,11 +230,9 @@ class HistorialAccesosView:
         scroll_x.configure(command=self.tree.xview)
 
         for col, label, w, anchor in [
-            ("usuario",   "👤 " + t("usuario"),    220, "w"),
-            ("fecha",     "🕐 " + t("fecha_hora"), 165, "center"),
-            ("estado",    "📊 " + t("estado"),     120, "center"),
-            ("confianza", "📈 " + t("confianza"),  110, "center"),
-            ("umbral",    "🎯 " + t("umbral"),      90, "center"),
+            ("usuario",   "👤 " + t("usuario"),    280, "w"),
+            ("fecha",     "🕐 " + t("fecha_hora"), 200, "center"),
+            ("estado",    "📊 " + t("estado"),     150, "center"),
         ]:
             self.tree.heading(col, text=label)
             self.tree.column(col, width=w, anchor=anchor)
@@ -366,8 +364,6 @@ class HistorialAccesosView:
             self.tree.insert("", "end", iid=str(id_acceso),
                              values=(
                                  nombre, fecha_fmt, estado_fmt,
-                                 f"{confianza:.2f}" if confianza else "—",
-                                 f"{umbral:.0f}"    if umbral    else "N/A",
                              ),
                              tags=(estado,))
             conteo += 1
@@ -382,6 +378,19 @@ class HistorialAccesosView:
         if not sel:
             return
         id_acceso = int(sel[0])
+        
+        # Obtener el estado del acceso
+        estado = None
+        for dato in self.datos:
+            if dato[0] == id_acceso:
+                estado = dato[3]
+                break
+        
+        # Solo mostrar detalles si fue denegado
+        if estado != "denegado":
+            self._ocultar_panel_detalles()
+            return
+        
         if id_acceso == self._acceso_seleccionado:
             return
         self._acceso_seleccionado = id_acceso
@@ -430,7 +439,7 @@ class HistorialAccesosView:
         # Mostrar panel si estaba oculto
         self.detalles_card.grid(row=0, column=1, sticky="nsew", padx=(10, 0))
 
-        # ── Encabezado del panel ──────────────────────────────────────────────
+        # ── Encabezado del panel (fijo, sin scroll) ──────────────────────────
         header_panel = ctk.CTkFrame(self.detalles_card, fg_color="transparent")
         header_panel.pack(fill="x", padx=14, pady=(14, 0))
 
@@ -451,8 +460,13 @@ class HistorialAccesosView:
         ctk.CTkFrame(self.detalles_card, fg_color=COLORS['border'],
                      height=1).pack(fill="x", padx=14, pady=(8, 12))
 
-        # ── Foto capturada ────────────────────────────────────────────────────
-        foto_frame = ctk.CTkFrame(self.detalles_card,
+        # ── Contenido desplazable (scroll vertical) ──────────────────────────
+        scroll_content = ctk.CTkScrollableFrame(self.detalles_card,
+                                                fg_color="transparent")
+        scroll_content.pack(fill="both", expand=True, padx=0, pady=0)
+
+        # ── Foto capturada (dentro del scrollable) ────────────────────────────
+        foto_frame = ctk.CTkFrame(scroll_content,
                                   fg_color=c['content_bg'],
                                   corner_radius=10)
         foto_frame.pack(fill="x", padx=14, pady=(0, 12))
@@ -481,8 +495,8 @@ class HistorialAccesosView:
                          text_color=c['text_gray'],
                          justify="center").pack(pady=20)
 
-        # ── Datos del acceso ──────────────────────────────────────────────────
-        datos_frame = ctk.CTkFrame(self.detalles_card, fg_color="transparent")
+        # ── Datos del acceso (dentro del scrollable) ──────────────────────────
+        datos_frame = ctk.CTkFrame(scroll_content, fg_color="transparent")
         datos_frame.pack(fill="x", padx=14, pady=(0, 14))
 
         color_estado = "#27AE60" if estado == "aceptado" else COLORS['danger']
@@ -499,10 +513,6 @@ class HistorialAccesosView:
             ("🕐", t("fecha_hora") if callable(t) else "Fecha",    fecha_fmt),
             ("📊", t("estado")    if callable(t) else "Estado",
              f"{icono_estado} {t('aceptado') if estado == 'aceptado' else t('denegado')}"),
-            ("📈", t("confianza") if callable(t) else "Confianza",
-             f"{confianza:.2f}%" if confianza else "—"),
-            ("🎯", t("umbral")    if callable(t) else "Umbral",
-             f"{umbral:.0f}"     if umbral    else "N/A"),
         ]
 
         for icono, etiqueta, valor in filas_datos:
