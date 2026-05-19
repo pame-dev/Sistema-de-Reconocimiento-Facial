@@ -474,8 +474,20 @@ class HistorialAccesosView:
         if foto_bytes:
             try:
                 img = Image.open(io.BytesIO(foto_bytes))
-                # Escalar manteniendo proporción dentro de 420 x 240 (más grande)
-                img.thumbnail((504, 288), Image.LANCZOS)
+
+                # Determinar tamaño máximo según la ventana actual para dispositivos pequeños
+                try:
+                    toplevel = self.parent.winfo_toplevel()
+                    win_w = toplevel.winfo_width() or 800
+                    win_h = toplevel.winfo_height() or 600
+                except Exception:
+                    win_w, win_h = (800, 600)
+
+                # Si la ventana es pequeña (ej. pantalla del dispositivo), reducir la foto
+                max_w = min(504, max(160, int(win_w * 0.5)))
+                max_h = min(288, max(120, int(win_h * 0.45)))
+
+                img.thumbnail((max_w, max_h), Image.LANCZOS)
                 self._foto_ref = ImageTk.PhotoImage(img)
                 lbl_foto = tk.Label(foto_frame, image=self._foto_ref,
                                     bg=c['content_bg'], bd=0)
