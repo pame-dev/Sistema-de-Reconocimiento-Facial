@@ -8,6 +8,7 @@ from config import (
     ASSETS_PATH,
     COLORS,
     ICON_FILE,
+    LOGO_FILE,
     toggle_theme
 )
 
@@ -294,9 +295,9 @@ class LoginView:
 
         self._left_inner.lift()
 
-    # ─────────────────────────────────────────────────────────
+    # ─────────────────────────────────────────────
     # PANEL IZQUIERDO
-    # ─────────────────────────────────────────────────────────
+    # ─────────────────────────────────────────────
 
     def _build_left(self):
 
@@ -457,9 +458,9 @@ class LoginView:
             text_color="#1E3D6A"
         ).pack(pady=(20, 0))
 
-    # ─────────────────────────────────────────────────────────
+    # ─────────────────────────────────────────────
     # PANEL DERECHO
-    # ─────────────────────────────────────────────────────────
+    # ─────────────────────────────────────────────
 
     def _build_right(self):
 
@@ -549,7 +550,7 @@ class LoginView:
 
         try:
 
-            avatar_path = r"C:\Users\Colibecas\Desktop\Sistema-de-Reconocimiento-Facial\assets\sentinelSystemLogoo.png"
+            avatar_path = os.path.join(BASE_DIR, ASSETS_PATH, LOGO_FILE)
 
             _img = Image.open(avatar_path)
 
@@ -651,56 +652,9 @@ class LoginView:
             corner_radius=0
         ).place(relx=1.0, rely=0.5, relwidth=0.34, anchor="e")
 
-        # Métricas
+        # Métricas (eliminadas por configuración del usuario)
 
-        metrics_row = ctk.CTkFrame(
-            center,
-            fg_color="transparent"
-        )
-
-        metrics_row.pack(fill="x", pady=(14, 0))
-
-        metrics = [
-            ("128", t("usuarios"), self.c['text_dark']),
-            ("99 %", t("precision"), self.c['primary']),
-            ("24/7", t("activo"), self.c['info']),
-        ]
-
-        for val, label, color in metrics:
-
-            card = ctk.CTkFrame(
-                metrics_row,
-                fg_color=self.c['card_bg'],
-                corner_radius=8,
-                border_width=1,
-                border_color=self.c['border']
-            )
-
-            card.pack(
-                side="left",
-                expand=True,
-                fill="both",
-                padx=4,
-                ipady=8
-            )
-
-            ctk.CTkLabel(
-                card,
-                text=val,
-                font=("Georgia", 16, "bold"),
-                text_color=color
-            ).pack()
-
-            ctk.CTkLabel(
-                card,
-                text=label,
-                font=("Segoe UI", 9),
-                text_color=self.c['text_gray']
-            ).pack()
-
-    # ─────────────────────────────────────────────────────────
-    # LOGIN
-    # ─────────────────────────────────────────────────────────
+        # LOGIN
 
     def login(self):
 
