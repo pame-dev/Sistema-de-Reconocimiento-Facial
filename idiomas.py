@@ -559,7 +559,7 @@ TEXTOS = {
         "error_cargar_inactivos": "Error loading inactive users: {}",
         "error_eliminar": "Could not delete: {}",
         "error_captura": "Could not start capture: {}",
-         "total": "Total",
+        "total": "Total",
         "presentes": "Present",
         "aceptados": "Accepted",
         "denegados": "Denied",
