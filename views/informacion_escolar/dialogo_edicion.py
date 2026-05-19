@@ -552,10 +552,14 @@ class DialogoEdicionMixin:
                 except Exception:
                     pass
 
-                messagebox.showinfo(
-                    t("actualizado"),
-                    "Las fotos se actualizaron correctamente. Ya puedes guardar el usuario."
-                )
+                try:
+                    messagebox.showinfo(
+                        t("actualizado"),
+                        "Las fotos se actualizaron correctamente. Ya puedes guardar el usuario."
+                    )
+                except Exception:
+                    # Si messagebox falla (parent destruida), silenciar el error
+                    pass
             
             # Estado inicial con modo retomar fotos
             initial_state = {

@@ -118,14 +118,17 @@ class ReconocerFacial:
 
         # ── Parámetros de reconocimiento ───────────────────────────────────────
         # En LBPH "conf" es una distancia/error: más bajo = mejor match.
-        self.tolerancia                   = 60.0
-        self._TOLERANCIA_MIN              = 40.0
-        self._TOLERANCIA_MAX              = 80.0
-        self._MARGEN_RECONOCIMIENTO_SUAVE = 20.0
+        # AJUSTE: Distancia en vivo ~100-115 vs almacenadas ~0. Incrementar tolerancia.
+        self.tolerancia                   = 92.0
+        self._TOLERANCIA_MIN              = 92.0
+        self._TOLERANCIA_MAX              = 100.0
+        self._MARGEN_RECONOCIMIENTO_SUAVE = 5.0
 
         # ── Votación ───────────────────────────────────────────────────────────
         self._votos         = []
-        self._frames_votar  = 1      # mantiene algo de estabilidad
+        # Aumentado a 5 para requerir coincidencia en múltiples frames y evitar
+        # falsos positivos cuando distancia es muy alta por mismatch de captura.
+        self._frames_votar  = 5
         self._procesar_cada = 1      # procesa cada frame para responder más rápido
         self._frame_counter = 0
         self._ultimo_resultado = []
@@ -180,13 +183,16 @@ class ReconocerFacial:
         # ── Perfil automático por dispositivo ────────────────────────────────
         self._is_raspberry = self._detectar_raspberry_pi()
         if self._is_raspberry:
-            # La cámara de Raspberry suele tener más ruido/variación de luz;
-            # relajamos umbrales para recuperar mejor al usuario registrado.
-            self.tolerancia = max(self.tolerancia, 70.0)
-            self._MARGEN_RECONOCIMIENTO_SUAVE = max(self._MARGEN_RECONOCIMIENTO_SUAVE, 22.0)
+            # La cámara de Raspberry suele tener más ruido/variación de luz.
+            # Mantener tolerancia alta para recuperar usuarios con fotos
+            # capturadas en condiciones distintas.
+            self.tolerancia = max(self.tolerancia, 92.0)
+            # Margen suave bajo para evitar falsos positivos en bordes.
+            self._MARGEN_RECONOCIMIENTO_SUAVE = max(self._MARGEN_RECONOCIMIENTO_SUAVE, 5.0)
             self._margen_recuperacion         = max(self._margen_recuperacion, 15.0)
             self._fast_accept_margin          = min(self._fast_accept_margin, 4.0)
-            self._frames_votar                = 1
+            # Mantener frames_votar en 5 para estabilidad multi-frame (no forzar 1).
+            self._frames_votar                = max(self._frames_votar, 5)
             self._desconocido_hold_seg        = max(self._desconocido_hold_seg, 0.7)
 
     @staticmethod
@@ -687,8 +693,9 @@ class ReconocerFacial:
 
         umbral = float(np.percentile(distancias, 90)) + 4.0
 
+        # Con 2 usuarios y mismatch de captura, permitir tolerancia más alta
         if len(self.nombres) <= 2:
-            umbral = min(umbral, 92.0)
+            umbral = min(umbral, 125.0)
 
         self.tolerancia = min(self._TOLERANCIA_MAX,
                               max(self._TOLERANCIA_MIN, umbral))
