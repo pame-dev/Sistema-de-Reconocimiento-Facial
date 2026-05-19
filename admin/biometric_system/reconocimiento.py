@@ -118,11 +118,11 @@ class ReconocerFacial:
 
         # ── Parámetros de reconocimiento ───────────────────────────────────────
         # En LBPH "conf" es una distancia/error: más bajo = mejor match.
-        # AJUSTE: Distancia en vivo ~100-115 vs almacenadas ~0. Incrementar tolerancia.
-        self.tolerancia                   = 92.0
-        self._TOLERANCIA_MIN              = 92.0
-        self._TOLERANCIA_MAX              = 100.0
-        self._MARGEN_RECONOCIMIENTO_SUAVE = 5.0
+        # AJUSTE: Umbral ESTRICTO - solo acepta confianza > 25 (distancia < 75)
+        self.tolerancia                   = 75.0
+        self._TOLERANCIA_MIN              = 75.0
+        self._TOLERANCIA_MAX              = 75.0
+        self._MARGEN_RECONOCIMIENTO_SUAVE = 0.0
 
         # ── Votación ───────────────────────────────────────────────────────────
         self._votos         = []
@@ -153,13 +153,13 @@ class ReconocerFacial:
         self._desconocido_desde = None
 
         self._tolerancia_segundos  = 0.4
-        self._fast_accept_margin   = 5.0
+        self._fast_accept_margin   = 0.0
         self._desconocido_hold_seg = 0.5
 
         self._ultimo_usuario_aceptado  = None
         self._ultimo_aceptado_ts       = None
         self._ventana_recuperacion_seg = 15.0
-        self._margen_recuperacion      = 15.0
+        self._margen_recuperacion      = 0.0
 
         # Cooldown corto tras acceso aceptado para evitar duplicados sin bloquear
         # demasiado tiempo el reconocimiento de una nueva persona.
@@ -184,13 +184,12 @@ class ReconocerFacial:
         self._is_raspberry = self._detectar_raspberry_pi()
         if self._is_raspberry:
             # La cámara de Raspberry suele tener más ruido/variación de luz.
-            # Mantener tolerancia alta para recuperar usuarios con fotos
-            # capturadas en condiciones distintas.
-            self.tolerancia = max(self.tolerancia, 92.0)
-            # Margen suave bajo para evitar falsos positivos en bordes.
-            self._MARGEN_RECONOCIMIENTO_SUAVE = max(self._MARGEN_RECONOCIMIENTO_SUAVE, 5.0)
-            self._margen_recuperacion         = max(self._margen_recuperacion, 15.0)
-            self._fast_accept_margin          = min(self._fast_accept_margin, 4.0)
+            # Mantener tolerancia ESTRICTA
+            self.tolerancia = 75.0
+            # Sin márgenes adicionales para ser estricto
+            self._MARGEN_RECONOCIMIENTO_SUAVE = 0.0
+            self._margen_recuperacion         = 0.0
+            self._fast_accept_margin          = 0.0
             # Mantener frames_votar en 5 para estabilidad multi-frame (no forzar 1).
             self._frames_votar                = max(self._frames_votar, 5)
             self._desconocido_hold_seg        = max(self._desconocido_hold_seg, 0.7)
@@ -748,24 +747,15 @@ class ReconocerFacial:
             dists_label  = [c for l, c in predicciones if l == label]
             conf         = float(np.median(dists_label))
 
-            if label == -1 or label == "Desconocido":
-                if mejor_label not in (-1, "Desconocido") and mejor_conf <= (self.tolerancia + self._MARGEN_RECONOCIMIENTO_SUAVE):
-                    return mejor_label, mejor_conf
+            # VALORIZACIÓN ESTRICTA: Rechazar -1 (desconocido según OpenCV LBPH)
+            if label == -1:
+                return "Desconocido", conf
 
+            # Solo aceptar si confianza está dentro del umbral
             if conf <= self.tolerancia:
                 return label, conf
 
-            if conf <= (self.tolerancia + self._MARGEN_RECONOCIMIENTO_SUAVE):
-                return label, conf
-
-            if (self._ultimo_usuario_aceptado is not None
-                    and label == self._ultimo_usuario_aceptado
-                    and self._ultimo_aceptado_ts is not None):
-                delta = (datetime.now() - self._ultimo_aceptado_ts).total_seconds()
-                if (0 <= delta <= self._ventana_recuperacion_seg
-                        and conf <= (self.tolerancia + self._margen_recuperacion)):
-                    return label, conf
-
+            # Todo lo demás es rechazado
             return "Desconocido", conf
 
         except Exception as e:
@@ -797,7 +787,7 @@ class ReconocerFacial:
 
         pares_validos = [
             (label, dist) for label, dist in zip(labels, distancias)
-            if label not in (None, "", "unknown", "desconocido", -1)
+            if isinstance(label, int) and label > 0  # Solo IDs de usuarios positivos
             and isinstance(dist, (int, float))
         ]
 
@@ -959,7 +949,7 @@ class ReconocerFacial:
                         print("DEBUG match", label_raw, "conf", dist_raw, "tol", self.tolerancia)
 
                     # Fast-path: match muy bueno → aceptar sin esperar votación
-                    if (label_raw != "Desconocido"
+                    if (isinstance(label_raw, int) and label_raw > 0
                             and dist_raw is not None
                             and dist_raw <= (self.tolerancia - self._fast_accept_margin)):
 
@@ -1025,14 +1015,25 @@ class ReconocerFacial:
                         else:
                             if label == self._ultimo_usuario_aceptado:
                                 self._ultimo_detectado_ts = ahora
-                            if not self._usuario_activo(label):
+                            
+                            # VALIDACIÓN ESTRICTA: solo aceptar IDs de usuarios válidos (int > 0)
+                            if not isinstance(label, int) or label <= 0:
+                                self._desconocido_desde = None
+                                self._votos = []
+                                self.registrar_acceso(
+                                    None, "denegado", distancia or dist_raw,
+                                    frame_limpio=self._frame_limpio
+                                )
+                                self._ultimo_resultado = [(x, y, w, h, "Desconocido", distancia or dist_raw, (40, 40, 220))]
+                            elif not self._usuario_activo(label):
                                 self._desconocido_desde = None
                                 self.registrar_acceso(
                                     None, "denegado", dist_raw,
                                     frame_limpio=self._frame_limpio
                                 )
                                 self._ultimo_resultado = [(x, y, w, h, "Desconocido", dist_raw, (40, 40, 220))]
-                            else:
+                            elif distancia is not None and distancia <= self.tolerancia:
+                                # Aceptar solo si ALL condiciones se cumplen
                                 self._desconocido_desde = None
                                 nombre = self.nombres.get(label, "Desconocido")
                                 self.registrar_acceso(label, "aceptado", distancia)
@@ -1040,6 +1041,15 @@ class ReconocerFacial:
                                 self._ultimo_usuario_aceptado = label
                                 self._ultimo_detectado_ts     = ahora
                                 self._ultimo_resultado = [(x, y, w, h, nombre, distancia or 0, (30, 200, 60))]
+                            else:
+                                # Distancia fuera del umbral, rechazar
+                                self._desconocido_desde = None
+                                self._votos = []
+                                self.registrar_acceso(
+                                    None, "denegado", distancia or dist_raw,
+                                    frame_limpio=self._frame_limpio
+                                )
+                                self._ultimo_resultado = [(x, y, w, h, "Desconocido", distancia or dist_raw, (40, 40, 220))]
 
             else:
                 self._cara_presente    = False
