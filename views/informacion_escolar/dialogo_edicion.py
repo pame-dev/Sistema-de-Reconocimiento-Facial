@@ -565,6 +565,16 @@ class DialogoEdicionMixin:
                 "valores_form": valores_form,
             }
             
+            # Cerrar el diálogo de edición actual en lugar de dejarlo oculto
+            try:
+                ventana_actual.grab_release()
+            except Exception:
+                pass
+            try:
+                ventana_actual.destroy()
+            except Exception:
+                pass
+            
             # Limpiar widgets anteriores
             for widget in parent_frame.winfo_children():
                 try:
