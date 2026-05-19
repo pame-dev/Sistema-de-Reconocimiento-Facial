@@ -249,9 +249,9 @@ class HistorialAccesosView:
 
         # ── Panel de detalles (oculto al inicio) ───────────────────────────────
         self.detalles_card = ctk.CTkFrame(self.body, fg_color=c['card_bg'],
-                                          corner_radius=12, border_width=1,
-                                          border_color=COLORS['border'],
-                                          width=280)
+                          corner_radius=12, border_width=1,
+                          border_color=COLORS['border'],
+                          width=576)
         # No se hace grid aquí; se muestra/oculta dinámicamente
 
     def _stat_card(self, parent, titulo, valor, color, icono, col):
@@ -444,9 +444,9 @@ class HistorialAccesosView:
         header_panel.pack(fill="x", padx=14, pady=(14, 0))
 
         ctk.CTkLabel(header_panel,
-                     text="🔍 " + t("detalles_acceso") if hasattr(t, '__call__') else "🔍 Detalles",
-                     font=("Segoe UI", 14, "bold"),
-                     text_color=c['text_dark']).pack(side="left")
+                 text="🔍 " + t("detalles_acceso"),
+                 font=("Segoe UI", 14, "bold"),
+                 text_color=c['text_dark']).pack(side="left")
 
         ctk.CTkButton(header_panel, text="✕",
                       fg_color="transparent",
@@ -474,8 +474,8 @@ class HistorialAccesosView:
         if foto_bytes:
             try:
                 img = Image.open(io.BytesIO(foto_bytes))
-                # Escalar manteniendo proporción dentro de 252 x 180
-                img.thumbnail((252, 180), Image.LANCZOS)
+                # Escalar manteniendo proporción dentro de 420 x 240 (más grande)
+                img.thumbnail((504, 288), Image.LANCZOS)
                 self._foto_ref = ImageTk.PhotoImage(img)
                 lbl_foto = tk.Label(foto_frame, image=self._foto_ref,
                                     bg=c['content_bg'], bd=0)
@@ -522,7 +522,7 @@ class HistorialAccesosView:
             ctk.CTkLabel(fila_w, text=f"{icono} {etiqueta}",
                          font=("Segoe UI", 10, "bold"),
                          text_color=c['text_gray'],
-                         anchor="w", width=110).pack(side="left")
+                         anchor="w", width=90).pack(side="left")
 
             color_val = color_estado if etiqueta in (
                 t("estado") if callable(t) else "Estado", "Estado"
@@ -531,8 +531,7 @@ class HistorialAccesosView:
             ctk.CTkLabel(fila_w, text=valor,
                          font=("Segoe UI", 10),
                          text_color=color_val,
-                         anchor="w",
-                         wraplength=130).pack(side="left", padx=(4, 0))
+                         anchor="w").pack(side="left", padx=(0, 0), fill="x", expand=True)
 
     def _ocultar_panel_detalles(self):
         """Oculta el panel de detalles y deselecciona la fila."""
