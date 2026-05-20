@@ -44,6 +44,10 @@ class ReconocimientoMixin:
                 predicciones.append((int(label_i), float(conf_i)))
 
 
+            # ── DEBUG temporal ──
+            print(f"DEBUG predicciones: {[(l, round(c,1)) for l, c in predicciones]}")
+            print(f"DEBUG tolerancia: {self.tolerancia}")
+            # ───────────────────
             mejor_label, mejor_conf = min(predicciones, key=lambda it: it[1])
 
             labels      = [l for l, _ in predicciones]

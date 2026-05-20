@@ -106,9 +106,9 @@ class ReconocerFacial(
 
         # ── Parámetros de reconocimiento ───────────────────────────────────────
         # En LBPH "conf" es una distancia/error: más bajo = mejor match.
-        self.tolerancia                   = 80.0
+        self.tolerancia                   = 95.0
         self._TOLERANCIA_MIN              = 60.0
-        self._TOLERANCIA_MAX              = 110.0
+        self._TOLERANCIA_MAX              = 120.0
         self._MARGEN_RECONOCIMIENTO_SUAVE = 0.0
 
         # ── Votación ───────────────────────────────────────────────────────────
@@ -172,9 +172,9 @@ class ReconocerFacial(
         if self._is_raspberry:
             # La cámara de Raspberry suele tener más ruido/variación de luz.
             # Mantener tolerancia ESTRICTA
-            self.tolerancia      = 80.0
+            self.tolerancia      = 95.0
             self._TOLERANCIA_MIN = 60.0
-            self._TOLERANCIA_MAX = 110.0
+            self._TOLERANCIA_MAX = 120.0
             # Sin márgenes adicionales para ser estricto
             self._MARGEN_RECONOCIMIENTO_SUAVE = 0.0
             self._margen_recuperacion         = 0.0
