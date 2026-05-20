@@ -250,15 +250,15 @@ def agregar_fotos_usuario():
                     print("⚠️  Recorte vacío.")
                     return False
 
-                # Normalizar tamaño para consistencia
-                rostro = cv2.resize(rostro, (200, 200))
-
                 ok, msg = _rostro_apto(rostro)
                 if not ok:
                     print(f"⚠️  Foto descartada: {msg}")
                     return False
 
-                # Guardar JPEG con buena calidad
+                # Guardar tamaño natural (mínimo 100x100)
+                if rostro.shape[0] < 100 or rostro.shape[1] < 100:
+                    rostro = cv2.resize(rostro, (100, 100))
+
                 ok_enc, buffer = cv2.imencode(".jpg", rostro, [cv2.IMWRITE_JPEG_QUALITY, 92])
                 if not ok_enc:
                     print("⚠️  No se pudo codificar imagen.")

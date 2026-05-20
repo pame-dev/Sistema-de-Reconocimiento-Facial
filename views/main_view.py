@@ -17,9 +17,9 @@ from tkinter import messagebox
 from idiomas import t, cambiar_idioma
 
 sys.path.insert(0, os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "admin", "biometric_system")
+    os.path.join(os.path.dirname(__file__), "..")
 ))
-from reconocimiento import ReconocerFacial
+from admin.biometric_system.reconocimiento import ReconocerFacial
 
 
 from views.main_view_archivos.zoom import ZoomMixin
