@@ -548,18 +548,36 @@ class DialogoEdicionMixin:
                     from views.informacion_escolar_view import InformacionEscolarView
                     vista = InformacionEscolarView(parent_frame)
                     parent_frame.update_idletasks()
-                    vista.mostrar_edicion_por_id(user_id)
+                    try:
+                        vista.mostrar_edicion_por_id(user_id)
+                    except Exception:
+                        pass
+                except Exception:
+                    pass
+
+                try:
+                    parent_frame.winfo_toplevel().grab_release()
+                except Exception:
+                    pass
+                try:
+                    parent_frame.focus_force()
                 except Exception:
                     pass
 
                 try:
                     messagebox.showinfo(
                         t("actualizado"),
-                        "Las fotos se actualizaron correctamente. Ya puedes guardar el usuario."
+                        "Las fotos se actualizaron correctamente. Ya puedes guardar el usuario.",
+                        parent=parent_frame.winfo_toplevel()
                     )
                 except Exception:
-                    # Si messagebox falla (parent destruida), silenciar el error
-                    pass
+                    try:
+                        messagebox.showinfo(
+                            t("actualizado"),
+                            "Las fotos se actualizaron correctamente. Ya puedes guardar el usuario."
+                        )
+                    except Exception:
+                        pass
             
             # Estado inicial con modo retomar fotos
             initial_state = {
