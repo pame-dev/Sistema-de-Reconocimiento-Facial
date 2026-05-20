@@ -4,6 +4,7 @@ from tkinter import ttk, messagebox
 import customtkinter as ctk
 import sys
 import os
+import threading
 from datetime import datetime
 from views.font_scale import FontScale
 from PIL import Image, ImageTk
@@ -134,12 +135,6 @@ class HistorialAccesosView:
                       text_color="#ffffff", font=("Segoe UI", 12, "bold"),
                       width=36, height=38, corner_radius=8,
                       command=self.limpiar_historial).pack(side="left", padx=(4, 4))
-
-        ctk.CTkButton(btn_row, text="🔄",
-                      fg_color=c['primary'], hover_color=COLORS['primary_dark'],
-                      text_color="#ffffff", font=("Segoe UI", 12, "bold"),
-                      corner_radius=10, width=50, height=38,
-                      command=self.cargar_datos).pack(side="left")
 
         # Tarjetas stats
         stats_row = ctk.CTkFrame(self.container, fg_color="transparent")
@@ -560,17 +555,27 @@ class HistorialAccesosView:
         respuesta = messagebox.askyesno(t("confirmar"), t("pregunta_limpiar_historial"))
         if not respuesta:
             return
+
+        threading.Thread(target=self._limpiar_historial_bg, daemon=True).start()
+
+    def _limpiar_historial_bg(self):
         try:
             conn = get_db()
             if not conn:
-                messagebox.showerror(t("error"), t("error_db"))
+                self.parent.after(0, lambda: messagebox.showerror(t("error"), t("error_db")))
                 return
             conn.cursor().execute("DELETE FROM accesos")
             conn.commit()
             conn.close()
             AccessCounter.set(0)
-            self._ocultar_panel_detalles()
-            messagebox.showinfo(t("confirmar"), t("historial_eliminado"))
-            self.cargar_datos()
+
+            def _finalizar():
+                if not self._is_alive():
+                    return
+                self._ocultar_panel_detalles()
+                messagebox.showinfo(t("confirmar"), t("historial_eliminado"))
+                self.cargar_datos()
+
+            self.parent.after(0, _finalizar)
         except Exception as e:
-            messagebox.showerror(t("error"), str(e))
+            self.parent.after(0, lambda: messagebox.showerror(t("error"), str(e)))

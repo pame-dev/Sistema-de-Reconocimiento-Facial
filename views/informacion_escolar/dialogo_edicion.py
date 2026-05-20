@@ -564,20 +564,7 @@ class DialogoEdicionMixin:
                 except Exception:
                     pass
 
-                try:
-                    messagebox.showinfo(
-                        t("actualizado"),
-                        "Las fotos se actualizaron correctamente. Ya puedes guardar el usuario.",
-                        parent=parent_frame.winfo_toplevel()
-                    )
-                except Exception:
-                    try:
-                        messagebox.showinfo(
-                            t("actualizado"),
-                            "Las fotos se actualizaron correctamente. Ya puedes guardar el usuario."
-                        )
-                    except Exception:
-                        pass
+                # La recaptura vuelve sin mostrar aviso; el guardado final ya se confirma en el flujo de captura.
             
             # Estado inicial con modo retomar fotos
             initial_state = {
