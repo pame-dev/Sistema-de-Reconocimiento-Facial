@@ -67,7 +67,7 @@ class ReconocerFacial(
         self.model_path     = os.path.join(self.artifacts_dir, 'lbph_model.yml')
         self.data_path      = os.path.join(self.artifacts_dir, 'lbph_data.pkl')
         self.ids_hash_path  = os.path.join(self.artifacts_dir, 'ids_hash.pkl')
-        self._modelo_version = 11  # sube versión por cambios de lógica
+        self._modelo_version = 12  # sube versión por cambios de lógica
 
         # flag que indica si el modelo está listo para predecir ──
         self._modelo_listo = False
@@ -106,16 +106,16 @@ class ReconocerFacial(
 
         # ── Parámetros de reconocimiento ───────────────────────────────────────
         # En LBPH "conf" es una distancia/error: más bajo = mejor match.
-        self.tolerancia                   = 95.0
+        self.tolerancia                   = 83.0
         self._TOLERANCIA_MIN              = 60.0
-        self._TOLERANCIA_MAX              = 120.0
+        self._TOLERANCIA_MAX              = 95.0
         self._MARGEN_RECONOCIMIENTO_SUAVE = 0.0
 
         # ── Votación ───────────────────────────────────────────────────────────
         self._votos         = []
         # Aumentado a 5 para requerir coincidencia en múltiples frames y evitar
         # falsos positivos cuando distancia es muy alta por mismatch de captura.
-        self._frames_votar  = 5
+        self._frames_votar  = 8
         self._procesar_cada = 1      # procesa cada frame para responder más rápido
         self._frame_counter = 0
         self._ultimo_resultado = []
@@ -172,9 +172,9 @@ class ReconocerFacial(
         if self._is_raspberry:
             # La cámara de Raspberry suele tener más ruido/variación de luz.
             # Mantener tolerancia ESTRICTA
-            self.tolerancia      = 95.0
+            self.tolerancia      = 83.0
             self._TOLERANCIA_MIN = 60.0
-            self._TOLERANCIA_MAX = 120.0
+            self._TOLERANCIA_MAX = 95.0
             # Sin márgenes adicionales para ser estricto
             self._MARGEN_RECONOCIMIENTO_SUAVE = 0.0
             self._margen_recuperacion         = 0.0
@@ -224,7 +224,12 @@ class ReconocerFacial(
                 self._cooldown_hasta          = None
                 self._ultimo_usuario_aceptado = None
                 self._ultimo_detectado_ts     = None
+                self._votos                   = []
+                self._desconocido_desde       = None
             else:
+                # Durante cooldown limpiar votos para no contaminar el siguiente intento
+                self._votos = []
+                self._desconocido_desde = None
                 return frame
 
         if self._frame_counter % self._procesar_cada == 0:
