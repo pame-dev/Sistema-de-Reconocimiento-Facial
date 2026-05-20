@@ -248,18 +248,14 @@ class ModeloMixin:
     def _ajustar_tolerancia_post_entreno(self):
         """Umbral fijo basado en comportamiento real observado de LBPH."""
         n_usuarios = len(self.nombres)
-
-        # Basado en datos reales observados:
-        # - distancias intra-clase en cámara: ~70-90
-        # - necesitamos estar por encima del peor caso intra-clase
         if n_usuarios == 1:
-            self.tolerancia = 90.0
-        elif n_usuarios <= 3:
-            self.tolerancia = 95.0
+            self.tolerancia = 83.0  # tú ~65-72, extraños ~86+
+        elif n_usuarios == 2:
+            self.tolerancia = 85.0
+        elif n_usuarios <= 5:
+            self.tolerancia = 87.0
         else:
-            self.tolerancia = 92.0
-
-        # Respetar los límites configurados
+            self.tolerancia = 85.0
         self.tolerancia = min(self._TOLERANCIA_MAX,
                             max(self._TOLERANCIA_MIN, self.tolerancia))
         print(f"🔧 Tolerancia fija a {self.tolerancia:.1f} · {n_usuarios} usuario(s)")

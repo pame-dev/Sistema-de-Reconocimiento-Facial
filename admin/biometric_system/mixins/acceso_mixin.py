@@ -98,10 +98,11 @@ class AccesoMixin:
                     threading.Thread(target=ejecutar_buzzer_concedido, daemon=True).start()
             else:
                 self.total_denegados += 1
-                self._overlay_texto  = t("acceso_denegado")
-                self._overlay_color  = (40, 40, 220)
-                self._overlay_frames = 8
-                self._votos = []
+                self._overlay_texto     = t("acceso_denegado")
+                self._overlay_color     = (40, 40, 220)
+                self._overlay_frames    = 8
+                self._votos             = []
+                self._desconocido_desde = None
                 if ejecutar_buzzer_denegado:
                     threading.Thread(target=ejecutar_buzzer_denegado, daemon=True).start()
 
