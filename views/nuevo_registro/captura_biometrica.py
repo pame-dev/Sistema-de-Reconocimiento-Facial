@@ -518,15 +518,19 @@ class CapturaBiometricaMixin:
 
     def _obtener_engine_inactivos(self):
         fingerprint = self._fingerprint_inactivos()
-        if fingerprint is None:
+
+        # Sin inactivos en BD
+        if not fingerprint:
             self._engine_inactivos = False
-            self._engine_inactivos_fp = None
+            self._engine_inactivos_fp = fingerprint
             return None
 
+        # Cache válido
         if (getattr(self, "_engine_inactivos", None) not in (None, False)
                 and self._engine_inactivos_fp == fingerprint):
             return self._engine_inactivos
 
+        # Reconstruir engine con usuarios inactivos
         conn = get_db()
         if not conn:
             self._engine_inactivos = False
@@ -545,8 +549,9 @@ class CapturaBiometricaMixin:
                 FROM usuarios u
                 INNER JOIN biometria b ON u.idUsuario = b.fkIdUsuario
                 WHERE b.encodeBiometria IS NOT NULL
-                  AND LOWER(TRIM(u.estadoUsuario)) = 'inactivo'
+                AND LOWER(TRIM(u.estadoUsuario)) = 'inactivo'
                 ORDER BY u.idUsuario ASC, b.idBiometria ASC
+                LIMIT 40  -- mismo límite que preparar_datos
             """)
             filas = cursor.fetchall()
         except Exception:
@@ -562,7 +567,7 @@ class CapturaBiometricaMixin:
             return None
 
         engine = ReconocerFacial()
-        faces_tmp = []
+        faces_tmp  = []
         labels_tmp = []
         nombres_tmp = {}
 
@@ -577,28 +582,32 @@ class CapturaBiometricaMixin:
 
             try:
                 nparr = np.frombuffer(imagen_bytes, np.uint8)
-                img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                img   = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
                 if img is None:
                     continue
 
-                gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-                gray = cv2.equalizeHist(gray)
-                caras = engine._detectar_caras(img, gray)
-                if len(caras) > 0:
-                    x, y, w, h = max(caras, key=lambda item: item[2] * item[3])
-                    fh, fw = gray.shape[:2]
-                    pad = int(min(w, h) * 0.08)
-                    x1 = max(0, x - pad)
-                    y1 = max(0, y - pad)
-                    x2 = min(fw, x + w + pad)
-                    y2 = min(fh, y + h + pad)
-                    rostro_gray = gray[y1:y2, x1:x2]
-                    if rostro_gray.size == 0:
-                        continue
+                gray  = engine._preprocess_gray(img)  # usar mismo preprocesado
+                fh, fw = gray.shape[:2]
+
+                if fw > 250 and fh > 250:
+                    caras = engine._detectar_caras(img, gray)
+                    if len(caras) > 0:
+                        x, y, w, h = max(caras, key=lambda item: item[2] * item[3])
+                        pad = int(min(w, h) * 0.08)
+                        x1 = max(0, x - pad)
+                        y1 = max(0, y - pad)
+                        x2 = min(fw, x + w + pad)
+                        y2 = min(fh, y + h + pad)
+                        rostro_gray = gray[y1:y2, x1:x2]
+                        if rostro_gray.size == 0:
+                            rostro_gray = gray
+                    else:
+                        rostro_gray = gray
                 else:
                     rostro_gray = gray
 
                 rostro_gray = cv2.resize(rostro_gray, (100, 100))
+                rostro_gray = engine._normalizar_rostro_gray(rostro_gray)
                 faces_tmp.append(rostro_gray)
                 labels_tmp.append(user_id)
 
@@ -610,19 +619,20 @@ class CapturaBiometricaMixin:
             self._engine_inactivos_fp = fingerprint
             return None
 
-        engine.faces = faces_tmp
-        engine.labels = labels_tmp
+        engine.faces   = faces_tmp
+        engine.labels  = labels_tmp
         engine.nombres = nombres_tmp
 
         try:
             engine.recognizer.train(faces_tmp, np.array(labels_tmp, dtype=np.int32))
-            engine._ajustar_tolerancia_post_entreno()
+            engine._modelo_listo = True  # ← marcar como listo manualmente
+            engine.tolerancia    = 95.0  # ← mismo umbral que el engine principal
         except Exception:
             self._engine_inactivos = False
             self._engine_inactivos_fp = fingerprint
             return None
 
-        self._engine_inactivos = engine
+        self._engine_inactivos    = engine
         self._engine_inactivos_fp = fingerprint
         return engine
 
@@ -686,6 +696,7 @@ class CapturaBiometricaMixin:
 
         def _cerrar():
             self._alerta_duplicado_abierta = False
+            self._pausado = False  # reanudar si decide continuar
             try:
                 win.destroy()
             except Exception:
@@ -787,6 +798,10 @@ class CapturaBiometricaMixin:
     def _cancelar_registro_duplicado(self):
         self._alerta_duplicado_abierta = False
         self._usuario_duplicado_detectado = None
+        self.fotos_temp = []        # ← limpiar fotos tomadas antes de detectar duplicado
+        self.fotos_postura = 0      # ← resetear contador de postura
+        self._auto_activo = False
+        self._pausado     = False
         self._reset_estado_captura()
         self._mostrar_seleccion_rol()
 
@@ -865,6 +880,8 @@ class CapturaBiometricaMixin:
 
                     duplicado = self._detectar_usuario_duplicado(rostro_bgr)
                     if duplicado:
+                        self._auto_activo = False
+                        self._pausado     = True
                         self._abrir_alerta_duplicado(duplicado)
                         self.video_label.after(15, self._actualizar_video)
                         return
