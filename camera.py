@@ -31,28 +31,28 @@ class Camera:
         self.backend = self._select_backend()
 
         if self.backend == "picamera2":
-            try:
-                import importlib
-                Picamera2 = importlib.import_module("picamera2").Picamera2
-            except Exception:
-                self.backend = "opencv"
-            else:
-                self.cap = Picamera2()
+            from picamera2 import Picamera2  # import aquí para que Windows no falle
+            self.cap = Picamera2()
 
-                config = self.cap.create_preview_configuration(
-                    main={"format": "BGR888", "size": self.size}
-                )
-                self.cap.configure(config)
-                self.cap.start()
+            config = self.cap.create_preview_configuration(
+                main={"format": "RGB888", "size": self.size}
+            )
+            self.cap.configure(config)
+            self.cap.start()
 
-                # warmup (evita frames raros al inicio)
-                for _ in range(max(0, int(self.warmup_frames))):
-                    _ = self.cap.capture_array()
-                    time.sleep(0.01)
-                # BGR888 mantiene el contrato de read() y evita depender de una conversión posterior.
-                # Si alguna instalación no soporta este formato, el backend caerá al manejo normal.
+            # warmup (evita frames raros al inicio)
+            for _ in range(max(0, int(self.warmup_frames))):
+                _ = self.cap.capture_array()
+                time.sleep(0.01)
+            # Picamera2 configurado con RGB888 suele devolver RGB; convertimos a BGR por defecto
+            # para mantener el contrato de read(). Si alguna instalación concreta ya entrega BGR,
+            # puede desactivarse con CAM_FORCE_CONVERT=0.
+            env = os.environ.get("CAM_FORCE_CONVERT", "").strip().lower()
+            if env in ("0", "false", "no"):
                 self._picamera2_needs_convert = False
-                return
+            else:
+                self._picamera2_needs_convert = True
+            return
 
         # backend opencv
         api = cv2.CAP_DSHOW if os.name == "nt" and hasattr(cv2, "CAP_DSHOW") else 0
@@ -68,15 +68,17 @@ class Camera:
             return None
 
         if self.backend == "picamera2":
-            frame_bgr = self.cap.capture_array()                 # BGR888 cuando el backend lo soporta
-            if frame_bgr is None:
+            frame_rgb = self.cap.capture_array()                 # RGB (o BGR en algunas builds)
+            if frame_rgb is None:
                 return None
-            if getattr(self, "_picamera2_needs_convert", False):
+            if getattr(self, "_picamera2_needs_convert", True):
                 try:
-                    return cv2.cvtColor(frame_bgr, cv2.COLOR_RGB2BGR)
+                    frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
                 except Exception:
-                    return frame_bgr[..., ::-1]
-            return frame_bgr
+                    frame_bgr = frame_rgb[..., ::-1]
+                return frame_bgr
+            else:
+                return frame_rgb
 
         ok, frame = self.cap.read()
         if not ok:
