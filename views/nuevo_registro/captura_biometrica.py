@@ -789,7 +789,7 @@ class CapturaBiometricaMixin:
             conn.close()
             self._engine_inactivos = None
             self._engine_inactivos_fp = None
-            messagebox.showinfo(t("usuario_restaurado"), t("usuario_restaurado_mensaje").format(nombre))
+            messagebox.showinfo(t("usuario_restaurado"), t("usuario_restaurado_mensaje").format(nombre=nombre))
             self._ir_a_editar_usuario_duplicado(user_id)
         except Exception as e:
             messagebox.showerror(t("restaurar_usuario"), t("error_restaurar_usuario").format(e))
