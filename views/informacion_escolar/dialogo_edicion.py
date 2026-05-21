@@ -402,15 +402,6 @@ class DialogoEdicionMixin:
                 return
 
             cur.execute(
-                "SELECT 1 FROM usuarios WHERE telefonoUsuario = ? AND idUsuario != ?",
-                (telefono, user_id)
-            )
-            if cur.fetchone():
-                _warn("Error", t("telefono_existe"))
-                conn_check.close()
-                return
-
-            cur.execute(
                 "SELECT 1 FROM usuarios WHERE matriculaUsuario = ? AND idUsuario != ?",
                 (matricula, user_id)
             )
