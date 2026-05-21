@@ -10,7 +10,7 @@ from idiomas import t
 from views.nuevo_registro.constants import ROL_CONFIG, CAMPOS_COMUNES, CAMPOS_POR_ROL
 from views.font_scale import FontScale
 from views.nuevo_registro.utils import darken
-from database.queries import sp_existe_matricula, sp_existe_correo
+from database.queries import sp_existe_matricula, sp_existe_telefono, sp_existe_correo
 
 class FormularioMixin:
 
@@ -369,6 +369,10 @@ class FormularioMixin:
         try:
             if sp_existe_correo(conn, correo):
                 messagebox.showwarning("Error", t("correo_existe"))
+                return
+
+            if sp_existe_telefono(conn, telefono):
+                messagebox.showwarning("Error", t("telefono_existe"))
                 return
 
             if sp_existe_matricula(conn, matricula):
