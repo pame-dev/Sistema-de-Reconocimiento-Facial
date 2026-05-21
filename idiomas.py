@@ -285,6 +285,7 @@ TEXTOS = {
         "apellido_invalido": "El apellido solo debe contener letras",
         "campo_min_caracteres": "{campo} debe tener mínimo {min} caracteres",
         "correo_existe": "El correo ya existe",
+        "telefono_existe": "El teléfono ya existe",
         "matricula_existe": "La matrícula ya existe",
 
         # ── Haar / OpenCV ───────────────────
@@ -672,6 +673,7 @@ TEXTOS = {
         "apellido_invalido": "Last name must contain only letters",
         "campo_min_caracteres": "{campo} must have at least {min} characters",
         "correo_existe": "Email already exists",
+        "telefono_existe": "Phone number already exists",
         "matricula_existe": "Control ID already exists",
 
 
