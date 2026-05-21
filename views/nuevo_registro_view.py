@@ -70,6 +70,9 @@ class NuevoRegistroView(
         self.detector_perfil = cv2.CascadeClassifier(
             haar_path("haarcascade_profileface.xml")
         )
+        self.detector_eyes = cv2.CascadeClassifier(
+            haar_path("haarcascade_eye.xml")
+        )
 
         if self.detector_frontal.empty():
             raise RuntimeError("No se pudo cargar haarcascade_frontalface_default.xml")
@@ -77,6 +80,8 @@ class NuevoRegistroView(
             raise RuntimeError("No se pudo cargar haarcascade_frontalface_alt2.xml")
         if self.detector_perfil.empty():
             raise RuntimeError("No se pudo cargar haarcascade_profileface.xml")
+        if self.detector_eyes.empty():
+            print("⚠️ No se pudo cargar haarcascade_eye.xml — validación de ojos desactivada")
 
         self.modo_retomar_fotos = False
         self.user_id_existente  = None
