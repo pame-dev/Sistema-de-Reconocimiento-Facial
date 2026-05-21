@@ -225,9 +225,9 @@ class HistorialAccesosView:
         scroll_x.configure(command=self.tree.xview)
 
         for col, label, w, anchor in [
-            ("usuario",   "👤 " + t("usuario"),    110, "w"),
-            ("fecha",     "🕐 " + t("fecha_hora"), 150, "center"),
-            ("estado",    "📊 " + t("estado"),     80, "center"),
+            ("usuario",   "👤 " + t("usuario"),    150, "w"),
+            ("fecha",     "🕐 " + t("fecha_hora"), 190, "center"),
+            ("estado",    "📊 " + t("estado"),     100, "center"),
         ]:
             self.tree.heading(col, text=label)
             self.tree.column(col, width=w, minwidth=w, stretch=False, anchor=anchor)
