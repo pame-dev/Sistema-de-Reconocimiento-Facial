@@ -10,9 +10,74 @@ from idiomas import t
 from views.nuevo_registro.constants import ROL_CONFIG, CAMPOS_COMUNES, CAMPOS_POR_ROL
 from views.font_scale import FontScale
 from views.nuevo_registro.utils import darken
-from database.queries import sp_existe_matricula, sp_existe_telefono, sp_existe_correo
+from database.queries import (
+    sp_existe_matricula,
+    sp_existe_telefono,
+    sp_existe_correo,
+    sp_get_duplicado_usuario,
+    sp_restaurar_usuario,
+)
 
 class FormularioMixin:
+
+    def _abrir_info_escolar_para_edicion(self, user_id):
+        view = getattr(self, "main_view", None)
+        if view is not None:
+            try:
+                view.show_informacion_escolar(preselect_user_id=user_id)
+                return
+            except Exception:
+                pass
+
+        try:
+            app = getattr(self.parent.winfo_toplevel(), "sentinel_app", None)
+            if app and getattr(app, "main_view", None):
+                app.main_view.show_informacion_escolar(preselect_user_id=user_id)
+        except Exception:
+            pass
+
+    def _resolver_duplicado_en_formulario(self, conn, campo, valor, msg_activo):
+        duplicado = sp_get_duplicado_usuario(conn, campo, valor)
+        if not duplicado:
+            return False
+
+        user_id, nombre, paterno, materno, estado = duplicado
+        nombre_comp = f"{nombre or ''} {paterno or ''} {materno or ''}".strip() or t("usuario")
+        estado_norm = (estado or "").strip().lower()
+
+        if estado_norm == "inactivo":
+            campo_lbl = {
+                "matricula": t("matricula"),
+                "telefono": t("telefono"),
+                "correo": t("correo"),
+            }.get(campo, t("dato"))
+
+            confirmar = messagebox.askyesno(
+                t("duplicado_inactivo_titulo"),
+                (
+                    t("duplicado_inactivo_mensaje").format(campo=campo_lbl, nombre=nombre_comp)
+                    + "\n\n"
+                    + t("duplicado_inactivo_pregunta")
+                )
+            )
+            if confirmar:
+                try:
+                    sp_restaurar_usuario(conn, int(user_id))
+                    conn.commit()
+                    messagebox.showinfo(
+                        t("usuario_restaurado"),
+                        t("duplicado_inactivo_restaurado_ok").format(nombre=nombre_comp)
+                    )
+                    self._abrir_info_escolar_para_edicion(int(user_id))
+                except Exception as e:
+                    messagebox.showerror(
+                        t("error"),
+                        t("duplicado_inactivo_restaurado_error").format(error=e)
+                    )
+            return True
+
+        messagebox.showwarning(t("error"), msg_activo)
+        return True
 
     def _mostrar_formulario(self):
         self._limpiar_container()
@@ -368,15 +433,18 @@ class FormularioMixin:
 
         try:
             if sp_existe_correo(conn, correo):
-                messagebox.showwarning("Error", t("correo_existe"))
+                if not self._resolver_duplicado_en_formulario(conn, "correo", correo, t("correo_existe")):
+                    messagebox.showwarning("Error", t("correo_existe"))
                 return
 
             if sp_existe_telefono(conn, telefono):
-                messagebox.showwarning("Error", t("telefono_existe"))
+                if not self._resolver_duplicado_en_formulario(conn, "telefono", telefono, t("telefono_existe")):
+                    messagebox.showwarning("Error", t("telefono_existe"))
                 return
 
             if sp_existe_matricula(conn, matricula):
-                messagebox.showwarning("Error", t("matricula_existe"))
+                if not self._resolver_duplicado_en_formulario(conn, "matricula", matricula, t("matricula_existe")):
+                    messagebox.showwarning("Error", t("matricula_existe"))
                 return
 
         finally:
