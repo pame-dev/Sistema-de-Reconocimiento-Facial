@@ -549,7 +549,7 @@ class DialogoEdicionMixin:
                     vista = InformacionEscolarView(parent_frame)
                     parent_frame.update_idletasks()
                     try:
-                        vista.mostrar_edicion_por_id(user_id)
+                        vista.mostrar_detalles_por_id(user_id)
                     except Exception:
                         pass
                 except Exception:

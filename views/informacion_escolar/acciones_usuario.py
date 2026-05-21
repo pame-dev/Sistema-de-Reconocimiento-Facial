@@ -7,7 +7,7 @@ from database.queries import sp_eliminar_usuario, sp_restaurar_usuario
 
 class AccionesUsuarioMixin:
     """
-    Eliminar y restaurar usuarios, y navegar a la edición por ID.
+    Eliminar y restaurar usuarios, y navegar a detalles o edición por ID.
     Requiere: self.usuario_seleccionado, self.datos, self.tabla,
     self.filtro_estado, self.cargar_datos(), self.ocultar_detalles_panel(),
     self.mostrar_detalles_panel(), self.crear_panel_detalles(),
@@ -84,3 +84,26 @@ class AccionesUsuarioMixin:
         self.mostrar_detalles_panel()
         self.crear_panel_detalles()
         self.editar_usuario()
+
+    def mostrar_detalles_por_id(self, user_id: int):
+        """Selecciona un usuario por ID y muestra solo su panel de detalles."""
+        if not self._is_alive():
+            return
+        if not self.datos:
+            self.cargar_datos()
+
+        usuario = next((u for u in self.datos if u['id'] == user_id), None)
+        if not usuario:
+            messagebox.showwarning(t("atencion"), t("selecciona_usuario"))
+            return
+
+        self.usuario_seleccionado = usuario
+        try:
+            self.tabla.selection_set(str(user_id))
+            self.tabla.focus(str(user_id))
+            self.tabla.see(str(user_id))
+        except Exception:
+            pass
+
+        self.mostrar_detalles_panel()
+        self.crear_panel_detalles()
