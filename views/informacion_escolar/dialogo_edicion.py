@@ -514,6 +514,13 @@ class DialogoEdicionMixin:
             parent_frame = self.parent  # Guardar referencia antes de que se destruya
 
             try:
+                main_view = getattr(parent_frame, 'main_view', None)
+                if main_view:
+                    main_view._stop_camera()
+            except Exception:
+                pass
+
+            try:
                 ventana_actual.grab_release()
             except Exception:
                 pass
