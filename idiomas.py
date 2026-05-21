@@ -392,6 +392,12 @@ TEXTOS = {
         "materia": "Materia",
         "puesto": "Puesto",
         "area": "Área",
+        "dato": "dato",
+        "duplicado_inactivo_titulo": "Usuario inactivo detectado",
+        "duplicado_inactivo_mensaje": "El {campo} ya existe y pertenece a un usuario inactivo: {nombre}.",
+        "duplicado_inactivo_pregunta": "¿Deseas restaurarlo y abrir su edición en Información Escolar?",
+        "duplicado_inactivo_restaurado_ok": "Se restauró correctamente a {nombre}.",
+        "duplicado_inactivo_restaurado_error": "No se pudo restaurar el usuario inactivo.\n\nDetalle: {error}",
                 },
     "en": {
         "titulo": "Main Panel",
@@ -782,6 +788,12 @@ TEXTOS = {
         "materia": "Subject",
         "puesto": "Position",
         "area": "Area",
+        "dato": "data",
+        "duplicado_inactivo_titulo": "Inactive user detected",
+        "duplicado_inactivo_mensaje": "The {campo} already exists and belongs to an inactive user: {nombre}.",
+        "duplicado_inactivo_pregunta": "Do you want to restore it and open it in School Information for editing?",
+        "duplicado_inactivo_restaurado_ok": "{nombre} was restored successfully.",
+        "duplicado_inactivo_restaurado_error": "Could not restore the inactive user.\n\nDetail: {error}",
             }
     }
 
