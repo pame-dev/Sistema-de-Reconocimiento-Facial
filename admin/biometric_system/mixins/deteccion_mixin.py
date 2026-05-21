@@ -18,11 +18,11 @@ class DeteccionMixin:
 
         candidatos = []
 
-        for detector, params, flipped in [
-            (self._haar_frontal, dict(scaleFactor=1.1, minNeighbors=4, minSize=(80, 80)), False),
-            (self._haar_alt,     dict(scaleFactor=1.1, minNeighbors=4, minSize=(70, 70)), False),
-            (self._haar_perfil,  dict(scaleFactor=1.1, minNeighbors=4, minSize=(70, 70)), False),
-            (self._haar_perfil,  dict(scaleFactor=1.1, minNeighbors=4, minSize=(70, 70)), True),
+        for detector, params, flipped, exige_ojos in [
+            (self._haar_frontal, dict(scaleFactor=1.1, minNeighbors=4, minSize=(80, 80)), False, True),
+            (self._haar_alt,     dict(scaleFactor=1.1, minNeighbors=4, minSize=(70, 70)), False, True),
+            (self._haar_perfil,  dict(scaleFactor=1.1, minNeighbors=4, minSize=(70, 70)), False, False),
+            (self._haar_perfil,  dict(scaleFactor=1.1, minNeighbors=4, minSize=(70, 70)), True, False),
         ]:
             gray_search = cv2.flip(frame_gray, 1) if flipped else frame_gray
             caras = detector.detectMultiScale(gray_search, **params)
@@ -37,7 +37,7 @@ class DeteccionMixin:
                         and margen_y < cy < h_f - margen_y):
                     continue
                 ratio = w / h
-                if not (0.5 < ratio < 1.8):
+                if not (0.55 < ratio < 1.65):
                     continue
 
                 roi_gray  = frame_gray[y:y+h, x:x+w]
@@ -49,6 +49,9 @@ class DeteccionMixin:
                         )
                 except Exception:
                     ojos_en_roi = []
+
+                if exige_ojos and len(ojos_en_roi) == 0:
+                    continue
 
                 area        = w * h
                 dist_centro = abs(cx - (w_f / 2.0)) + abs(cy - (h_f / 2.0)) * 0.5

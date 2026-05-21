@@ -399,15 +399,47 @@ class CapturaBiometricaMixin:
             self._btn_pausar.configure(text="⏸ " + t("pausar"), fg_color=self.colors['accent'])
             self._set_estado(t("reanudando"), "", "info")
 
-    def _filtrar_caras(self, caras, frame_shape):
+    def _tiene_ojos_en_rostro(self, rostro_gray):
+        detector_eyes = getattr(self, "detector_eyes", None)
+        if detector_eyes is None or detector_eyes.empty():
+            return True
+
+        try:
+            h, w = rostro_gray.shape[:2]
+            if h == 0 or w == 0:
+                return False
+
+            zona_ojos = rostro_gray[: max(1, int(h * 0.68)), :]
+            ojos = detector_eyes.detectMultiScale(
+                zona_ojos,
+                scaleFactor=1.1,
+                minNeighbors=4,
+                minSize=(max(16, int(w * 0.12)), max(16, int(h * 0.12))),
+            )
+            return len(ojos) >= 1
+        except Exception:
+            return True
+
+    def _filtrar_caras(self, caras, frame_shape, frame_gray=None, exigir_ojos=False):
         h_f, w_f = frame_shape[:2]
         area_min = (w_f * 0.10) * (h_f * 0.10)
         resultado = []
         for (x, y, w, h) in caras:
             if w * h < area_min:
                 continue
+            cx = x + w // 2
+            cy = y + h // 2
             if x < 8 or y < 8 or (x + w) > w_f - 8:
                 continue
+            if not (int(w_f * 0.08) < cx < int(w_f * 0.92) and int(h_f * 0.08) < cy < int(h_f * 0.92)):
+                continue
+            ratio = w / float(h)
+            if not (0.55 < ratio < 1.65):
+                continue
+            if exigir_ojos and frame_gray is not None:
+                roi_gray = frame_gray[y:y+h, x:x+w]
+                if not self._tiene_ojos_en_rostro(roi_gray):
+                    continue
             resultado.append((x, y, w, h))
         return resultado
 
@@ -424,7 +456,7 @@ class CapturaBiometricaMixin:
         if postura_id in ("izquierda", "derecha"):
             for det in [self.detector_alt, self.detector_frontal]:
                 caras = det.detectMultiScale(gray, **p)
-                filtradas = self._filtrar_caras(caras, gray.shape)
+                filtradas = self._filtrar_caras(caras, gray.shape, gray, exigir_ojos=True)
                 if filtradas:
                     return filtradas
             gray_flip = cv2.flip(gray, 1)
@@ -433,7 +465,7 @@ class CapturaBiometricaMixin:
                 caras = det.detectMultiScale(gray_flip, **p)
                 if len(caras) > 0:
                     caras = [(flip_w - x - w, y, w, h) for (x, y, w, h) in caras]
-                    filtradas = self._filtrar_caras(caras, gray.shape)
+                    filtradas = self._filtrar_caras(caras, gray.shape, gray, exigir_ojos=True)
                     if filtradas:
                         return filtradas
             return []
@@ -444,26 +476,26 @@ class CapturaBiometricaMixin:
             if len(caras) > 0:
                 flip_w = gray_flip.shape[1]
                 caras  = [(flip_w - x - w, y, w, h) for (x, y, w, h) in caras]
-                return self._filtrar_caras(caras, gray.shape)
+                return self._filtrar_caras(caras, gray.shape, gray, exigir_ojos=False)
             return []
 
         elif postura_id == "perfil_der":
             caras = self.detector_perfil.detectMultiScale(gray, **p)
             if len(caras) > 0:
-                return self._filtrar_caras(caras, gray.shape)
+                return self._filtrar_caras(caras, gray.shape, gray, exigir_ojos=False)
             gray_flip = cv2.flip(gray, 1)
             caras = self.detector_perfil.detectMultiScale(gray_flip, **p)
             if len(caras) > 0:
                 flip_w = gray_flip.shape[1]
                 caras  = [(flip_w - x - w, y, w, h) for (x, y, w, h) in caras]
-                return self._filtrar_caras(caras, gray.shape)
+                return self._filtrar_caras(caras, gray.shape, gray, exigir_ojos=False)
             return []
 
         else:
             caras = self.detector_frontal.detectMultiScale(gray, **p)
-            return self._filtrar_caras(caras, gray.shape) if len(caras) > 0 else []
+            return self._filtrar_caras(caras, gray.shape, gray, exigir_ojos=True) if len(caras) > 0 else []
 
-    def _rostro_apto_para_guardar(self, rostro_bgr):
+    def _rostro_apto_para_guardar(self, rostro_bgr, postura_id=None):
         try:
             gray = cv2.cvtColor(rostro_bgr, cv2.COLOR_BGR2GRAY)
             if float(cv2.Laplacian(gray, cv2.CV_64F).var()) < 40.0:
@@ -471,6 +503,9 @@ class CapturaBiometricaMixin:
             brillo = float(np.mean(gray))
             if brillo < 45.0 or brillo > 215.0:
                return False, t("ajusta_iluminacion")
+            if postura_id not in ("perfil_izq", "perfil_der"):
+                if not self._tiene_ojos_en_rostro(gray):
+                    return False, "No se detectan rasgos faciales reales"
             self._ultima_muestra_gray = gray
             return True, ""
         except Exception:
@@ -873,7 +908,7 @@ class CapturaBiometricaMixin:
                     except Exception:
                         continue
 
-                    apto, msg = self._rostro_apto_para_guardar(rostro_bgr)
+                    apto, msg = self._rostro_apto_para_guardar(rostro_bgr, postura_id)
                     if not apto:
                         self._set_sub(msg)
                         continue
