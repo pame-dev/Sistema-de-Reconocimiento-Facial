@@ -808,6 +808,10 @@ class CapturaBiometricaMixin:
             return
 
         try:
+            try:
+                app.main_view._stop_camera()
+            except Exception:
+                pass
             app.main_view.show_informacion_escolar(preselect_user_id=user_id)
         except Exception as e:
             messagebox.showerror(t("editar_usuario"), t("error_abrir_edicion"))
