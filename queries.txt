@@ -1,0 +1,452 @@
+# database/queries.py
+"""
+Capa de acceso a datos — equivalente a Stored Procedures en SQLite.
+Todas las queries del sistema se centralizan aquí.
+Uso: from database.queries import sp_get_usuarios, sp_eliminar_usuario, ...
+"""
+
+# ════════════════════════════════════════════════════════════════════════════
+# USUARIOS — Consultas generales
+# ════════════════════════════════════════════════════════════════════════════
+
+def sp_get_usuarios(conn):
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT
+            u.idUsuario,
+            u.nombreUsuario,
+            u.apellidoPaternoUsuario,
+            u.apellidoMaternoUsuario,
+            u.matriculaUsuario,
+            u.rolUsuario,
+            u.telefonoUsuario,
+            u.correoUsuario,
+            u.fechaNacimientoUsuario,
+            u.tipoSangreUsuario,
+            u.direccionUsuario,
+            a.carreraAlumno,
+            a.gradoAlumno,
+            a.grupoAlumno,
+            a.facultadAlumno,
+            m.materiaImpartidaMaestro,
+            m.gradoImpartidoMaestro,
+            p.puestoPersonalEscolar,
+            p.areaPersonalEscolar,
+            COUNT(DISTINCT b.idBiometria)  AS total_fotos,
+            COUNT(DISTINCT ac.idAcceso)    AS total_accesos
+        FROM usuarios u
+        LEFT JOIN alumnos          a  ON u.idUsuario = a.fkIdUsuario
+        LEFT JOIN maestros         m  ON u.idUsuario = m.fkIdUsuario
+        LEFT JOIN personal_escolar p  ON u.idUsuario = p.fkIdUsuario
+        LEFT JOIN biometria        b  ON u.idUsuario = b.fkIdUsuario
+        LEFT JOIN accesos          ac ON u.idUsuario = ac.fkIdUsuario
+        WHERE u.estadoUsuario = 'activo'
+        GROUP BY u.idUsuario
+        ORDER BY u.idUsuario ASC
+    """)
+    return cursor.fetchall()
+
+
+def sp_get_usuario_by_id(conn, user_id):
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT
+            u.idUsuario,
+            u.nombreUsuario,
+            u.apellidoPaternoUsuario,
+            u.apellidoMaternoUsuario,
+            u.matriculaUsuario,
+            u.rolUsuario,
+            u.telefonoUsuario,
+            u.correoUsuario,
+            u.estadoUsuario
+        FROM usuarios u
+        WHERE u.idUsuario = ?
+    """, (user_id,))
+    return cursor.fetchone()
+
+
+def sp_get_usuarios_by_rol(conn, rol):
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT
+            u.idUsuario,
+            u.nombreUsuario,
+            u.apellidoPaternoUsuario,
+            u.apellidoMaternoUsuario,
+            u.matriculaUsuario,
+            u.rolUsuario,
+            u.telefonoUsuario
+        FROM usuarios u
+        WHERE u.rolUsuario = ?
+        ORDER BY u.apellidoPaternoUsuario ASC
+    """, (rol,))
+    return cursor.fetchall()
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# USUARIOS — Inserción
+# ════════════════════════════════════════════════════════════════════════════
+
+def sp_insertar_usuario(conn, datos):
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO usuarios (
+            nombreUsuario, apellidoPaternoUsuario, apellidoMaternoUsuario,
+            matriculaUsuario, rolUsuario, estadoUsuario,
+            direccionUsuario, telefonoUsuario, correoUsuario,
+            fechaNacimientoUsuario, tipoSangreUsuario
+        ) VALUES (?, ?, ?, ?, ?, 'activo', ?, ?, ?, ?, ?)
+    """, (
+        datos['nombre'],
+        datos['paterno'],
+        datos.get('materno', ''),
+        datos.get('matricula', ''),
+        datos['rol'],
+        datos.get('direccion', ''),
+        datos.get('telefono', ''),
+        datos.get('correo', ''),
+        datos.get('fecha_nacimiento', ''),
+        datos.get('tipo_sangre', '')
+    ))
+    return cursor.lastrowid
+
+
+def sp_insertar_alumno(conn, user_id, datos):
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO alumnos (fkIdUsuario, gradoAlumno, grupoAlumno, facultadAlumno, carreraAlumno)
+        VALUES (?, ?, ?, ?, ?)
+    """, (
+        user_id,
+        datos.get('grado', ''),
+        datos.get('grupo', ''),
+        datos.get('facultad', ''),
+        datos.get('carrera', '')
+    ))
+
+
+def sp_insertar_maestro(conn, user_id, datos):
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO maestros (fkIdUsuario, gradoImpartidoMaestro, materiaImpartidaMaestro)
+        VALUES (?, ?, ?)
+    """, (
+        user_id,
+        datos.get('grado', ''),
+        datos.get('materia', '')
+    ))
+
+
+def sp_insertar_personal(conn, user_id, datos):
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO personal_escolar (fkIdUsuario, puestoPersonalEscolar, areaPersonalEscolar)
+        VALUES (?, ?, ?)
+    """, (
+        user_id,
+        datos.get('puesto', ''),
+        datos.get('area', '')
+    ))
+
+
+def sp_insertar_biometria(conn, user_id, foto_bytes, fecha):
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO biometria (
+            fkIdUsuario, encodeBiometria,
+            fechaHoraRegistroBiometria, fechaHoraActualizacionBiometria
+        ) VALUES (?, ?, ?, ?)
+    """, (user_id, foto_bytes, fecha, fecha))
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# USUARIOS — Actualización
+# ════════════════════════════════════════════════════════════════════════════
+
+def sp_actualizar_usuario(conn, user_id, datos):
+    cursor = conn.cursor()
+    cursor.execute("""
+        UPDATE usuarios
+        SET nombreUsuario          = ?,
+            apellidoPaternoUsuario = ?,
+            apellidoMaternoUsuario = ?,
+            matriculaUsuario       = ?,
+            telefonoUsuario        = ?,
+            rolUsuario             = ?,
+            fechaHoraActualizacionUsuario = CURRENT_TIMESTAMP
+        WHERE idUsuario = ?
+    """, (
+        datos['nombre'],
+        datos['paterno'],
+        datos.get('materno', ''),
+        datos.get('matricula', ''),
+        datos.get('telefono', ''),
+        datos['rol'],
+        user_id
+    ))
+
+
+def sp_actualizar_alumno(conn, user_id, datos):
+    """datos = { 'carrera', 'grado', 'grupo' }"""
+    cursor = conn.cursor()
+    cursor.execute("""
+        UPDATE alumnos
+        SET carreraAlumno = ?, gradoAlumno = ?, grupoAlumno = ?
+        WHERE fkIdUsuario = ?
+    """, (datos.get('carrera', ''), datos.get('grado', ''), datos.get('grupo', ''), user_id))
+
+
+def sp_actualizar_maestro(conn, user_id, datos):
+    cursor = conn.cursor()
+    cursor.execute("""
+        UPDATE maestros
+        SET materiaImpartidaMaestro = ?, gradoImpartidoMaestro = ?
+        WHERE fkIdUsuario = ?
+    """, (datos.get('materia', ''), datos.get('grado', ''), user_id))
+
+
+def sp_actualizar_personal(conn, user_id, datos):
+    cursor = conn.cursor()
+    cursor.execute("""
+        UPDATE personal_escolar
+        SET puestoPersonalEscolar = ?, areaPersonalEscolar = ?
+        WHERE fkIdUsuario = ?
+    """, (datos.get('puesto', ''), datos.get('area', ''), user_id))
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# USUARIOS — Eliminación
+# ════════════════════════════════════════════════════════════════════════════
+
+def sp_eliminar_usuario(conn, user_id):
+    """Soft delete: marca al usuario como inactivo."""
+    cursor = conn.cursor()
+    cursor.execute("""
+        UPDATE usuarios SET estadoUsuario = 'inactivo' WHERE idUsuario = ?
+    """, (user_id,))
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# BIOMETRÍA
+# ════════════════════════════════════════════════════════════════════════════
+
+def sp_get_fotos_usuario(conn, user_id):
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT idBiometria, encodeBiometria, fechaHoraRegistroBiometria
+        FROM biometria
+        WHERE fkIdUsuario = ?
+        ORDER BY fechaHoraRegistroBiometria ASC
+    """, (user_id,))
+    return cursor.fetchall()
+
+
+def sp_get_biometria_para_entrenamiento(conn):
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT
+            u.idUsuario,
+            u.nombreUsuario,
+            u.apellidoPaternoUsuario,
+            u.apellidoMaternoUsuario,
+            b.encodeBiometria
+        FROM usuarios u
+        INNER JOIN biometria b ON u.idUsuario = b.fkIdUsuario
+        WHERE b.encodeBiometria IS NOT NULL
+        ORDER BY u.idUsuario ASC
+    """)
+    return cursor.fetchall()
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# ACCESOS
+# ════════════════════════════════════════════════════════════════════════════
+
+def sp_registrar_acceso(conn, user_id, estado, confianza, umbral, foto_bytes=None):
+    """
+    Registra un intento de acceso.
+    foto_bytes: BLOB de la imagen JPG capturada en el momento del acceso.
+                Solo se pasa cuando estado == 'denegado'.
+    """
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO accesos
+            (fkIdUsuario, estado_acceso, confianzaAcceso, umbralConfianzaUsado, fotoAcceso)
+        VALUES (?, ?, ?, ?, ?)
+    """, (user_id, estado, confianza, umbral, foto_bytes))
+
+
+def sp_get_historial_accesos(conn, user_id=None, limite=100):
+    """Retorna historial de accesos. Si user_id es None, retorna todos."""
+    cursor = conn.cursor()
+    if user_id:
+        cursor.execute("""
+            SELECT
+                ac.idAcceso,
+                u.nombreUsuario,
+                u.apellidoPaternoUsuario,
+                ac.fechaHoraIntentoAcceso,
+                ac.estado_acceso,
+                ac.confianzaAcceso
+            FROM accesos ac
+            LEFT JOIN usuarios u ON ac.fkIdUsuario = u.idUsuario
+            WHERE ac.fkIdUsuario = ?
+            ORDER BY ac.fechaHoraIntentoAcceso DESC
+            LIMIT ?
+        """, (user_id, limite))
+    else:
+        cursor.execute("""
+            SELECT
+                ac.idAcceso,
+                u.nombreUsuario,
+                u.apellidoPaternoUsuario,
+                ac.fechaHoraIntentoAcceso,
+                ac.estado_acceso,
+                ac.confianzaAcceso
+            FROM accesos ac
+            LEFT JOIN usuarios u ON ac.fkIdUsuario = u.idUsuario
+            ORDER BY ac.fechaHoraIntentoAcceso DESC
+            LIMIT ?
+        """, (limite,))
+    return cursor.fetchall()
+
+
+def sp_get_detalle_acceso(conn, id_acceso):
+    """
+    Retorna todos los datos de un acceso incluyendo la foto capturada.
+    Usado por el panel de detalles del historial.
+    """
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT
+            ac.idAcceso,
+            COALESCE(u.nombreUsuario || ' ' || u.apellidoPaternoUsuario, 'Desconocido') AS nombre,
+            ac.fechaHoraIntentoAcceso,
+            ac.estado_acceso,
+            ac.confianzaAcceso,
+            ac.umbralConfianzaUsado,
+            ac.fotoAcceso
+        FROM accesos ac
+        LEFT JOIN usuarios u ON ac.fkIdUsuario = u.idUsuario
+        WHERE ac.idAcceso = ?
+    """, (id_acceso,))
+    return cursor.fetchone()
+
+
+def sp_get_estadisticas_accesos(conn):
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT estado_acceso, COUNT(*) AS total
+        FROM accesos
+        WHERE DATE(fechaHoraIntentoAcceso) = DATE('now')
+        GROUP BY estado_acceso
+    """)
+    return cursor.fetchall()
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# LOGIN
+# ════════════════════════════════════════════════════════════════════════════
+
+def sp_login(conn, matricula):
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT idUsuario, nombreUsuario, rolUsuario, estadoUsuario
+        FROM usuarios
+        WHERE matriculaUsuario = ? AND estadoUsuario = 'activo'
+    """, (matricula,))
+    return cursor.fetchone()
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# USUARIOS INACTIVOS / PAPELERA
+# ════════════════════════════════════════════════════════════════════════════
+
+def sp_get_usuarios_inactivos(conn):
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT
+            u.idUsuario,
+            u.nombreUsuario,
+            u.apellidoPaternoUsuario,
+            u.apellidoMaternoUsuario,
+            u.matriculaUsuario,
+            u.rolUsuario,
+            u.telefonoUsuario,
+            u.correoUsuario,
+            u.fechaNacimientoUsuario,
+            u.tipoSangreUsuario,
+            u.direccionUsuario,
+            a.carreraAlumno,
+            a.gradoAlumno,
+            a.grupoAlumno,
+            a.facultadAlumno,
+            m.materiaImpartidaMaestro,
+            m.gradoImpartidoMaestro,
+            p.puestoPersonalEscolar,
+            p.areaPersonalEscolar,
+            COUNT(DISTINCT b.idBiometria)  AS total_fotos,
+            COUNT(DISTINCT ac.idAcceso)    AS total_accesos
+        FROM usuarios u
+        LEFT JOIN alumnos          a  ON u.idUsuario = a.fkIdUsuario
+        LEFT JOIN maestros         m  ON u.idUsuario = m.fkIdUsuario
+        LEFT JOIN personal_escolar p  ON u.idUsuario = p.fkIdUsuario
+        LEFT JOIN biometria        b  ON u.idUsuario = b.fkIdUsuario
+        LEFT JOIN accesos          ac ON u.idUsuario = ac.fkIdUsuario
+        WHERE u.estadoUsuario = 'inactivo'
+        GROUP BY u.idUsuario
+        ORDER BY u.idUsuario ASC
+    """)
+    return cursor.fetchall()
+
+
+def sp_restaurar_usuario(conn, user_id):
+    cursor = conn.cursor()
+    cursor.execute("""
+        UPDATE usuarios SET estadoUsuario = 'activo' WHERE idUsuario = ?
+    """, (user_id,))
+
+
+def sp_eliminar_usuario_definitivo(conn, user_id):
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM biometria        WHERE fkIdUsuario = ?", (user_id,))
+    cursor.execute("DELETE FROM accesos          WHERE fkIdUsuario = ?", (user_id,))
+    cursor.execute("DELETE FROM alumnos          WHERE fkIdUsuario = ?", (user_id,))
+    cursor.execute("DELETE FROM maestros         WHERE fkIdUsuario = ?", (user_id,))
+    cursor.execute("DELETE FROM personal_escolar WHERE fkIdUsuario = ?", (user_id,))
+    cursor.execute("DELETE FROM usuarios         WHERE idUsuario   = ?", (user_id,))
+
+
+def sp_vaciar_papelera(conn):
+    cursor = conn.cursor()
+    cursor.execute("SELECT idUsuario FROM usuarios WHERE estadoUsuario = 'inactivo'")
+    for (user_id,) in cursor.fetchall():
+        cursor.execute("DELETE FROM biometria        WHERE fkIdUsuario = ?", (user_id,))
+        cursor.execute("DELETE FROM accesos          WHERE fkIdUsuario = ?", (user_id,))
+        cursor.execute("DELETE FROM alumnos          WHERE fkIdUsuario = ?", (user_id,))
+        cursor.execute("DELETE FROM maestros         WHERE fkIdUsuario = ?", (user_id,))
+        cursor.execute("DELETE FROM personal_escolar WHERE fkIdUsuario = ?", (user_id,))
+        cursor.execute("DELETE FROM usuarios         WHERE idUsuario   = ?", (user_id,))
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# VALIDACIONES DE UNICIDAD
+# ════════════════════════════════════════════════════════════════════════════
+
+def sp_existe_matricula(conn, matricula):
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT 1 FROM usuarios WHERE matriculaUsuario = ? AND estadoUsuario = 'activo' LIMIT 1",
+        (matricula,)
+    )
+    return cursor.fetchone() is not None
+
+
+def sp_existe_correo(conn, correo):
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT 1 FROM usuarios WHERE correoUsuario = ? AND estadoUsuario = 'activo' LIMIT 1",
+        (correo,)
+    )
+    return cursor.fetchone() is not None
