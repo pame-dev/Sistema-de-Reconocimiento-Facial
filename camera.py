@@ -44,36 +44,13 @@ class Camera:
             for _ in range(max(0, int(self.warmup_frames))):
                 _ = self.cap.capture_array()
                 time.sleep(0.01)
-            # Detectar si Picamera2 está devolviendo canales en orden RGB o BGR.
-            # Tomamos una muestra y comparamos dos candidatas BGR para elegir la más natural.
-            try:
-                # Allow forcing conversion via env var: '1'/'true' => force convert, '0'/'false' => force no-convert
-                env = os.environ.get("CAM_FORCE_CONVERT", "").strip().lower()
-                if env in ("1", "true", "yes"):
-                    self._picamera2_needs_convert = True
-                    return
-                if env in ("0", "false", "no"):
-                    self._picamera2_needs_convert = False
-                    return
-
-                sample = self.cap.capture_array()
-                if sample is not None and sample.ndim == 3 and sample.shape[2] == 3:
-                    # candidate A: asumir sample es RGB y convertir a BGR
-                    cand_a = cv2.cvtColor(sample, cv2.COLOR_RGB2BGR)
-                    # candidate B: asumir sample ya viene en BGR
-                    cand_b = sample
-
-                    mean_a = cand_a.mean(axis=(0, 1))  # B, G, R
-                    mean_b = cand_b.mean(axis=(0, 1))
-
-                    score_a = float(mean_a[2] - mean_a[0])
-                    score_b = float(mean_b[2] - mean_b[0])
-
-                    # Elegir la candidata con mayor predominio de rojo sobre azul (heurística simple)
-                    self._picamera2_needs_convert = score_a >= score_b
-                else:
-                    self._picamera2_needs_convert = True
-            except Exception:
+            # Picamera2 configurado con RGB888 suele devolver RGB; convertimos a BGR por defecto
+            # para mantener el contrato de read(). Si alguna instalación concreta ya entrega BGR,
+            # puede desactivarse con CAM_FORCE_CONVERT=0.
+            env = os.environ.get("CAM_FORCE_CONVERT", "").strip().lower()
+            if env in ("0", "false", "no"):
+                self._picamera2_needs_convert = False
+            else:
                 self._picamera2_needs_convert = True
             return
 
